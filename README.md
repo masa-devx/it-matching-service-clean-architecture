@@ -65,6 +65,7 @@
 
 ```
 api/            Go バックエンド（ドメイン単位のファイル構成）
+migrations/     DB スキーマ（sql-migrate: ddl/*.sql・up/down/status 管理）
 web/src/
   app/          ルーティング（(auth) / (main) ルートグループ）
   components/   UI 部品
@@ -79,16 +80,37 @@ docs/           設計書・開発ドキュメント
 # 1. DB 起動（PostgreSQL 16 / ホストポート 5434）
 docker compose up -d
 
-# 2. API（:8081）
+# 2. マイグレーションCLIのインストール（初回のみ）
+go install github.com/rubenv/sql-migrate/...@latest
+
+# 3. DB スキーマの適用（適用状況の確認は make -C migrations status）
+make -C migrations up
+
+# 4. API（:8081）
 cd api
 cp .env.example .env   # DATABASE_URL / JWT_SECRET を設定
 go run .
 
-# 3. Web（:3000）
+# 5. Web（:3000）
 cd web
 cp .env.example .env.local   # NEXT_PUBLIC_API_URL を設定
 npm install && npm run dev
 ```
+
+## DBマイグレーション（sql-migrate）
+
+スキーマ変更はすべて `migrations/ddl/*.sql` のマイグレーションで管理します（psql で直接 DDL を流さない）。
+
+```bash
+make -C migrations up      # 未適用のマイグレーションをすべて適用
+make -C migrations status  # 適用状況の確認（APPLIED / PENDING）
+make -C migrations down    # ロールバック：直前の1件だけ巻き戻す
+make -C migrations reset   # リセット：全件巻き戻し（全テーブルDROP。ローカル専用）
+make -C migrations new NAME=create_projects  # 新規マイグレーションの雛形作成
+```
+
+- `down` / `reset` は **DROP TABLE によりデータも消えます**。ローカル開発の手直し用で、本番では原則使いません（戻したいときは逆操作の Up を新規作成＝ロールフォワード）
+- DBを完全に作り直したい場合: `docker compose down -v && docker compose up -d && make -C migrations up`（`-v` でデータボリュームごと削除）
 
 ## ドキュメント
 
