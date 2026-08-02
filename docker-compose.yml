@@ -1,0 +1,20 @@
+# PostgreSQL をローカルで動かす設定
+# 起動: docker compose up -d ／ 停止: docker compose down
+# 中に入る: docker compose exec db psql -U tsunagu -d tsunagu
+# ★ホストポートは 5434（5432=ローカルPostgres・5433=todo-app と衝突回避）
+
+services:
+  db:
+    image: postgres:16
+    container_name: tsunagu-db
+    environment:
+      POSTGRES_USER: tsunagu
+      POSTGRES_PASSWORD: tsunagu # ローカル学習用
+      POSTGRES_DB: tsunagu
+    ports:
+      - "5434:5432"
+    volumes:
+      - tsunagu-db-data:/var/lib/postgresql/data
+
+volumes:
+  tsunagu-db-data:

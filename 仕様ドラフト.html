@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tsunagu Works — 企業×IT人材マッチング 仕様 v1</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#1f2430; --muted:#5b6470; --line:#e5e8ec;
+    --brand:#1d4ed8; --brand-weak:#e8efff; --accent:#0f766e; --accent-weak:#e6f6f4;
+    --star:#b45309; --star-bg:#fef3c7;
+    --mvp:#0f766e; --mvp-bg:#e6f6f4; --ext:#9a3412; --ext-bg:#fdece2;
+    --no:#6b7280; --no-bg:#eef0f3; --code:#0b1020;
+  }
+  *{box-sizing:border-box}
+  html{color-scheme:light}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.8;
+    font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 80px;}
+  header.hero{background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;
+    border-radius:16px;padding:26px 28px;margin-bottom:20px;}
+  header.hero h1{margin:0 0 8px;font-size:1.55rem;}
+  header.hero p{margin:0;opacity:.95;}
+  .pitch{background:#fff;border:1px solid var(--line);border-left:5px solid var(--brand);
+    border-radius:10px;padding:14px 18px;margin:0 0 20px;font-size:1.02rem;}
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 20px;margin-bottom:24px;}
+  .toc h2{margin:0 0 8px;font-size:.9rem;color:var(--muted);letter-spacing:.05em;}
+  .toc ol{margin:0;padding-left:20px;columns:2;column-gap:30px;}
+  .toc a{color:var(--brand);text-decoration:none;}
+  .toc a:hover{text-decoration:underline;}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:22px 24px;margin-bottom:16px;scroll-margin-top:14px;}
+  section h2{margin:0 0 14px;font-size:1.2rem;border-left:4px solid var(--brand);padding-left:10px;}
+  section h3{margin:18px 0 8px;font-size:1rem;color:var(--brand);}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.92rem;display:block;overflow-x:auto;}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top;}
+  th{background:var(--brand-weak);white-space:nowrap;}
+  code{background:var(--brand-weak);padding:1px 6px;border-radius:5px;font-size:.88em;
+    font-family:ui-monospace,Menlo,monospace;}
+  pre{background:var(--code);color:#e6edf3;border-radius:10px;padding:14px 16px;overflow-x:auto;
+    font-size:.84rem;font-family:ui-monospace,Menlo,monospace;line-height:1.6;}
+  .badge{display:inline-block;font-size:.72rem;padding:2px 9px;border-radius:999px;font-weight:600;white-space:nowrap;}
+  .b-mvp{background:var(--mvp-bg);color:var(--mvp);}
+  .b-ext{background:var(--ext-bg);color:var(--ext);}
+  .b-star{background:var(--star-bg);color:var(--star);}
+  .b-no{background:var(--no-bg);color:var(--no);}
+  .box{border-radius:10px;padding:12px 16px;border:1px solid var(--line);margin:10px 0;}
+  .box.brand{background:var(--brand-weak);border-color:#c3d4fb;}
+  .box.green{background:var(--accent-weak);border-color:#b8e0db;}
+  .box.warn{background:#fff4e0;border-color:#e8cf9a;}
+  .box h4{margin:0 0 8px;}
+  .box ul,.box ol{margin:0;padding-left:20px;}
+  .muted{color:var(--muted);}
+  footer{color:var(--muted);font-size:.85rem;text-align:center;margin-top:22px;}
+  footer a{color:var(--brand);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>🤝 Tsunagu Works — 企業×IT人材マッチング 仕様 v1</h1>
+  <p>副業・フリーランスエンジニアと企業をつなぐビジネスマッチング ｜ it-support-service 忠実模倣 ＋ 独自機能で差す旗艦ポートフォリオ</p>
+</header>
+
+<div class="pitch">
+  <b>一言コンセプト：</b>「<b>正社員採用は難しい、でも技術力が要る」企業と、「副業を始めたい」エンジニアを、<b>安心の仕組み（エスクロー・KYC・公平なレビュー）</b>つきでつなぐマッチングプラットフォーム。
+  <br><span class="muted">構造は it-support-service（Go＋Next.js＋スキーマ駆動）を層ごとに模倣し、「説明できる設計」を獲得する。</span>
+</div>
+
+<div class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li><a href="#s1">決定事項サマリー</a></li>
+    <li><a href="#s2">解決する課題（なぜ作るか）</a></li>
+    <li><a href="#s3">機能一覧（＝課題との対応表）</a></li>
+    <li><a href="#s4">it-support との構造対応</a></li>
+    <li><a href="#s5">状態遷移（状態機械3本）</a></li>
+    <li><a href="#s6">データ設計</a></li>
+    <li><a href="#s7">技術スタック（求人スキル対応）</a></li>
+    <li><a href="#s8">技術的な課題と解法</a></li>
+    <li><a href="#s9">画面×スキルの見せ場マップ</a></li>
+    <li><a href="#s10">MVPスライスとビルド順</a></li>
+    <li><a href="#s11">7社への刺さり・面接での語り</a></li>
+    <li><a href="#s12">名前案・残る確認</a></li>
+  </ol>
+</div>
+
+<section id="s1">
+  <h2>1. 決定事項サマリー</h2>
+  <table>
+    <tr><th>項目</th><th>決定</th></tr>
+    <tr><td>ドメイン</td><td><b>企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチング</b>（it-support-service と同じ土俵）</td></tr>
+    <tr><td>作り方</td><td><b>it-support-service を忠実に模倣</b>（Go クリーンアーキ＋Next.js App Router＋スキーマ駆動）。層ごとに参考実装と見比べて「説明できる設計」を獲得する</td></tr>
+    <tr><td>オリジナリティ</td><td>ドメインでなく<b>機能と実装の深さ</b>で出す：エスクロー決済・連絡先マスキング・同時公開レビュー・稼働報告</td></tr>
+    <tr><td>学習の狙い</td><td><b>フロントエンドの知識・経験を深める</b>（7社の必須/歓迎スキル対応）＋ Go/DB のバックエンド越境</td></tr>
+    <tr><td>当事者性</td><td>自分自身がエンジニアで転職・副業市場の当事者。<b>発注側・受注側の両方を最も高解像度で想像できるドメイン</b></td></tr>
+    <tr><td>ポートフォリオ構成</td><td>本作＝旗艦（マーケット構造・状態機械・信頼設計）／<b>Mindgrove</b>＝エディタ・状態管理特化（Squad/Yoom/TORIHADA向け・凍結中）／教育マッチング案・Kata構想＝温存カード</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2>2. 解決する課題（なぜ作るか）</h2>
+  <h3>市場背景</h3>
+  <ul>
+    <li>副業解禁・リモートワークの定着で、<b>エンジニアの副業・業務委託は一般化</b>した</li>
+    <li>一方で中小企業・スタートアップは<b>正社員エンジニアの採用が困難</b>（採用競争・年収高騰）→ 副業/業務委託の活用が現実解</li>
+    <li>しかし両者をつなぐ場には、<b>信頼とお金のトラブル</b>という構造的な課題が残っている</li>
+  </ul>
+
+  <h3>三者の課題（一人称）</h3>
+  <table>
+    <tr><th>立場</th><th>課題</th></tr>
+    <tr><td><b>企業（発注側）</b></td><td>「正社員を雇う余裕はないが技術力が必要」「<b>誰が本当にできる人か見極められない</b>」「業務委託の契約・支払い事務が面倒」「途中で音信不通になったら…」</td></tr>
+    <tr><td><b>IT人材（受注側）</b></td><td>「副業を始めたいが<b>最初の案件の入口がない</b>」「相場が分からない」「<b>納品したのに支払われないリスク</b>」「作業スコープが際限なく膨らむ」「実績が形に残らない」</td></tr>
+    <tr><td><b>プラットフォーム（運営）</b></td><td>「<b>直接取引（中抜け）</b>で手数料を回避される」「<b>報復レビュー</b>で評価が信頼できなくなる」「ミスマッチによる炎上・トラブル」</td></tr>
+  </table>
+  <div class="box brand">
+    <b>本質：</b>マッチングサービスの価値は「出会わせること」ではなく「<b>知らない者同士が安心して取引できる仕組み</b>」。だから本作の独自機能はすべて<b>信頼の設計</b>（お金・連絡・評価・本人性）に集中させる。
+  </div>
+</section>
+
+<section id="s3">
+  <h2>3. 機能一覧（＝「なぜ作るか」との対応表）</h2>
+  <p class="muted">各機能に「解決する課題」を併記。<span class="badge b-mvp">MVP</span> / <span class="badge b-ext">拡張</span> / <span class="badge b-no">やらない</span></p>
+
+  <h3>A. アカウント・プロフィール</h3>
+  <table>
+    <tr><th>機能</th><th>なぜ作るか（解決する課題）</th><th>区分</th></tr>
+    <tr><td>会員登録・認証（JWT＋httpOnly Cookie）</td><td>基盤（todo-appの型を再利用）</td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td>企業プロフィール／人材プロフィール（スキル・稼働可能時間・希望単価・経歴）</td><td>「誰なのか」を構造化して<b>見極めコストを下げる</b></td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td><b>KYC（本人確認）</b>：書類アップロード→審査→承認バッジ</td><td>「音信不通・なりすまし」への安心。<b>it-supportのKYC構造を模倣</b></td><td><span class="badge b-mvp">MVP（簡易版）</span></td></tr>
+    <tr><td>実績バッジ・累計稼働時間の可視化</td><td>「実績が形に残らない」→ 続けるほど信頼が積み上がる</td><td><span class="badge b-ext">拡張</span></td></tr>
+  </table>
+
+  <h3>B. 案件・応募（マッチング）</h3>
+  <table>
+    <tr><th>機能</th><th>なぜ作るか</th><th>区分</th></tr>
+    <tr><td>案件の掲載（テンプレで迷わず書ける：業務内容・スキル・単価・稼働・リモート可否）</td><td>発注に不慣れな企業の<b>募集の質を底上げ</b>（ミスマッチの根本原因対策）</td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td>検索一覧（スキル×単価×稼働×リモートのフィルタ・seekページング）</td><td>「入口がない」→ 発見性。<b>1万件シードで性能計測の主戦場</b>にする</td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td>応募 → 選考（書類→面談）→ 承諾（<b>状態機械①</b>）</td><td>選考の現在地を双方に可視化（「音沙汰なし」の不安を消す）</td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td><b>ダブルオプトイン成立</b>（両者承諾で初めて契約へ）</td><td>片思い状態での進行を防ぎ<b>ミスマッチを減らす</b></td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td>スカウト（企業→人材への逆オファー）</td><td>企業側の能動的な発見</td><td><span class="badge b-ext">拡張</span></td></tr>
+  </table>
+
+  <h3>C. 契約・稼働</h3>
+  <table>
+    <tr><th>機能</th><th>なぜ作るか</th><th>区分</th></tr>
+    <tr><td>契約管理（<b>状態機械②</b>：契約中→検収待ち→完了/中止）＋ステータストラッカー</td><td>「今どういう状態？」を宅配便追跡のように可視化＝<b>透明性が信頼を作る</b></td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td><b>稼働報告（週次レポート・作業ログ）</b></td><td>リモート業務委託の「<b>ちゃんと働いてる？が見えない</b>」不安（企業側）と「働いた証拠を残したい」（人材側）を同時に解決</td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td>スコープ変更の記録（追加作業の合意ログ）</td><td>「作業が際限なく膨らむ」→ 合意を形に残す</td><td><span class="badge b-ext">拡張</span></td></tr>
+  </table>
+
+  <h3>D. 決済（エスクロー）<span class="badge b-star">独自機能の柱</span></h3>
+  <table>
+    <tr><th>機能</th><th>なぜ作るか</th><th>区分</th></tr>
+    <tr><td><b>エスクロー決済（状態機械③）</b>：契約時に企業が仮払い → 検収 → 人材へ支払い</td><td>人材の「<b>未払いリスク</b>」と企業の「<b>前払いリスク</b>」を同時に解決する、マッチングの信頼の核。<b>お金の状態機械</b>として設計の見せ場</td><td><span class="badge b-ext">拡張（最優先）</span></td></tr>
+    <tr><td>請求書・支払記録のPDF出力</td><td>両者の事務コスト削減</td><td><span class="badge b-ext">拡張</span></td></tr>
+  </table>
+
+  <h3>E. 信頼・安全（プラットフォームの生命線）</h3>
+  <table>
+    <tr><th>機能</th><th>なぜ作るか</th><th>区分</th></tr>
+    <tr><td>メッセージ機能＋<b>連絡先の自動マスキング</b>（メール/電話番号を検出して伏せる）</td><td><b>直接取引（中抜け）の防止</b>＝マッチング事業の生命線。実務で必ず問われる仕組み</td><td><span class="badge b-mvp">MVP</span>（マスキングはMVP後半）</td></tr>
+    <tr><td><b>レビュー同時公開</b>（両者が書き終わるまで互いに非公開→同時公開）</td><td><b>報復レビューを防ぎ、評価の信頼性を守る</b>（Airbnb方式の公平性設計）</td><td><span class="badge b-mvp">MVP</span></td></tr>
+    <tr><td>通報・運営対応</td><td>トラブルの逃げ道</td><td><span class="badge b-ext">拡張</span></td></tr>
+  </table>
+
+  <h3>F. 管理・可視化</h3>
+  <table>
+    <tr><th>機能</th><th>なぜ作るか</th><th>区分</th></tr>
+    <tr><td>企業ダッシュボード（募集中案件・応募状況・契約中の稼働）</td><td>管理画面の見せ場（大量テーブル・集計）</td><td><span class="badge b-mvp">MVP後半</span></td></tr>
+    <tr><td>人材ダッシュボード（応募状況・稼働時間・収入見込み）</td><td>副業の「自分の現在地」可視化</td><td><span class="badge b-ext">拡張</span></td></tr>
+    <tr><td>通知（応募・承諾・検収依頼・レビュー依頼）</td><td>状態遷移の見逃し防止</td><td><span class="badge b-mvp">MVP（アプリ内）</span></td></tr>
+  </table>
+
+  <h3>G. やらないこと</h3>
+  <table>
+    <tr><td>AI機能（レコメンド・自動マッチング）／リアルタイムチャット（WebSocket）／モバイルアプリ／複数通貨・国際対応</td><td><span class="badge b-no">やらない</span>（スコープ防衛。メッセージはポーリング/更新ベースで十分）</td></tr>
+  </table>
+</section>
+
+<section id="s4">
+  <h2>4. it-support-service との構造対応（模倣マップ）</h2>
+  <table>
+    <tr><th>it-support-service</th><th>→ 本サービス</th><th>模倣で学ぶこと</th></tr>
+    <tr><td>企業（支援を求める側）</td><td>企業（発注側）</td><td rowspan="6">Go クリーンアーキ（handler→usecase→repository）／スキーマ駆動（TypeSpec/OpenAPI→型生成）／状態遷移設計／KYCワークフロー／Next.js App Router・RSC の境界設計</td></tr>
+    <tr><td>サポーター（提供側）</td><td>IT人材（副業・フリーランス）</td></tr>
+    <tr><td>プロジェクト掲載</td><td>案件掲載</td></tr>
+    <tr><td>支援プラン・契約（状態遷移）</td><td>応募→選考→契約→検収→完了（状態機械①②）</td></tr>
+    <tr><td>KYC（本人確認）</td><td>KYC（書類→審査→バッジ）</td></tr>
+    <tr><td>決済</td><td><b>エスクロー決済（状態機械③）</b>← 本作で深化させる部分</td></tr>
+  </table>
+  <div class="box green">
+    <b>模倣の進め方：</b>各Phaseで「①参考実装の該当層を読む → ②自分のドメイン語彙で再実装 → ③差分を説明できるか確認」。丸写しではなく<b>「読んで・書いて・比べる」</b>のサイクルで、面接で『なぜこの設計か』を自分の言葉にする。
+  </div>
+</section>
+
+<section id="s5">
+  <h2>5. 状態遷移（状態機械3本）</h2>
+  <pre>① 選考 applications:
+   応募 → 書類選考 → 面談 → 承諾（ダブルオプトイン成立）／ 見送り ／ 取り下げ
+
+② 契約 contracts:
+   成立 → 稼働中 →（稼働報告を積む）→ 検収待ち → 完了 ／ 中止
+                                        └ 差し戻し → 稼働中（修正対応）
+
+③ 決済 payments（エスクロー・お金の状態機械）★独自の柱:
+   仮払い待ち → 仮払い済み(エスクロー) → 検収OK → 支払い実行 → 支払い完了
+                └ 中止時 → 返金
+
+⑤ レビュー:
+   契約完了 → 両者が提出 → 同時公開（片方だけでは公開されない・期限で自動公開）</pre>
+  <p class="muted">★ ②契約 と ③決済 が連動する（検収=契約の遷移がお金の遷移を引き起こす）。<b>「業務の状態」と「お金の状態」を別の機械として分離しつつ同期させる</b>のが設計の見せ場。</p>
+</section>
+
+<section id="s6">
+  <h2>6. データ設計</h2>
+  <pre>-- ユーザー（1ユーザーが企業/人材どちらのロールも持てる設計も可。まずは択一で簡素に）
+users           id, email, password_hash, name, role(company/talent), created_at
+
+companies       id, user_id, name, description, industry, size
+talents         id, user_id, bio, skills[](Go/React/AWS…), years_of_exp,
+                available_hours_per_week, desired_hourly_rate, remote_ok
+
+identifications id, user_id, doc_type(本人確認書類), file_url,
+                status(審査中/承認/却下), verified_at            -- KYC
+
+-- 案件と応募
+projects        id, company_id, title, description, required_skills[],
+                hourly_rate_min/max, hours_per_week, remote_ok,
+                status(下書き/公開/締切), created_at
+applications    id, project_id, talent_id, message,
+                status(応募/書類/面談/承諾/見送り/取り下げ)       -- 状態機械①
+
+-- 契約・稼働・決済
+contracts       id, application_id, hourly_rate, start_date, end_date,
+                status(成立/稼働中/検収待ち/完了/中止)            -- 状態機械②
+work_reports    id, contract_id, week_start, hours, summary,
+                status(提出済/承認/差し戻し)                      -- 稼働報告
+payments        id, contract_id, amount, stripe_payment_intent_id,
+                status(仮払い待ち/仮払い済み/支払い実行/完了/返金),  -- 状態機械③
+                idempotency_key                                   -- 冪等性★
+
+-- 信頼・安全
+messages        id, contract_id(or application_id), sender_id, body,
+                masked_body, masked(bool)                         -- マスキング
+reviews         id, contract_id, reviewer_role(company/talent),
+                rating, comment, submitted_at, published_at       -- 同時公開
+notifications   id, user_id, type, payload, read_at</pre>
+
+  <h3>データ設計の「見せ場」</h3>
+  <table>
+    <tr><th>見せ場</th><th>内容</th></tr>
+    <tr><td><b>1. 業務とお金の状態分離</b></td><td><code>contracts</code>（業務）と <code>payments</code>（お金）を別の状態機械にし、「検収OK→支払い実行」で同期。<b>混ぜると破綻する典型例を、分けて設計した</b>と語れる</td></tr>
+    <tr><td><b>2. 決済の冪等性</b></td><td>Stripe Webhookは重複配送があり得る → <code>idempotency_key</code>＋処理済み判定で<b>二重支払いを構造的に防ぐ</b></td></tr>
+    <tr><td><b>3. レビュー同時公開</b></td><td><code>submitted_at</code>（提出）と <code>published_at</code>（公開）を分離。両者揃うか期限到来で公開するロジック</td></tr>
+    <tr><td><b>4. マスキングの監査性</b></td><td><code>body</code>（原文）と <code>masked_body</code>（表示用）を分けて保存 → 運営がトラブル調査できる（＋個人情報の扱いを語れる）</td></tr>
+    <tr><td><b>5. 検索設計</b></td><td><code>skills[]</code> にGINインデックス・単価/稼働のレンジ検索・seekページング。1万件シードで計測</td></tr>
+  </table>
+</section>
+
+<section id="s7">
+  <h2>7. 技術スタック（フロント重視・求人スキル対応）</h2>
+  <table>
+    <tr><th>技術</th><th>対応する求人スキル</th><th>何を証明するか</th></tr>
+    <tr><td><b>Next.js App Router + TypeScript(strict)</b></td><td>必須: React/TS（全社）／歓迎: App Router/RSC</td><td>一覧=RSC・対話=Client の境界設計</td></tr>
+    <tr><td><b>TanStack Query</b></td><td>歓迎: 状態管理（5社）</td><td>応募・承諾・検収mutationの<b>楽観的更新</b>とロールバック</td></tr>
+    <tr><td><b>Zustand</b>（必要画面のみ）</td><td>歓迎: 状態管理</td><td>サーバー状態/クライアント状態の使い分けの判断</td></tr>
+    <tr><td><b>React Hook Form + Zod</b></td><td>実務標準</td><td>案件掲載テンプレ・ステップフォーム・下書き保存</td></tr>
+    <tr><td><b>Tailwind + shadcn/ui（＋Storybook拡張）</b></td><td>歓迎: デザインシステム（3社）</td><td>共通部品カタログ</td></tr>
+    <tr><td><b>Vitest + Testing Library / Playwright / MSW</b></td><td>必須(TORIHADA)/歓迎: テスト（5社）</td><td>テスティングトロフィー（SODA方針と一致）</td></tr>
+    <tr><td><b>TanStack Virtual + seekページング + Web Vitals計測</b></td><td>歓迎: パフォーマンス（5社）</td><td>1万件一覧のbefore/after数値</td></tr>
+    <tr><td>アクセシビリティ（Radix基盤・jsx-a11y）</td><td>歓迎(TORIHADA)</td><td>フォーム・テーブルのa11y</td></tr>
+    <tr><td><b>OpenAPI スキーマ駆動</b>（TypeSpec→型/クライアント生成）</td><td>TS型設計</td><td>「APIの型がフロントを貫く」（it-support模倣）</td></tr>
+    <tr><td><b>Go クリーンアーキ / PostgreSQL / docker</b></td><td>バックエンド越境（mikanスタックにGo）</td><td>handler→usecase→repository・DI・状態遷移テスト</td></tr>
+    <tr><td>Stripe（エスクロー・拡張）</td><td>決済（mikanの決済基盤ミッションと接点）</td><td>与信/キャプチャ・Webhook冪等性</td></tr>
+    <tr><td>生成AI活用（Claude Code・記録）</td><td>歓迎（全社）</td><td>開発プロセスのアウトプット化</td></tr>
+  </table>
+</section>
+
+<section id="s8">
+  <h2>8. 技術的な課題と解法</h2>
+  <table>
+    <tr><th>課題</th><th>何が難しいか</th><th>解法・学び</th></tr>
+    <tr><td><b>エスクロー決済</b></td><td>仮払い（与信）→検収→キャプチャの流れ。Webhookの<b>重複配送・順序保証なし</b></td><td>Stripe PaymentIntent（manual capture）＋<code>idempotency_key</code>＋イベント処理済みテーブル。<b>お金は「最低1回」でなく「ちょうど1回」</b>を作り込む</td></tr>
+    <tr><td><b>状態機械の整合</b></td><td>選考①・契約②・決済③が連動。不正な遷移（検収前に支払い等）を許すと事故</td><td>遷移表を定義→usecase層でガード→<b>テーブル駆動テストで全遷移を網羅</b>（go-basicsのテスト手法が活きる）</td></tr>
+    <tr><td><b>連絡先マスキング</b></td><td>メール・電話・SNS IDの検出。正規表現の限界（全角・分かち書き回避）</td><td>まず基本パターン（メール/電話/URL）＋原文保存で監査可能に。<b>完璧でなく「抑止＋検知」を狙う</b>と設計思想を語る</td></tr>
+    <tr><td><b>レビュー同時公開</b></td><td>「両者揃うまで非公開」＋「片方が書かない場合」の扱い</td><td>submitted/published分離＋期限（14日）で自動公開のバッチ</td></tr>
+    <tr><td><b>検索パフォーマンス</b></td><td>スキル配列×レンジ×ソートの複合条件で1万件</td><td>GINインデックス・seekページング・EXPLAIN ANALYZEで計測 → before/after数値化</td></tr>
+    <tr><td><b>楽観的更新の整合</b></td><td>応募・承諾の連打・失敗時のUI巻き戻し</td><td>TanStack Queryの<code>onMutate/onError/onSettled</code>でロールバック＋invalidate</td></tr>
+    <tr><td><b>認可</b></td><td>企業/人材/運営のロール×所有者チェック（自分の案件だけ編集等）</td><td>todo-appのIDOR対策を発展：<b>ロール×リソース所有の二重チェック</b>をミドルウェア＋usecaseで</td></tr>
+    <tr><td><b>スキーマ駆動の運用</b></td><td>API変更のたびに型がズレる問題</td><td>OpenAPI定義を単一の真実に→生成型をフロント/バック両方が参照（it-supportの手法を模倣）</td></tr>
+  </table>
+</section>
+
+<section id="s9">
+  <h2>9. 画面×スキルの見せ場マップ</h2>
+  <table>
+    <tr><th>画面</th><th>見せるスキル</th></tr>
+    <tr><td><b>案件検索一覧</b>（シード1万件）</td><td>RSC＋URLクエリ同期・仮想化・seekページング・<b>LCP/INP計測</b></td></tr>
+    <tr><td><b>案件掲載フォーム</b></td><td>RHF＋Zod・ステップフォーム・下書き自動保存</td></tr>
+    <tr><td><b>応募→選考→承諾</b></td><td>TanStack Query <b>楽観的更新</b>・状態機械のUI（ステータストラッカー）</td></tr>
+    <tr><td><b>契約詳細・稼働報告</b></td><td>週次レポートのフォームUX・タイムライン表示</td></tr>
+    <tr><td><b>メッセージ</b></td><td>マスキング表示・未読管理</td></tr>
+    <tr><td><b>企業ダッシュボード</b></td><td>TanStack Tableの大量テーブル・集計（Squad向けの弾）</td></tr>
+    <tr><td><b>レビュー</b></td><td>同時公開のUX（「相手の公開待ち」状態表示）</td></tr>
+    <tr><td>全画面共通</td><td>a11y・レスポンシブ・（拡張）Storybook</td></tr>
+  </table>
+</section>
+
+<section id="s10">
+  <h2>10. MVPスライスとビルド順</h2>
+  <div class="box brand">
+    <b>MVPスライス（最初に1周する線）：</b><br>
+    登録（企業/人材）→ 案件掲載 → 検索 → 応募 → 選考 → 承諾（ダブルオプトイン）→ 契約 → 稼働報告 → 検収 → 完了 → レビュー同時公開
+    <br><span class="muted">※エスクロー決済（Stripe）は拡張最優先（MVP完成後すぐ着手）。KYCはMVPでは簡易版（書類アップ＋手動承認）</span>
+  </div>
+  <table>
+    <tr><th>Phase</th><th>作るもの</th><th>学びの核</th></tr>
+    <tr><td>0</td><td>環境（monorepo api/web・docker・OpenAPIセットアップ）＋ <b>it-support読解</b>（設計研究ノートと突き合わせ）</td><td>参考実装の全体像</td></tr>
+    <tr><td>1</td><td>認証＋企業/人材プロフィール（Goクリーンアーキの土台・簡易KYC）</td><td>handler→usecase→repository・DI</td></tr>
+    <tr><td>2</td><td>案件CRUD＋検索一覧（RSC・フォーム・シードデータ）</td><td>RSC境界・検索設計・フォームUX</td></tr>
+    <tr><td>3</td><td>応募→選考→承諾（状態機械①・楽観的更新・トラッカー）</td><td>TanStack Query・状態遷移テスト</td></tr>
+    <tr><td>4</td><td>契約＋稼働報告＋検収（状態機械②）</td><td>業務の状態設計・タイムライン</td></tr>
+    <tr><td>5</td><td>メッセージ（マスキング）＋レビュー同時公開 ＝ <b>MVP完成</b></td><td>信頼の設計・バッチ処理</td></tr>
+    <tr><td>拡張</td><td><b>エスクロー決済(Stripe)</b> → 企業ダッシュボード → 1万件計測 → Storybook → スカウト → 実績バッジ</td><td>各段が面接ネタ</td></tr>
+  </table>
+</section>
+
+<section id="s11">
+  <h2>11. 7社への刺さり・面接での語り</h2>
+  <table>
+    <tr><th>企業</th><th>刺さり</th><th>何で語るか</th></tr>
+    <tr><td><b>SODA</b></td><td>◎ 80点</td><td>C2C/マーケット構造・<b>信頼担保の設計思想（鑑定⇔KYC/エスクロー）</b>・大量一覧計測・テスティングトロフィー</td></tr>
+    <tr><td><b>mikan</b></td><td>○ 65点</td><td>技術で語る：楽観的更新の体感速度・Go/Next・<b>決済基盤（Web版の重要ミッションと接点）</b>・スキーマ駆動</td></tr>
+    <tr><td>Facilo</td><td>○ 80点</td><td>BtoB二面性・状態機械・高速リリースを支えるテスト・BFF</td></tr>
+    <tr><td>ホワイトプラス</td><td>○ 75点</td><td>業務×お金の状態機械分離＝ドメインモデリング・Go越境</td></tr>
+    <tr><td>Yoom</td><td>○ 60点</td><td>業務フローの状態設計・スキーマ駆動</td></tr>
+    <tr><td>Squad / TORIHADA</td><td>△</td><td>→ ダッシュボード・テスト・a11yで部分対応＋<b>Mindgroveが主担当</b></td></tr>
+  </table>
+  <div class="box brand">
+    <h4>面接での語り（型）</h4>
+    「マッチングサービスの本質は"出会わせる"ことではなく、<b>知らない者同士が安心して取引できる仕組み</b>だと考えました。実務レベルの参考実装（Go＋Next.jsのマッチングサービス）を層ごとに研究した上で、同じアーキテクチャを自分で再構築し、独自要素として<b>信頼の設計</b>——エスクロー決済（業務とお金の状態機械を分離して同期）・連絡先マスキング（直接取引防止）・レビュー同時公開（報復レビュー防止）——を作り込みました。技術的には<b>状態機械3本のテーブル駆動テスト、Webhookの冪等性、1万件一覧の計測</b>が見どころです。」
+  </div>
+</section>
+
+<section id="s12">
+  <h2>12. 名前案・残る確認</h2>
+  <h3>名前案（仮）</h3>
+  <table>
+    <tr><th>案</th><th>由来</th></tr>
+    <tr><td><b>SkillBridge（スキルブリッジ）</b></td><td>スキルの架け橋。ドメインが一目で分かる</td></tr>
+    <tr><td><b>SideWorks（サイドワークス）</b></td><td>副業（side work）×働く場</td></tr>
+    <tr><td><b>Takumi（タクミ）</b></td><td>匠＝技能を持つ人。短く日本語らしい</td></tr>
+    <tr><td><b>Tsunagu Works ✅ 決定</b></td><td>つなぐ×仕事</td></tr>
+  </table>
+  <p class="muted">※名前は「Tsunagu Works」に決定（2026-08-01）。フォルダは tsunagu-works にリネーム済み。商標・ドメインは公開時に要確認。</p>
+
+  <h3>残る確認ポイント</h3>
+  <div class="box brand">
+    <ol>
+      <li><b>名前</b>：上の4案 or 別案？</li>
+      <li><b>MVP範囲</b>：Phase 0〜5（エスクローは拡張最優先・KYCは簡易版）でよいか？</li>
+      <li><b>メッセージ機能</b>：MVP後半（Phase 5）としたが、先送りして更にスリム化する選択もあり</li>
+      <li>OK後の流れ：<b>it-support-service 読解（Phase 0）→ リポジトリ作成（main＋ブランチ運用）→ Phase 1 着手</b>。todo-appと同じ「小さく刻む→解説→確認→コミット」方式・学習ログ蓄積で進める</li>
+    </ol>
+  </div>
+  <h3>参考</h3>
+  <ul>
+    <li>参考実装: <a href="https://github.com/yamao-sys/it-support-service">yamao-sys/it-support-service</a>（Go＋Next.js＋TypeSpec/OpenAPI＋Cloud Run）</li>
+    <li>関連ドキュメント: kata-サマリー.html（旧構想）／mindgrove/仕様ドラフト.html（フロント特化の相方）／edu-match/仕様ドラフト.html（教育版・温存）</li>
+  </ul>
+</section>
+
+<footer>
+  Tsunagu Works — 企業×IT人材マッチング 仕様 v1 ・ 2026-08
+</footer>
+
+</div>
+</body>
+</html>
