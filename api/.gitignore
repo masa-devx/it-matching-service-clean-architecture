@@ -1,0 +1,11 @@
+# 環境変数・秘密情報（.env.example のみコミット可）
+.env
+.env.*
+!.env.example
+
+# ビルド成果物
+tsunagu-api
+bin/
+*.exe
+*.test
+*.out
