@@ -40,3 +40,31 @@ func userIDFrom(ctx context.Context) (int64, bool) {
 	id, ok := ctx.Value(ctxKeyUserID).(int64)
 	return id, ok
 }
+
+// webOrigin は CORS で許可するフロントの出所。デプロイ時に環境変数化する
+const webOrigin = "http://localhost:3000"
+
+// corsMiddleware はブラウザからのクロスオリジンアクセスを web(:3000) にだけ許可する。
+// 許可リスト方式（"*" にしない）: Cookie 認証(Phase 1)では "*" が仕様上使えない上、
+// どのサイトからもAPIを叩ける状態は避ける
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Origin ごとに応答が変わることをキャッシュに伝える
+		w.Header().Set("Vary", "Origin")
+
+		if r.Header.Get("Origin") == webOrigin {
+			w.Header().Set("Access-Control-Allow-Origin", webOrigin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+
+		// プリフライト（OPTIONS）はここで完結させ、ルーティングに渡さない
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
