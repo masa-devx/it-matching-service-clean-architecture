@@ -6,6 +6,7 @@
 # ビルド成果物
 tsunagu-api
 bin/
+tmp/
 *.exe
 *.test
 *.out
