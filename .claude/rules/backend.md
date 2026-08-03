@@ -30,7 +30,7 @@ globs:
 
 ## DB
 
-- スキーマ変更は `schema.sql` を更新して適用（golang-migrate 導入までは手動。適用コマンドをREADMEに明記）
+- スキーマ変更は **sql-migrate** で管理（`migrations/ddl/*.sql`。作成は `make -C migrations new NAME=xxx`・適用は `make -C migrations up`）。DDLを psql で直接流さない。マイグレーションファイルには必ず Up と Down を書く
 - 時刻は `TIMESTAMPTZ`、NULLを許さない列は `NOT NULL`、外部キーには索引
 - **状態遷移を持つカラム（status）は、許可される遷移をコード上の1か所（遷移表）で定義**し、テーブル駆動テストを書く（Phase 3 以降）
 - 教材: 詰まった点・設計判断は `docs/DB.md` / `docs/バックエンド.md` へ

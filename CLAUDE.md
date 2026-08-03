@@ -83,6 +83,7 @@
 
 ```
 api/            # Go: フラット構成（main.go / db.go / auth.go / projects.go …機能ごと1ファイル）
+migrations/     # DBスキーマ（sql-migrate: ddl/*.sql + dbconfig.yml + Makefile）
 web/src/
   app/          # (auth)/(main) ルートグループ。page は薄く
   components/   # UI部品

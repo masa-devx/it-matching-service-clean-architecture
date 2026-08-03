@@ -25,6 +25,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
+	mux.HandleFunc("POST /signup", handleSignup)
 
 	log.Println("起動 → http://localhost:8081  (Ctrl+C で停止)")
 	if err := http.ListenAndServe(":8081", mux); err != nil {
