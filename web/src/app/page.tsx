@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default function Home() {
   return (
@@ -7,7 +9,13 @@ export default function Home() {
       <p className="text-muted-foreground">
         企業とIT人材をつなぐビジネスマッチング
       </p>
-      <Button>はじめる</Button>
+      <div className="flex gap-3">
+        <Button asChild className="h-11">
+          <Link href="/login">ログイン</Link>
+        </Button>
+        {/* 暫定配置: #8 で (main) ヘッダーに移し、ログイン時のみ表示にする */}
+        <LogoutButton />
+      </div>
     </main>
   );
 }

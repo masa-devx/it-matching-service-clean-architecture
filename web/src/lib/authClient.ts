@@ -39,3 +39,7 @@ export function login(input: {
 }): Promise<AuthResult> {
   return postJson('/api/auth/login', input)
 }
+
+export function logout(): Promise<AuthResult> {
+  return postJson('/api/auth/logout', {})
+}

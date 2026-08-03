@@ -17,3 +17,10 @@ export async function setTokenCookie(token: string) {
     maxAge: 60 * 60 * 24, // Go API 側の JWT exp（24時間）と揃える
   })
 }
+
+// ログアウト＝Cookieの削除。JWTはステートレスなのでサーバー側に無効化処理はなく、
+// ブラウザからトークンを取り除くことがログアウトの実体になる
+export async function deleteTokenCookie() {
+  const cookieStore = await cookies()
+  cookieStore.delete(TOKEN_COOKIE)
+}
