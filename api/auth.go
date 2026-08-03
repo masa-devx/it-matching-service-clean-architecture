@@ -136,6 +136,34 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, loginResponse{Token: token})
 }
 
+type meResponse struct {
+	ID    int64  `json:"id"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+// handleMe は GET /me。検証済みトークンの userID で自分の情報を返す
+func handleMe(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		// requireAuth を通さず登録した場合のみ起きるプログラミングエラー
+		writeError(w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	var res meResponse
+	err := db.QueryRow(
+		`SELECT id, email, role FROM users WHERE id = $1`,
+		userID,
+	).Scan(&res.ID, &res.Email, &res.Role)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "ユーザー情報の取得に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, res)
+}
+
 // validateSignup は入力検証。問題があればユーザー向けメッセージを返す（なければ空文字）
 func validateSignup(req signupRequest) string {
 	addr, err := mail.ParseAddress(req.Email)
