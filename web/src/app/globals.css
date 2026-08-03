@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @theme inline {
   --color-background: var(--background);
@@ -50,8 +50,8 @@
 
 :root {
   /* フォント: 欧文Geist → 和文Noto Sans JP → システム（docs/デザインシステム.md） */
-  --font-sans: var(--font-geist-sans), var(--font-noto-sans-jp), system-ui,
-    sans-serif;
+  --font-sans:
+    var(--font-geist-sans), var(--font-noto-sans-jp), system-ui, sans-serif;
 
   /* ブランドトークン（docs/デザインシステム.md が正） */
   --background: #f8fafc;
