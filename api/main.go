@@ -17,6 +17,10 @@ func main() {
 		log.Fatal("DATABASE_URL が設定されていません（cp .env.example .env を実行してください）")
 	}
 
+	if err := initJWT(); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := openDB(dsn); err != nil {
 		log.Fatal(err)
 	}
@@ -26,6 +30,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("POST /signup", handleSignup)
+	mux.HandleFunc("POST /login", handleLogin)
 
 	log.Println("起動 → http://localhost:8081  (Ctrl+C で停止)")
 	if err := http.ListenAndServe(":8081", mux); err != nil {
