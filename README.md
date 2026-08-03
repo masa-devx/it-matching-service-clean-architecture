@@ -97,6 +97,17 @@ cp .env.example .env.local   # NEXT_PUBLIC_API_URL を設定
 npm install && npm run dev
 ```
 
+## テスト
+
+```bash
+# api（Go）
+cd api && go test ./...        # 一括実行（-v で詳細・-run 'Test名' で絞り込み）
+
+# web（Vitest + Testing Library）
+cd web && npm run test         # 一括実行（CI と同じ）
+cd web && npm run test:watch   # 変更を監視して自動再実行（開発時）
+```
+
 ## Lint / Format
 
 ```bash
