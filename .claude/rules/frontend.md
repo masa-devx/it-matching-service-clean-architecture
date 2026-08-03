@@ -29,5 +29,6 @@ globs:
 ## 将来のリファクタ（R2/R3）に備えて
 
 - ファイル・関数名は**ドメイン語彙**で付ける（projects / applications / contracts …）
+- **命名規則**: 自作コンポーネントのファイルは PascalCase（`SignupForm.tsx`）。`components/ui/`（shadcn生成物）は CLI 準拠の kebab-case のまま／lib・hooks は camelCase（`authClient.ts` / `useAuth.ts`）
 - 参考ゴール構成: next-app-router-architecture（features / external / Container-Presenter）
 - 学び・ハマりは `docs/フロントエンド.md` へ
