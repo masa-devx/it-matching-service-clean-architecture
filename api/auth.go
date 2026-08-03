@@ -92,6 +92,8 @@ const loginFailMessage = "メールアドレスまたはパスワードが正し
 // dummyPasswordHash は未登録email のときに照合する捨てハッシュ。
 // 照合をスキップすると応答が速くなり、時間差からアカウントの存在が推測できてしまうため、
 // 実在ユーザーと同じ計算コストを常に支払う（タイミング攻撃対策）
+//
+//nolint:gosec // 実在しないパスワードの捨てハッシュ（タイミング攻撃対策用）であり資格情報ではない
 const dummyPasswordHash = "$2a$10$0/Pf/ST0lhDyD3bAU4d/9.Lw9uG//JrhTSXZgehs2u/E17je7jxi2"
 
 // handleLogin は POST /login。email/password を照合し JWT を返す
