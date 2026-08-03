@@ -77,25 +77,26 @@ docs/           設計書・開発ドキュメント
 ## セットアップ
 
 ```bash
-# 1. DB 起動（PostgreSQL 16 / ホストポート 5434）
-docker compose up -d
+# 0. 開発ツールのインストール（初回のみ）
+go install github.com/rubenv/sql-migrate/...@latest                  # マイグレーション
+go install github.com/air-verse/air@latest                           # ホットリロード
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest  # linter
+# ※ ~/go/bin に PATH を通しておくこと
 
-# 2. マイグレーションCLIのインストール（初回のみ）
-go install github.com/rubenv/sql-migrate/...@latest
+# 1. 環境変数の準備（初回のみ）
+cp api/.env.example api/.env         # DATABASE_URL / JWT_SECRET を設定
+cp web/.env.example web/.env.local   # NEXT_PUBLIC_API_URL を設定
 
-# 3. DB スキーマの適用（適用状況の確認は make -C migrations status）
-make -C migrations up
+# 2. DB 起動＆スキーマ適用
+make db-up
+make migrate-up
 
-# 4. API（:8081）
-cd api
-cp .env.example .env   # DATABASE_URL / JWT_SECRET を設定
-go run .
-
-# 5. Web（:3000）
-cd web
-cp .env.example .env.local   # NEXT_PUBLIC_API_URL を設定
-npm install && npm run dev
+# 3. 開発サーバー起動（別ターミナルで各々）
+make dev-api   # Go API（air ホットリロード・:8081）
+make dev-web   # Next.js（:3000）
 ```
+
+その他のコマンドは `make help` で一覧表示（テスト: `make test` / lint: `make lint` / ビルド: `make build`）。
 
 ## テスト
 
