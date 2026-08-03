@@ -17,6 +17,10 @@ func main() {
 		log.Fatal("DATABASE_URL が設定されていません（cp .env.example .env を実行してください）")
 	}
 
+	if err := initJWT(); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := openDB(dsn); err != nil {
 		log.Fatal(err)
 	}
