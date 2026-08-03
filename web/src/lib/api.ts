@@ -19,14 +19,31 @@ export async function apiPost<T>(
   path: string,
   body: unknown,
 ): Promise<ApiResult<T>> {
+  return request<T>(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+// token を渡すと Authorization: Bearer で Go の保護ルートを呼べる
+export async function apiGet<T>(
+  path: string,
+  token?: string,
+): Promise<ApiResult<T>> {
+  return request<T>(path, {
+    method: 'GET',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+}
+
+async function request<T>(
+  path: string,
+  init: RequestInit,
+): Promise<ApiResult<T>> {
   let res: Response
   try {
-    res = await fetch(`${API_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    })
+    res = await fetch(`${API_URL}${path}`, { ...init, cache: 'no-store' })
   } catch {
     // ネットワークレベルの失敗（APIサーバー未起動など）
     return {
