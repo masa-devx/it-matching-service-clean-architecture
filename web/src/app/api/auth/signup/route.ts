@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { apiPost } from '@/lib/api'
-import { setTokenCookie } from '@/lib/auth-cookie'
+import { setTokenCookie } from '@/lib/authCookie'
 
 type LoginResponse = { token: string }
 
