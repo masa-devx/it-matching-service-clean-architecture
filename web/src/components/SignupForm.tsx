@@ -49,7 +49,11 @@ export function SignupForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate={false}>
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-5"
+          noValidate={false}
+        >
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-2 text-sm font-medium">登録する立場</legend>
             <div className="flex gap-4">

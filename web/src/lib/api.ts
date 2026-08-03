@@ -12,8 +12,7 @@ export type ApiError = {
 }
 
 type ApiResult<T> =
-  | { data: T; error?: never }
-  | { data?: never; error: ApiError }
+  { data: T; error?: never } | { data?: never; error: ApiError }
 
 export async function apiPost<T>(
   path: string,

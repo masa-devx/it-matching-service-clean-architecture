@@ -97,6 +97,18 @@ cp .env.example .env.local   # NEXT_PUBLIC_API_URL を設定
 npm install && npm run dev
 ```
 
+## Lint / Format
+
+```bash
+# api（Go）: golangci-lint（インストール: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest）
+cd api && golangci-lint run ./...
+
+# web（Next.js）: ESLint / Prettier
+cd web && npm run lint          # コード品質（ESLint）
+cd web && npm run format:check  # 整形チェック（Prettier）
+cd web && npm run format        # 一括整形
+```
+
 ## DBマイグレーション（sql-migrate）
 
 スキーマ変更はすべて `migrations/ddl/*.sql` のマイグレーションで管理します（psql で直接 DDL を流さない）。
