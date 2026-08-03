@@ -84,7 +84,7 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest  # lint
 # ※ ~/go/bin に PATH を通しておくこと
 
 # 1. 環境変数の準備（初回のみ）
-cp api/.env.example api/.env         # DATABASE_URL / JWT_SECRET を設定
+cp api/.env.example api/.env         # 必須: DATABASE_URL / JWT_SECRET（任意: PORT / WEB_ORIGIN）
 cp web/.env.example web/.env.local   # NEXT_PUBLIC_API_URL を設定
 
 # 2. DB 起動＆スキーマ適用
