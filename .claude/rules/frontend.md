@@ -9,7 +9,7 @@ globs:
 
 ## 構成（Stage 1）
 
-- `app/` は**ルーティングだけ**。`(auth)` / `(main)` のルートグループを崩さない。page.tsx は薄く
+- `app/` は**ルーティングだけ**。ルートグループは**アクセス制御の境界**で3分割: `(public)`=誰でも／`(guest)`=未ログイン専用（ログイン済みは/projectsへ）／`(authenticated)`=要ログイン（未ログインは/loginへ）。page.tsx は薄く
 - 部品は `components/`、ロジックは `hooks/`、**API呼び出しは必ず `lib/`**（コンポーネント・フックに fetch を直接書かない）
 - `lib/` は server用（`next/headers` を使うもの）と client用（BFF/Server Action経由）を**ファイルで分離**（todo-app の型）
 

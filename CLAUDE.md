@@ -85,7 +85,7 @@
 api/            # Go: フラット構成（main.go / db.go / auth.go / projects.go …機能ごと1ファイル）
 migrations/     # DBスキーマ（sql-migrate: ddl/*.sql + dbconfig.yml + Makefile）
 web/src/
-  app/          # (auth)/(main) ルートグループ。page は薄く
+  app/          # (public)/(guest)/(authenticated) ルートグループ＝アクセス制御の境界。page は薄く
   components/   # UI部品
   hooks/        # カスタムフック
   lib/          # ★API呼び出しは必ずここに集約（コンポーネントに fetch を書かない）
@@ -107,7 +107,7 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 ## アーキテクチャ原則（Stage 1 版）
 
 - **fetch は `web/src/lib/` のみ**。コンポーネント・フックに直接書かない（将来の external 化の種）
-- **ルートグループ `(auth)` / `(main)` を崩さない**。page.tsx は薄く保つ
+- **ルートグループ `(public)` / `(guest)` / `(authenticated)` を崩さない**（アクセス制御の境界。ガードは各グループのlayoutに集約）。page.tsx は薄く保つ
 - **api の main.go は「組み立て」だけ**。機能はドメイン語彙のファイル（projects.go 等）に分け、太ったら分割
 - **user_id は必ず検証済みトークンから取る**（クライアント供給値を信用しない＝IDOR対策）
 - SQL は**プレースホルダ必須**・`SELECT *` 禁止・状態遷移の定義はコード上で1か所にまとめる

@@ -67,7 +67,7 @@
 api/            Go バックエンド（ドメイン単位のファイル構成）
 migrations/     DB スキーマ（sql-migrate: ddl/*.sql・up/down/status 管理）
 web/src/
-  app/          ルーティング（(auth) / (main) ルートグループ）
+  app/          ルーティング（(public) / (guest) / (authenticated) ルートグループ）
   components/   UI 部品
   hooks/        カスタムフック
   lib/          API アクセス層（fetch の唯一の置き場・server/client 分離）
