@@ -37,7 +37,7 @@ func main() {
 
 	log.Printf("起動 → http://localhost:%s  (Ctrl+C で停止)", cfg.port)
 	//nolint:gosec // タイムアウト設定可能な http.Server への移行は #29 で対応
-	if err := http.ListenAndServe(":"+cfg.port, corsMiddleware(cfg.webOrigin)(mux)); err != nil {
+	if err := http.ListenAndServe(":"+cfg.port, loggingMiddleware(corsMiddleware(cfg.webOrigin)(mux))); err != nil {
 		log.Fatal("サーバ起動エラー:", err)
 	}
 }
