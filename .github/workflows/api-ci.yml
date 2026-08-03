@@ -1,0 +1,47 @@
+# api（Go）の CI: lint（govet内包）→ build → test
+name: api-ci
+
+on:
+  pull_request:
+    paths:
+      - 'api/**'
+      - 'migrations/**'
+      - '.github/workflows/api-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'migrations/**'
+      - '.github/workflows/api-ci.yml'
+
+# 同じPRへの連続pushでは古い実行をキャンセルする（実行時間の節約）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          # Goのバージョンは go.mod を単一の真実として読む（二重管理しない）
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      # govet は .golangci.yml に内包されているため、lintステップが vet を兼ねる
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: api
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./...
