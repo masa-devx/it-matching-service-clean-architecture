@@ -209,4 +209,6 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 ## 環境変数
 
 - 実値は `.env`（gitignore）、キー名の見本は `.env.example` をコミット
-- `DATABASE_URL` / `JWT_SECRET` / `NEXT_PUBLIC_API_URL` を想定
+- **必須**（未設定なら起動失敗）: `DATABASE_URL` / `JWT_SECRET`
+- **任意**（安全なデフォルトあり）: `PORT`（既定8081） / `WEB_ORIGIN`（既定 http://localhost:3000） / `NEXT_PUBLIC_API_URL`
+- api側の環境変数の読み取りは `api/config.go` に集約（ハードコード禁止）

@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/joho/godotenv"
 )
@@ -12,9 +11,11 @@ func main() {
 	// .env があれば読み込む。無くてもエラーにしない（本番は実環境変数を使うため）
 	_ = godotenv.Load()
 
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL が設定されていません（cp .env.example .env を実行してください）")
+	cfg := loadConfig()
+
+	dsn, err := mustEnv("DATABASE_URL")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if err := initJWT(); err != nil {
@@ -34,9 +35,9 @@ func main() {
 	mux.HandleFunc("POST /login", handleLogin)
 	mux.Handle("GET /me", requireAuth(http.HandlerFunc(handleMe)))
 
-	log.Println("起動 → http://localhost:8081  (Ctrl+C で停止)")
+	log.Printf("起動 → http://localhost:%s  (Ctrl+C で停止)", cfg.port)
 	//nolint:gosec // タイムアウト設定可能な http.Server への移行は #29 で対応
-	if err := http.ListenAndServe(":8081", corsMiddleware(mux)); err != nil {
+	if err := http.ListenAndServe(":"+cfg.port, corsMiddleware(cfg.webOrigin)(mux)); err != nil {
 		log.Fatal("サーバ起動エラー:", err)
 	}
 }
