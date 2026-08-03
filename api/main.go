@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -35,9 +41,36 @@ func main() {
 	mux.HandleFunc("POST /login", handleLogin)
 	mux.Handle("GET /me", requireAuth(http.HandlerFunc(handleMe)))
 
-	log.Printf("起動 → http://localhost:%s  (Ctrl+C で停止)", cfg.port)
-	//nolint:gosec // タイムアウト設定可能な http.Server への移行は #29 で対応
-	if err := http.ListenAndServe(":"+cfg.port, loggingMiddleware(corsMiddleware(cfg.webOrigin)(mux))); err != nil {
-		log.Fatal("サーバ起動エラー:", err)
+	srv := &http.Server{
+		Addr:    ":" + cfg.port,
+		Handler: loggingMiddleware(corsMiddleware(cfg.webOrigin)(mux)),
+		// Slowloris対策: 接続を握ったまま少しずつ送る攻撃をタイムアウトで切る
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
+
+	// SIGINT(Ctrl+C)/SIGTERM(コンテナ停止) を受けると ctx が閉じる
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Printf("起動 → http://localhost:%s  (Ctrl+C で停止)", cfg.port)
+		// Shutdown 時の ErrServerClosed は正常終了なのでエラー扱いしない
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("サーバ起動エラー:", err)
+		}
+	}()
+
+	<-ctx.Done()
+
+	// 新規受付を止め、処理中のリクエストを最大10秒待ってから終了する
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdownエラー: %v", err)
+		return
+	}
+	log.Println("shutdown完了")
 }
