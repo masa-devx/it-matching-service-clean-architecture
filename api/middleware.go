@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // ctxKey は context に値を載せるときの専用キー型。
@@ -39,6 +42,36 @@ func requireAuth(next http.Handler) http.Handler {
 func userIDFrom(ctx context.Context) (int64, bool) {
 	id, ok := ctx.Value(ctxKeyUserID).(int64)
 	return id, ok
+}
+
+// statusRecorder は ResponseWriter を包み、ハンドラが書いたステータスコードを記録する。
+// ResponseWriter 自体には「何を書いたか」を後から知る手段がないため、書く瞬間に横取りする
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
+}
+
+// loggingMiddleware は全リクエストを「メソッド パス ステータス 所要時間」の1行で記録する。
+// 最外層に置くこと（CORSプリフライトや認証で弾かれたリクエストも記録対象にする）
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		// WriteHeader が呼ばれないまま Write されたときの既定は 200
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+
+		next.ServeHTTP(rec, r)
+
+		// メソッド・パスはユーザー入力なので strconv.Quote でエスケープする
+		// （改行入りのパスで偽のログ行を注入されるのを防ぐ）
+		method := strconv.Quote(r.Method)
+		path := strconv.Quote(r.URL.Path)
+		log.Printf("%s %s %d %s", method, path, rec.status, time.Since(start))
+	})
 }
 
 // corsMiddleware はブラウザからのクロスオリジンアクセスを origin（WEB_ORIGIN）にだけ許可する
