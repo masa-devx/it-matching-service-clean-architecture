@@ -2,6 +2,7 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -23,6 +24,20 @@ func initLogger(cfg config) {
 
 	// 既定ロガーを差し替え、どこからでも slog.Info(...) で書けるようにする
 	slog.SetDefault(slog.New(handler))
+}
+
+// levelForStatus はHTTPステータスからログレベルを決める。
+// 5xx=サーバー起因のError / 4xx=クライアント起因のWarn / それ以外=Info と分けることで、
+// 「本当に対応が必要なログ」だけを監視・アラートの対象にできる
+func levelForStatus(status int) slog.Level {
+	switch {
+	case status >= http.StatusInternalServerError:
+		return slog.LevelError
+	case status >= http.StatusBadRequest:
+		return slog.LevelWarn
+	default:
+		return slog.LevelInfo
+	}
 }
 
 // parseLevel は文字列をログレベルに変換する。不正な値は info 扱い（起動を止めない）

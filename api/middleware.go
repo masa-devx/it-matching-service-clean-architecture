@@ -2,9 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -66,11 +65,14 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rec, r)
 
-		// メソッド・パスはユーザー入力なので strconv.Quote でエスケープする
-		// （改行入りのパスで偽のログ行を注入されるのを防ぐ）
-		method := strconv.Quote(r.Method)
-		path := strconv.Quote(r.URL.Path)
-		log.Printf("%s %s %d %s", method, path, rec.status, time.Since(start))
+		// 属性として渡すため、フォーマット文字列への埋め込みが無い＝
+		// ログインジェクション（改行での偽ログ行の捏造）が構造的に起きない
+		slog.LogAttrs(r.Context(), levelForStatus(rec.status), "request",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Int("status", rec.status),
+			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
+		)
 	})
 }
 
