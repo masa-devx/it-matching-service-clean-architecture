@@ -36,6 +36,21 @@ export async function apiGet<T>(
   })
 }
 
+export async function apiPut<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<ApiResult<T>> {
+  return request<T>(path, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+}
+
 async function request<T>(
   path: string,
   init: RequestInit,
