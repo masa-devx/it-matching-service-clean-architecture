@@ -230,13 +230,14 @@ func fetchProfile(userID int64, role string) (any, error) {
 
 	case roleTalent:
 		var p talentProfile
-		// TEXT[] は pgtype.FlatArray でスキャンする（database/sql は配列型を直接扱えない）
-		var skills pgtype.FlatArray[string]
+		// database/sql の Scan は基本型しか知らないため、TEXT[] は pgx の型マップに
+		// sql.Scanner としてブリッジさせる（SQLScanner が []string への変換を担う）
+		var skills []string
 		err := db.QueryRow(
 			`SELECT bio, skills, years_of_exp, available_hours_per_week, desired_hourly_rate, remote_ok
 			 FROM talents WHERE user_id = $1`,
 			userID,
-		).Scan(&p.Bio, &skills, &p.YearsOfExp, &p.AvailableHoursPerWeek, &p.DesiredHourlyRate, &p.RemoteOK)
+		).Scan(&p.Bio, pgtype.NewMap().SQLScanner(&skills), &p.YearsOfExp, &p.AvailableHoursPerWeek, &p.DesiredHourlyRate, &p.RemoteOK)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}

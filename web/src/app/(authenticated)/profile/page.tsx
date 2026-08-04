@@ -1,5 +1,6 @@
 import { getProfile } from '@/lib/profile'
 import { CompanyProfileForm } from '@/components/CompanyProfileForm'
+import { TalentProfileForm } from '@/components/TalentProfileForm'
 
 export const metadata = { title: 'プロフィール | Tsunagu Works' }
 
@@ -22,7 +23,11 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      {data.role === 'company' && <CompanyProfileForm profile={data.profile} />}
+      {data.role === 'company' ? (
+        <CompanyProfileForm profile={data.profile} />
+      ) : (
+        <TalentProfileForm profile={data.profile} />
+      )}
     </div>
   )
 }
