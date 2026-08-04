@@ -13,7 +13,7 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
-		writeError(w, http.StatusServiceUnavailable, "database unavailable", err)
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "database unavailable", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

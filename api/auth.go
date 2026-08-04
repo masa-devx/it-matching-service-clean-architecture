@@ -42,7 +42,7 @@ const (
 func handleSignup(w http.ResponseWriter, r *http.Request) {
 	var req signupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "リクエストボディが不正です", err)
+		writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
 		return
 	}
 
@@ -51,14 +51,14 @@ func handleSignup(w http.ResponseWriter, r *http.Request) {
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 
 	if msg := validateSignup(req); msg != "" {
-		writeError(w, http.StatusBadRequest, msg, nil)
+		writeError(r.Context(), w, http.StatusBadRequest, msg, nil)
 		return
 	}
 
 	// bcrypt はソルト生成・埋め込みまで自動で行う。コストは公式推奨の既定値(10)
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "登録処理に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "登録処理に失敗しました", err)
 		return
 	}
 
@@ -72,10 +72,10 @@ func handleSignup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
-			writeError(w, http.StatusConflict, "このメールアドレスは既に登録されています", err)
+			writeError(r.Context(), w, http.StatusConflict, "このメールアドレスは既に登録されています", err)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "登録処理に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "登録処理に失敗しました", err)
 		return
 	}
 
@@ -106,7 +106,7 @@ const dummyPasswordHash = "$2a$10$0/Pf/ST0lhDyD3bAU4d/9.Lw9uG//JrhTSXZgehs2u/E17
 func handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "リクエストボディが不正です", err)
+		writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
 		return
 	}
 
@@ -123,21 +123,21 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		_ = bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(req.Password))
-		writeError(w, http.StatusUnauthorized, loginFailMessage, nil)
+		writeError(r.Context(), w, http.StatusUnauthorized, loginFailMessage, nil)
 		return
 	case err != nil:
-		writeError(w, http.StatusInternalServerError, "ログイン処理に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "ログイン処理に失敗しました", err)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)); err != nil {
-		writeError(w, http.StatusUnauthorized, loginFailMessage, nil)
+		writeError(r.Context(), w, http.StatusUnauthorized, loginFailMessage, nil)
 		return
 	}
 
 	token, err := issueToken(userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ログイン処理に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "ログイン処理に失敗しました", err)
 		return
 	}
 
@@ -155,7 +155,7 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFrom(r.Context())
 	if !ok {
 		// requireAuth を通さず登録した場合のみ起きるプログラミングエラー
-		writeError(w, http.StatusUnauthorized, "認証が必要です", nil)
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
 		return
 	}
 
@@ -165,7 +165,7 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 		userID,
 	).Scan(&res.ID, &res.Email, &res.Role)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ユーザー情報の取得に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "ユーザー情報の取得に失敗しました", err)
 		return
 	}
 

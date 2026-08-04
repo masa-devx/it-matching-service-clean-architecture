@@ -78,13 +78,13 @@ func requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenString, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if !ok || tokenString == "" {
-			writeError(w, http.StatusUnauthorized, "認証が必要です", nil)
+			writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
 			return
 		}
 
 		userID, err := parseToken(tokenString)
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "認証が必要です", err)
+			writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", err)
 			return
 		}
 
