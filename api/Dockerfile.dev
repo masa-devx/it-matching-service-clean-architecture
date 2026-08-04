@@ -1,0 +1,9 @@
+# 開発用イメージ（air ホットリロード）。本番用ではない
+# ソースは COPY せず、compose の volume マウントで注入する
+FROM golang:1.26
+
+WORKDIR /app
+
+RUN go install github.com/air-verse/air@latest
+
+CMD ["air"]

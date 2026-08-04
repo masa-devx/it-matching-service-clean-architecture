@@ -1,7 +1,8 @@
-# PostgreSQL をローカルで動かす設定
-# 起動: docker compose up -d ／ 停止: docker compose down
-# 中に入る: docker compose exec db psql -U tsunagu -d tsunagu
-# ★ホストポートは 5434（5432=ローカルPostgres・5433=todo-app と衝突回避）
+# ローカル開発環境
+# DBだけ起動:   docker compose up -d db  （従来運用: api/web はローカル直起動）
+# 全部Docker:   docker compose up        （db + api + web）
+# DBに入る:     docker compose exec db psql -U tsunagu -d tsunagu
+# ★DBのホストポートは 5434（5432=ローカルPostgres・5433=todo-app と衝突回避）
 
 services:
   db:
@@ -12,9 +13,56 @@ services:
       POSTGRES_PASSWORD: tsunagu # ローカル学習用
       POSTGRES_DB: tsunagu
     ports:
-      - "5434:5432"
+      - '5434:5432'
     volumes:
       - tsunagu-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # 「コンテナ起動」ではなく「接続受付開始」を判定する（apiの起動順制御に使う）
+      test: ['CMD-SHELL', 'pg_isready -U tsunagu -d tsunagu']
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: api
+      dockerfile: Dockerfile.dev
+    container_name: tsunagu-api
+    ports:
+      - '8081:8081'
+    volumes:
+      # ソースはマウントで注入（ホストの編集がそのまま反映され air が再起動する）
+      - ./api:/app
+      # 依存キャッシュはコンテナ専用ボリュームに（起動のたびのDLを防ぐ）
+      - tsunagu-go-mod:/go/pkg/mod
+    environment:
+      # コンテナ間はサービス名で名前解決する（localhost:5434 はホストから見たアドレス）
+      DATABASE_URL: postgres://tsunagu:tsunagu@db:5432/tsunagu?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me} # ローカル学習用の既定値
+      WEB_ORIGIN: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: web
+      dockerfile: Dockerfile.dev
+    container_name: tsunagu-web
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./web:/app
+      # ホストの node_modules（macOS用バイナリ）を持ち込まないよう専用ボリュームで遮蔽する
+      - tsunagu-node-modules:/app/node_modules
+    environment:
+      # BFF（Next.jsサーバー）からGoへのアクセス先。コンテナ間はサービス名で解決する
+      # （実環境変数は .env.local より優先されるため、compose 側の値が勝つ）
+      NEXT_PUBLIC_API_URL: http://api:8081
+    depends_on:
+      - api
 
 volumes:
   tsunagu-db-data:
+  tsunagu-go-mod:
+  tsunagu-node-modules:

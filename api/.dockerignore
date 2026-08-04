@@ -1,0 +1,6 @@
+# ビルドコンテキストに含めない（秘密情報・成果物）
+.env
+.env.*
+tsunagu-api
+tmp/
+bin/
