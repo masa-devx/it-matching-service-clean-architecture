@@ -38,19 +38,19 @@ type profileResponse struct {
 func handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFrom(r.Context())
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "認証が必要です", nil)
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
 		return
 	}
 
 	role, err := fetchRole(userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "プロフィールの取得に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "プロフィールの取得に失敗しました", err)
 		return
 	}
 
 	profile, err := fetchProfile(userID, role)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "プロフィールの取得に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "プロフィールの取得に失敗しました", err)
 		return
 	}
 
@@ -62,13 +62,13 @@ func handleGetProfile(w http.ResponseWriter, r *http.Request) {
 func handlePutProfile(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFrom(r.Context())
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "認証が必要です", nil)
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
 		return
 	}
 
 	role, err := fetchRole(userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
 		return
 	}
 
@@ -76,16 +76,16 @@ func handlePutProfile(w http.ResponseWriter, r *http.Request) {
 	case roleCompany:
 		var req companyProfile
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "リクエストボディが不正です", err)
+			writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
 			return
 		}
 		req.Name = strings.TrimSpace(req.Name)
 		if msg := validateCompanyProfile(req); msg != "" {
-			writeError(w, http.StatusBadRequest, msg, nil)
+			writeError(r.Context(), w, http.StatusBadRequest, msg, nil)
 			return
 		}
 		if err := upsertCompanyProfile(userID, req); err != nil {
-			writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
+			writeError(r.Context(), w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
 			return
 		}
 		writeJSON(w, http.StatusOK, profileResponse{Role: role, Profile: req})
@@ -93,22 +93,22 @@ func handlePutProfile(w http.ResponseWriter, r *http.Request) {
 	case roleTalent:
 		var req talentProfile
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "リクエストボディが不正です", err)
+			writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
 			return
 		}
 		req.Skills = normalizeSkills(req.Skills)
 		if msg := validateTalentProfile(req); msg != "" {
-			writeError(w, http.StatusBadRequest, msg, nil)
+			writeError(r.Context(), w, http.StatusBadRequest, msg, nil)
 			return
 		}
 		if err := upsertTalentProfile(userID, req); err != nil {
-			writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
+			writeError(r.Context(), w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
 			return
 		}
 		writeJSON(w, http.StatusOK, profileResponse{Role: role, Profile: req})
 
 	default:
-		writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", nil)
+		writeError(r.Context(), w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", nil)
 	}
 }
 

@@ -45,8 +45,9 @@ func main() {
 	mux.Handle("PUT /me/profile", requireAuth(http.HandlerFunc(handlePutProfile)))
 
 	srv := &http.Server{
-		Addr:    ":" + cfg.port,
-		Handler: loggingMiddleware(corsMiddleware(cfg.webOrigin)(mux)),
+		Addr: ":" + cfg.port,
+		// requestID を最外に置き、以降のすべてのログ・レスポンスに相関IDが乗るようにする
+		Handler: requestIDMiddleware(loggingMiddleware(corsMiddleware(cfg.webOrigin)(mux))),
 		// Slowloris対策: 接続を握ったまま少しずつ送る攻撃をタイムアウトで切る
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
