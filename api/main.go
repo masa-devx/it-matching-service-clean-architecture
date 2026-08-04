@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,22 +18,23 @@ func main() {
 	_ = godotenv.Load()
 
 	cfg := loadConfig()
+	initLogger(cfg)
 
 	dsn, err := mustEnv("DATABASE_URL")
 	if err != nil {
-		log.Fatal(err)
+		fatal("設定エラー", err)
 	}
 
 	if err := initJWT(); err != nil {
-		log.Fatal(err)
+		fatal("設定エラー", err)
 	}
 
 	if err := openDB(dsn); err != nil {
-		log.Fatal(err)
+		fatal("DB接続エラー", err)
 	}
 	// 終了直前のClose失敗は打つ手がないため、エラーは明示的に破棄する
 	defer func() { _ = db.Close() }()
-	log.Println("DB接続OK")
+	slog.Info("DB接続OK")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
@@ -58,10 +59,10 @@ func main() {
 	defer stop()
 
 	go func() {
-		log.Printf("起動 → http://localhost:%s  (Ctrl+C で停止)", cfg.port)
+		slog.Info("サーバー起動", "url", "http://localhost:"+cfg.port)
 		// Shutdown 時の ErrServerClosed は正常終了なのでエラー扱いしない
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal("サーバ起動エラー:", err)
+			fatal("サーバー起動エラー", err)
 		}
 	}()
 
@@ -71,8 +72,14 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("shutdownエラー: %v", err)
+		slog.Error("shutdownエラー", "error", err)
 		return
 	}
-	log.Println("shutdown完了")
+	slog.Info("shutdown完了")
+}
+
+// fatal は致命的エラーを構造化ログで出して終了する（log.Fatal の置き換え）
+func fatal(msg string, err error) {
+	slog.Error(msg, "error", err)
+	os.Exit(1)
 }

@@ -9,6 +9,8 @@ import (
 type config struct {
 	port      string // APIの待ち受けポート
 	webOrigin string // CORSで許可するフロントの出所
+	logFormat string // ログ形式（text=開発 / json=本番想定）
+	logLevel  string // ログレベル（debug / info / warn / error）
 }
 
 // loadConfig は環境変数から設定を組み立てる。
@@ -18,6 +20,8 @@ func loadConfig() config {
 	return config{
 		port:      envOr("PORT", "8081"),
 		webOrigin: envOr("WEB_ORIGIN", "http://localhost:3000"),
+		logFormat: envOr("LOG_FORMAT", "text"),
+		logLevel:  envOr("LOG_LEVEL", "info"),
 	}
 }
 
