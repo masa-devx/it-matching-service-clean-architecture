@@ -99,6 +99,17 @@ make dev-web   # Next.js（:3000）
 
 その他のコマンドは `make help` で一覧表示（テスト: `make test` / lint: `make lint` / ビルド: `make build`）。
 
+### フルDocker起動（ローカルにGo/Nodeが無くても動く）
+
+```bash
+make docker-up   # db + api(air) + web(next dev) を一括起動（初回は依存DLで数分）
+make docker-down # 停止
+```
+
+- ソースはマウント注入のため、ホストでの編集がそのままホットリロードされる
+- ローカル直起動（make dev-api / dev-web）とはポートを取り合うため**同時には使えない**
+- DBはどちらのモードでも同じコンテナ・同じデータを共有する
+
 ## テストユーザー（make seed で投入・ローカル専用）
 
 | メールアドレス | パスワード | ロール |

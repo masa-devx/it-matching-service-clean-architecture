@@ -44,6 +44,25 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build:
+      context: web
+      dockerfile: Dockerfile.dev
+    container_name: tsunagu-web
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./web:/app
+      # ホストの node_modules（macOS用バイナリ）を持ち込まないよう専用ボリュームで遮蔽する
+      - tsunagu-node-modules:/app/node_modules
+    environment:
+      # BFF（Next.jsサーバー）からGoへのアクセス先。コンテナ間はサービス名で解決する
+      # （実環境変数は .env.local より優先されるため、compose 側の値が勝つ）
+      NEXT_PUBLIC_API_URL: http://api:8081
+    depends_on:
+      - api
+
 volumes:
   tsunagu-db-data:
   tsunagu-go-mod:
+  tsunagu-node-modules:

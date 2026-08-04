@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev-api dev-web db-up db-down migrate-up migrate-down migrate-status migrate-new seed test lint build
+.PHONY: help dev-api dev-web docker-up docker-down db-up db-down migrate-up migrate-down migrate-status migrate-new seed test lint build
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -16,12 +16,18 @@ dev-api: ## Go API を起動（air ホットリロード・:8081）
 dev-web: ## Next.js を起動（:3000）
 	cd web && npm run dev
 
+docker-up: ## db + api + web を全部Dockerで起動（ローカル直起動と同時使用不可＝ポート衝突）
+	docker compose up
+
+docker-down: ## Dockerのコンテナを停止・削除
+	docker compose down
+
 ## --- DB ---
 
-db-up: ## PostgreSQL コンテナを起動
-	docker compose up -d
+db-up: ## PostgreSQL コンテナだけを起動（api/webはローカル直起動する従来運用）
+	docker compose up -d db
 
-db-down: ## PostgreSQL コンテナを停止
+db-down: ## コンテナを停止
 	docker compose down
 
 migrate-up: ## 未適用のマイグレーションを適用
