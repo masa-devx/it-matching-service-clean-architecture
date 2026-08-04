@@ -30,6 +30,12 @@ type signupResponse struct {
 // https://www.postgresql.org/docs/current/errcodes-appendix.html
 const uniqueViolation = "23505"
 
+// ロールの値。DBのCHECK制約（users.role）と対応させ、コード上の唯一の定義とする
+const (
+	roleCompany = "company"
+	roleTalent  = "talent"
+)
+
 // handleSignup は POST /signup。重複チェックは SELECT で事前確認せず、
 // INSERT の一意制約違反を検出して 409 に変換する（事前確認方式は
 // 同時リクエストのすき間で重複が生まれるため、制約こそが唯一の防波堤）
@@ -179,7 +185,7 @@ func validateSignup(req signupRequest) string {
 	if len(req.Password) > 72 {
 		return "パスワードは72文字以内にしてください"
 	}
-	if req.Role != "company" && req.Role != "talent" {
+	if req.Role != roleCompany && req.Role != roleTalent {
 		return "role は company または talent を指定してください"
 	}
 	return ""

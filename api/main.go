@@ -40,6 +40,7 @@ func main() {
 	mux.HandleFunc("POST /signup", handleSignup)
 	mux.HandleFunc("POST /login", handleLogin)
 	mux.Handle("GET /me", requireAuth(http.HandlerFunc(handleMe)))
+	mux.Handle("GET /me/profile", requireAuth(http.HandlerFunc(handleGetProfile)))
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.port,
