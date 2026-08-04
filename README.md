@@ -87,9 +87,10 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest  # lint
 cp api/.env.example api/.env         # 必須: DATABASE_URL / JWT_SECRET（任意: PORT / WEB_ORIGIN）
 cp web/.env.example web/.env.local   # NEXT_PUBLIC_API_URL を設定
 
-# 2. DB 起動＆スキーマ適用
+# 2. DB 起動＆スキーマ適用＆シード投入
 make db-up
 make migrate-up
+make seed      # テストユーザー投入（任意・下表参照）
 
 # 3. 開発サーバー起動（別ターミナルで各々）
 make dev-api   # Go API（air ホットリロード・:8081）
@@ -97,6 +98,17 @@ make dev-web   # Next.js（:3000）
 ```
 
 その他のコマンドは `make help` で一覧表示（テスト: `make test` / lint: `make lint` / ビルド: `make build`）。
+
+## テストユーザー（make seed で投入・ローカル専用）
+
+| メールアドレス | パスワード | ロール |
+| --- | --- | --- |
+| company1@example.com | password123 | 企業 |
+| company2@example.com | password123 | 企業 |
+| talent1@example.com | password123 | 人材 |
+| talent2@example.com | password123 | 人材 |
+
+`make seed` は何度実行しても安全（upsert）。同じ email のユーザーが既にいる場合は上表の資格情報に上書きされる。
 
 ## テスト
 
