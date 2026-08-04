@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -70,6 +73,38 @@ func sanitizeRequestID(id string) string {
 		}
 	}
 	return id
+}
+
+// recoverMiddleware はハンドラ内の panic を回復し、スタックトレースを記録して 500 を返す。
+// 何もしないと net/http が接続を切るだけで、構造化ログにも相関IDにも乗らず調査できない。
+// panic は「想定していないバグ」なので、握りつぶさず必ず Error として記録する
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			rec := recover()
+			if rec == nil {
+				return
+			}
+			// ErrAbortHandler はクライアント切断時に net/http 自身が投げる正常系の合図。
+			// 捕まえるとログが汚れるため、標準の作法どおり素通しする
+			// （recover() の戻り値は any なので errors.Is ではなく型と値で判定する）
+			if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+				panic(rec)
+			}
+
+			contextLogger(r.Context()).Error("panicが発生しました",
+				"panic", fmt.Sprint(rec),
+				"stack", string(debug.Stack()),
+				"method", r.Method,
+				"path", r.URL.Path,
+			)
+
+			// panic の内容はバグの詳細を含むためクライアントには返さない
+			writeError(r.Context(), w, http.StatusInternalServerError, "サーバーエラーが発生しました", nil)
+		}()
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // requireAuth は Authorization: Bearer の JWT を検証し、
