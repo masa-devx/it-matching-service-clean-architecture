@@ -60,11 +60,11 @@
 ※ ②業務と③お金を「別の状態機械に分離して同期」させるのが核心
 ```
 
-**データ設計（コア）**: `users / companies / talents / identifications(KYC) / projects / applications / contracts / work_reports / payments(idempotency_key) / messages(masked_body) / reviews(submitted_at・published_at) / notifications`
+**データ設計（コア）**: `users / companies / talents / projects / applications / contracts / work_reports / payments(idempotency_key) / messages(masked_body) / reviews(submitted_at・published_at) / notifications`
 
 **MVPビルド順**: 環境(Phase0) → 認証＋プロフィール(1) → 案件CRUD＋検索(2) → 応募〜承諾＝状態機械①(3) → 契約＋稼働報告＋検収＝状態機械②(4) → マスキング＋レビュー同時公開(5)＝MVP完成 → 拡張: Stripeエスクロー・ダッシュボード・1万件計測
 
-**スコープ外**: AI機能・リアルタイムチャット・モバイル（完成優先）
+**スコープ外**: AI機能・リアルタイムチャット・モバイル・**KYC（本人確認）**（完成優先・2026-08-04にKYC除外を決定）
 
 ---
 
@@ -202,7 +202,6 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 | 稼働報告 | `work_report` | 週次の作業レポート |
 | 検収 | `acceptance` | 企業による成果確認 |
 | レビュー | `review` | 相互評価（同時公開） |
-| 本人確認 | `identification` / KYC | 書類による確認 |
 
 ---
 
