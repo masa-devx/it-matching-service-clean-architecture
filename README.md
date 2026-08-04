@@ -19,18 +19,18 @@ JWT + httpOnly Cookie の認証・BFF・マイグレーション・CI・テス�
 
 ## 技術スタックと選定理由
 
-| 領域 | 技術 | なぜ選んだか |
-| --- | --- | --- |
-| バックエンド | **Go 標準 net/http** | Go 1.22+で主要なルーティングが標準化。フレームワークの隠蔽なしに仕組みを学べる・依存ゼロ |
-| DBアクセス | **database/sql + pgx**（ORMなし） | SQLとDB挙動を自分で制御・学習対象にする。型安全化はR1でsqlc検討 |
-| マイグレーション | **sql-migrate** | up/down/status の履歴管理。psqlでDDL直接実行は禁止 |
-| 認証 | **自前JWT（HS256）+ bcrypt + httpOnly Cookie** | トークンをブラウザJSに触れさせない。alg強制・同一401など攻撃対策を自分の手で実装 |
-| フロント | **Next.js App Router + TypeScript** | RSC/Client境界の設計・BFF（Route Handler）を実践 |
-| API通信 | **REST + 素のfetch**（axios/GraphQL不使用） | Nextのfetch拡張（キャッシュ）に乗る。GraphQLは規模条件を満たさず不採用（判断ログはdocs） |
-| スタイル | **Tailwind v4 + shadcn/ui** | コピーイン方式＝コードを所有。デザイントークンで一括テーマ変更 |
-| テスト | **go test（テーブル駆動）/ Vitest + Testing Library** | 「ユーザーから見える振る舞い」でテストする方針 |
-| CI | **GitHub Actions**（パスフィルタ・lint/test/build） | ローカルとCIで同一コマンド・同一設定ファイル |
-| 開発体験 | **air / golangci-lint / Prettier / Makefile / Docker** | ホットリロード・品質ゲート・コマンド集約・環境再現性 |
+| 領域             | 技術                                                   | なぜ選んだか                                                                             |
+| ---------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| バックエンド     | **Go 標準 net/http**                                   | Go 1.22+で主要なルーティングが標準化。フレームワークの隠蔽なしに仕組みを学べる・依存ゼロ |
+| DBアクセス       | **database/sql + pgx**（ORMなし）                      | SQLとDB挙動を自分で制御・学習対象にする。型安全化はR1でsqlc検討                          |
+| マイグレーション | **sql-migrate**                                        | up/down/status の履歴管理。psqlでDDL直接実行は禁止                                       |
+| 認証             | **自前JWT（HS256）+ bcrypt + httpOnly Cookie**         | トークンをブラウザJSに触れさせない。alg強制・同一401など攻撃対策を自分の手で実装         |
+| フロント         | **Next.js App Router + TypeScript**                    | RSC/Client境界の設計・BFF（Route Handler）を実践                                         |
+| API通信          | **REST + 素のfetch**（axios/GraphQL不使用）            | Nextのfetch拡張（キャッシュ）に乗る。GraphQLは規模条件を満たさず不採用（判断ログはdocs） |
+| スタイル         | **Tailwind v4 + shadcn/ui**                            | コピーイン方式＝コードを所有。デザイントークンで一括テーマ変更                           |
+| テスト           | **go test（テーブル駆動）/ Vitest + Testing Library**  | 「ユーザーから見える振る舞い」でテストする方針                                           |
+| CI               | **GitHub Actions**（パスフィルタ・lint/test/build）    | ローカルとCIで同一コマンド・同一設定ファイル                                             |
+| 開発体験         | **air / golangci-lint / Prettier / Makefile / Docker** | ホットリロード・品質ゲート・コマンド集約・環境再現性                                     |
 
 ## ディレクトリ構成
 
@@ -82,12 +82,12 @@ make docker-down # 停止
 
 ## テストユーザー（make seed で投入・ローカル専用）
 
-| メールアドレス | パスワード | ロール |
-| --- | --- | --- |
-| company1@example.com | password123 | 企業 |
-| company2@example.com | password123 | 企業 |
-| talent1@example.com | password123 | 人材 |
-| talent2@example.com | password123 | 人材 |
+| メールアドレス       | パスワード  | ロール |
+| -------------------- | ----------- | ------ |
+| company1@example.com | password123 | 企業   |
+| company2@example.com | password123 | 企業   |
+| talent1@example.com  | password123 | 人材   |
+| talent2@example.com  | password123 | 人材   |
 
 `make seed` は何度実行しても安全（upsert）。同じ email のユーザーが既にいる場合は上表の資格情報に上書きされる。
 
@@ -148,15 +148,15 @@ rm -rf .git && git init   # 履歴を切り離す
 
 ### 書き換えポイント一覧
 
-| # | 対象 | 現在の値 | 書き換え |
-| --- | --- | --- | --- |
-| 1 | **プロジェクト識別子（全体一括）** | `tsunagu` | 新プロジェクト名（小文字）。go.mod（tsunagu-api）・.golangci.yml（local-prefixes）・web/package.json（tsunagu-web）・docker-compose.yml（コンテナ名/DB名/ユーザー/パスワード/volume名）・migrations/dbconfig.yml・Makefile（psql の -U/-d）・api/.env.example に波及 |
-| 2 | **表示名（全体一括）** | `Tsunagu Works` | 新サービス名。web の layout.tsx（metadata）・(guest)レイアウトのロゴ・各画面・not-found |
-| 3 | ポート（衝突時のみ） | DB 5434 / API 8081 / web 3000 | docker-compose.yml・api/.env（DATABASE_URL, PORT）・migrations/dbconfig.yml・web/.env.local |
-| 4 | **JWT_SECRET（必須）** | — | `api/.env` に**新しいランダム値**を設定（テンプレ元の値を使い回さない） |
-| 5 | デザイントークン | ブランド青 #1d4ed8 等 | `web/src/app/globals.css` の `:root`・`docs/デザインシステム.md` |
-| 6 | シードユーザー（任意） | company1@example.com 等 | `migrations/seed.sql`（メールアドレス・パスワードハッシュ） |
-| 7 | ドメイン固有ファイル（任意） | 仕様ドラフト.html・docs/サービス概要.md・CLAUDE.md のドメイン記述・users の role 制約 | 新サービスに合わせて削除または書き換え |
+| #   | 対象                               | 現在の値                                                                              | 書き換え                                                                                                                                                                                                                                                             |
+| --- | ---------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **プロジェクト識別子（全体一括）** | `tsunagu`                                                                             | 新プロジェクト名（小文字）。go.mod（tsunagu-api）・.golangci.yml（local-prefixes）・web/package.json（tsunagu-web）・docker-compose.yml（コンテナ名/DB名/ユーザー/パスワード/volume名）・migrations/dbconfig.yml・Makefile（psql の -U/-d）・api/.env.example に波及 |
+| 2   | **表示名（全体一括）**             | `Tsunagu Works`                                                                       | 新サービス名。web の layout.tsx（metadata）・(guest)レイアウトのロゴ・各画面・not-found                                                                                                                                                                              |
+| 3   | ポート（衝突時のみ）               | DB 5434 / API 8081 / web 3000                                                         | docker-compose.yml・api/.env（DATABASE_URL, PORT）・migrations/dbconfig.yml・web/.env.local                                                                                                                                                                          |
+| 4   | **JWT_SECRET（必須）**             | —                                                                                     | `api/.env` に**新しいランダム値**を設定（テンプレ元の値を使い回さない）                                                                                                                                                                                              |
+| 5   | デザイントークン                   | ブランド青 #1d4ed8 等                                                                 | `web/src/app/globals.css` の `:root`・`docs/デザインシステム.md`                                                                                                                                                                                                     |
+| 6   | シードユーザー（任意）             | company1@example.com 等                                                               | `migrations/seed.sql`（メールアドレス・パスワードハッシュ）                                                                                                                                                                                                          |
+| 7   | ドメイン固有ファイル（任意）       | 仕様ドラフト.html・docs/サービス概要.md・CLAUDE.md のドメイン記述・users の role 制約 | 新サービスに合わせて削除または書き換え                                                                                                                                                                                                                               |
 
 ### 手順（この順番で）
 
