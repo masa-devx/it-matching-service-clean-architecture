@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -53,6 +55,153 @@ func handleGetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, profileResponse{Role: role, Profile: profile})
+}
+
+// handlePutProfile は PUT /me/profile。作成と更新を1エンドポイントに統合する（upsert）。
+// user_id は必ず検証済みトークンから取るため、他人のプロフィールは操作できない（IDOR対策）
+func handlePutProfile(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	role, err := fetchRole(userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
+		return
+	}
+
+	switch role {
+	case roleCompany:
+		var req companyProfile
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "リクエストボディが不正です", err)
+			return
+		}
+		req.Name = strings.TrimSpace(req.Name)
+		if msg := validateCompanyProfile(req); msg != "" {
+			writeError(w, http.StatusBadRequest, msg, nil)
+			return
+		}
+		if err := upsertCompanyProfile(userID, req); err != nil {
+			writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
+			return
+		}
+		writeJSON(w, http.StatusOK, profileResponse{Role: role, Profile: req})
+
+	case roleTalent:
+		var req talentProfile
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "リクエストボディが不正です", err)
+			return
+		}
+		req.Skills = normalizeSkills(req.Skills)
+		if msg := validateTalentProfile(req); msg != "" {
+			writeError(w, http.StatusBadRequest, msg, nil)
+			return
+		}
+		if err := upsertTalentProfile(userID, req); err != nil {
+			writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", err)
+			return
+		}
+		writeJSON(w, http.StatusOK, profileResponse{Role: role, Profile: req})
+
+	default:
+		writeError(w, http.StatusInternalServerError, "プロフィールの保存に失敗しました", nil)
+	}
+}
+
+// upsertCompanyProfile は user_id の一意制約を利用した upsert（作成 or 更新）
+func upsertCompanyProfile(userID int64, p companyProfile) error {
+	_, err := db.Exec(
+		`INSERT INTO companies (user_id, name, description, industry, size)
+		 VALUES ($1, $2, $3, $4, $5)
+		 ON CONFLICT (user_id) DO UPDATE
+		 SET name        = EXCLUDED.name,
+		     description = EXCLUDED.description,
+		     industry    = EXCLUDED.industry,
+		     size        = EXCLUDED.size,
+		     updated_at  = now()`,
+		userID, p.Name, p.Description, p.Industry, p.Size,
+	)
+	return err
+}
+
+func upsertTalentProfile(userID int64, p talentProfile) error {
+	_, err := db.Exec(
+		`INSERT INTO talents (user_id, bio, skills, years_of_exp, available_hours_per_week, desired_hourly_rate, remote_ok)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		 ON CONFLICT (user_id) DO UPDATE
+		 SET bio                      = EXCLUDED.bio,
+		     skills                   = EXCLUDED.skills,
+		     years_of_exp             = EXCLUDED.years_of_exp,
+		     available_hours_per_week = EXCLUDED.available_hours_per_week,
+		     desired_hourly_rate      = EXCLUDED.desired_hourly_rate,
+		     remote_ok                = EXCLUDED.remote_ok,
+		     updated_at               = now()`,
+		userID, p.Bio, pgtype.FlatArray[string](p.Skills), p.YearsOfExp,
+		p.AvailableHoursPerWeek, p.DesiredHourlyRate, p.RemoteOK,
+	)
+	return err
+}
+
+// normalizeSkills は前後の空白除去・空要素の除去・重複排除を行う（入力の揺れを保存前に吸収する）
+func normalizeSkills(skills []string) []string {
+	seen := make(map[string]struct{}, len(skills))
+	normalized := make([]string, 0, len(skills))
+	for _, s := range skills {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, dup := seen[s]; dup {
+			continue
+		}
+		seen[s] = struct{}{}
+		normalized = append(normalized, s)
+	}
+	return normalized
+}
+
+// validateCompanyProfile は企業プロフィールの入力検証（問題があればユーザー向け文言を返す）
+func validateCompanyProfile(p companyProfile) string {
+	if p.Name == "" {
+		return "会社名は必須です"
+	}
+	if len([]rune(p.Name)) > 100 {
+		return "会社名は100文字以内にしてください"
+	}
+	if len([]rune(p.Description)) > 2000 {
+		return "会社説明は2000文字以内にしてください"
+	}
+	return ""
+}
+
+// validateTalentProfile は人材プロフィールの入力検証
+func validateTalentProfile(p talentProfile) string {
+	if len([]rune(p.Bio)) > 2000 {
+		return "自己紹介は2000文字以内にしてください"
+	}
+	if len(p.Skills) > 30 {
+		return "スキルは30個以内にしてください"
+	}
+	for _, s := range p.Skills {
+		if len([]rune(s)) > 50 {
+			return "各スキルは50文字以内にしてください"
+		}
+	}
+	if p.YearsOfExp < 0 || p.YearsOfExp > 70 {
+		return "経験年数は0〜70の範囲で入力してください"
+	}
+	// 1週間は168時間。それを超える稼働は入力ミス
+	if p.AvailableHoursPerWeek < 0 || p.AvailableHoursPerWeek > 168 {
+		return "週の稼働可能時間は0〜168の範囲で入力してください"
+	}
+	if p.DesiredHourlyRate < 0 || p.DesiredHourlyRate > 1000000 {
+		return "希望時給は0〜1000000の範囲で入力してください"
+	}
+	return ""
 }
 
 // fetchRole は users からロールを取得する
