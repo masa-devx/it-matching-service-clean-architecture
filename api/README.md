@@ -10,7 +10,8 @@ api/
 ├── config.go        # 環境変数の読み取りを一元化（envOr=任意+既定値 / mustEnv=必須+fail fast）
 ├── db.go            # 接続プール生成（上限明示・Ping疎通確認）
 ├── response.go      # writeJSON / writeError（エラー詳細はログのみ・クライアントには安全な文言）
-├── middleware.go    # requireAuth（JWT検証→context）/ corsMiddleware / loggingMiddleware
+├── middleware.go    # requestID / recover / logging / cors / requireAuth
+├── logger.go        # 構造化ログ（slog）の初期化・レベル判定・相関ID付き子ロガー
 ├── jwt.go           # トークンの発行と検証（対で同居・HS256強制）
 ├── auth.go          # ドメイン機能: signup / login / me（機能ごとに1ファイルの型）
 ├── health.go        # 死活確認（DB疎通込み）
@@ -21,7 +22,9 @@ api/
 ## リクエストの流れ
 
 ```
-リクエスト → loggingMiddleware（全記録・最外層）
+リクエスト → requestIDMiddleware（相関IDの発行・X-Request-ID）
+           → recoverMiddleware（panic回復・スタックトレース記録）
+           → loggingMiddleware（全記録・レベルはステータスで決定）
            → corsMiddleware（許可Origin判定・プリフライト応答）
            → mux（メソッド+パスでルーティング）
            → requireAuth（保護ルートのみ: Bearer検証 → userID を context へ）
