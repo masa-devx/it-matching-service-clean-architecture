@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -13,7 +15,62 @@ import (
 // 非公開の独自型にして衝突を構造的に防ぐ（context パッケージの推奨イディオム）
 type ctxKey int
 
-const ctxKeyUserID ctxKey = iota
+const (
+	ctxKeyUserID ctxKey = iota
+	ctxKeyRequestID
+)
+
+// requestIDHeader は相関IDの受け渡しに使う事実上の標準ヘッダ名
+const requestIDHeader = "X-Request-ID"
+
+// requestIDMiddleware はリクエストごとに一意のIDを発行し、context とレスポンスヘッダに載せる。
+// これによりアクセスログ・エラーログ・クライアントの3者を同じIDで突き合わせできる。
+// 受信ヘッダに X-Request-ID があれば尊重する（ロードバランサやフロントが採番した値を引き継ぐ）
+func requestIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := sanitizeRequestID(r.Header.Get(requestIDHeader))
+		if id == "" {
+			id = newRequestID()
+		}
+
+		w.Header().Set(requestIDHeader, id)
+		ctx := context.WithValue(r.Context(), ctxKeyRequestID, id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// requestIDFrom は context から相関IDを取り出す（未設定なら空文字）
+func requestIDFrom(ctx context.Context) string {
+	id, _ := ctx.Value(ctxKeyRequestID).(string)
+	return id
+}
+
+// newRequestID は衝突しない一意なIDを生成する。
+// UUIDの版番号や書式は相関IDに不要なため、crypto/rand の16バイトを hex 化するだけにする
+func newRequestID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand の失敗は現実にはほぼ起きない。IDが無くても処理は続ける
+		return ""
+	}
+	return hex.EncodeToString(b[:])
+}
+
+// sanitizeRequestID は外部から渡されたIDを検証する。
+// ログやレスポンスヘッダに載せる値なので、長さと文字種を制限して汚染を防ぐ
+func sanitizeRequestID(id string) string {
+	if len(id) == 0 || len(id) > 64 {
+		return ""
+	}
+	for _, c := range id {
+		isAllowed := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') || c == '-' || c == '_'
+		if !isAllowed {
+			return ""
+		}
+	}
+	return id
+}
 
 // requireAuth は Authorization: Bearer の JWT を検証し、
 // userID を context に載せて次のハンドラへ渡す。失敗理由は問わず一律 401
@@ -67,7 +124,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 		// 属性として渡すため、フォーマット文字列への埋め込みが無い＝
 		// ログインジェクション（改行での偽ログ行の捏造）が構造的に起きない
-		slog.LogAttrs(r.Context(), levelForStatus(rec.status), "request",
+		contextLogger(r.Context()).LogAttrs(r.Context(), levelForStatus(rec.status), "request",
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
 			slog.Int("status", rec.status),

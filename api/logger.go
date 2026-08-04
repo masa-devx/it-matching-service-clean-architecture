@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -52,4 +53,13 @@ func parseLevel(s string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+// contextLogger は context の相関IDを固定した子ロガーを返す。
+// ハンドラ・ミドルウェアはこれを使うことで、1リクエスト分のログが同じIDで束ねられる
+func contextLogger(ctx context.Context) *slog.Logger {
+	if id := requestIDFrom(ctx); id != "" {
+		return slog.Default().With("request_id", id)
+	}
+	return slog.Default()
 }
