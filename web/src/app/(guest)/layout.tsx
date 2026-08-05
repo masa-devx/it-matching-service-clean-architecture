@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
+import { dashboardPath } from '@/lib/roleRedirect'
 
 // (guest) 配下（login / signup）は未ログイン専用。
-// ログイン済みで認証画面を開いても意味がないため /projects へ送る
+// ログイン済みで認証画面を開いても意味がないため、ロール別のダッシュボードへ送る
 export default async function GuestLayout({
   children,
 }: Readonly<{
@@ -11,7 +12,7 @@ export default async function GuestLayout({
 }>) {
   const user = await getCurrentUser()
   if (user) {
-    redirect('/projects')
+    redirect(dashboardPath(user.role))
   }
 
   return (

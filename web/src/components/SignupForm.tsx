@@ -37,7 +37,7 @@ export function SignupForm() {
       return
     }
     // 成功時は submitting を戻さない（遷移完了までボタンを無効のまま保つ）
-    router.push('/')
+    router.push(result.redirectTo)
   }
 
   return (

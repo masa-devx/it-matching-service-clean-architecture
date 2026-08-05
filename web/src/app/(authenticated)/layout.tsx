@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
+import { dashboardPath } from '@/lib/roleRedirect'
 import { LogoutButton } from '@/components/LogoutButton'
 
 // (authenticated) 配下は要ログイン。ここで一括ガードするため、各ページに認証チェックを書かない
@@ -19,15 +20,18 @@ export default async function MainLayout({
       <header className="border-b bg-card">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-8">
-            <Link href="/projects" className="text-lg font-bold text-primary">
+            <Link
+              href={dashboardPath(user.role)}
+              className="text-lg font-bold text-primary"
+            >
               Tsunagu Works
             </Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link
-                href="/projects"
+                href={dashboardPath(user.role)}
                 className="text-muted-foreground hover:text-foreground"
               >
-                案件一覧
+                ダッシュボード
               </Link>
               <Link
                 href="/profile"

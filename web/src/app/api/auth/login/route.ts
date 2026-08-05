@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
-import { apiPost } from '@/lib/api'
+import { apiGet, apiPost } from '@/lib/api'
 import { setTokenCookie } from '@/lib/authCookie'
+import { dashboardPath } from '@/lib/roleRedirect'
+import type { CurrentUser } from '@/lib/auth'
 
 type LoginResponse = { token: string }
 
@@ -16,5 +18,12 @@ export async function POST(req: Request) {
   }
 
   await setTokenCookie(login.data.token)
-  return NextResponse.json({ ok: true }, { status: 200 })
+
+  // 遷移先はサーバー側で決めてクライアントに渡す。
+  // クライアントに role を持たせず「行き先」だけを教えることで、
+  // ロール→パスの対応（roleRedirect.ts）を1か所に閉じ込められる
+  const me = await apiGet<CurrentUser>('/me', login.data.token)
+  const redirectTo = me.error ? '/' : dashboardPath(me.data.role)
+
+  return NextResponse.json({ ok: true, redirectTo }, { status: 200 })
 }
