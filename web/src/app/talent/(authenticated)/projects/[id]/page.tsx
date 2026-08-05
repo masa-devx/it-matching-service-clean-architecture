@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { ArrowLeft, Banknote, Clock, MapPin } from 'lucide-react'
 import { getProject } from '@/lib/projects'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { PageHeader } from '@/components/PageHeader'
+import { Separator } from '@/components/ui/separator'
 
-// 時給・稼働の表示は一覧と揃える（未設定=0 は「応相談」）
 function formatRate(min: number, max: number): string {
   if (min === 0 && max === 0) {
     return '応相談'
@@ -38,42 +38,66 @@ export default async function ProjectDetailPage({
     notFound()
   }
 
+  // 条件は「単価・稼働・勤務形態」の3点セットで判断されるため、まとめて上部に置く
+  const conditions = [
+    {
+      icon: Banknote,
+      label: '時給',
+      value: formatRate(project.hourly_rate_min, project.hourly_rate_max),
+      emphasized: project.hourly_rate_min > 0 || project.hourly_rate_max > 0,
+    },
+    {
+      icon: Clock,
+      label: '週の稼働時間',
+      value:
+        project.hours_per_week > 0 ? `${project.hours_per_week}時間` : '応相談',
+      emphasized: project.hours_per_week > 0,
+    },
+    {
+      icon: MapPin,
+      label: '勤務形態',
+      value: project.remote_ok ? 'フルリモート可' : '出社あり',
+      emphasized: project.remote_ok,
+    },
+  ]
+
   return (
     <article className="flex flex-col gap-6">
       <Link
         href="/talent/projects"
-        className="text-sm text-muted-foreground hover:text-foreground"
+        className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        ← 案件一覧に戻る
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        案件一覧に戻る
       </Link>
 
-      <PageHeader title={project.title} description={project.company_name} />
+      {/* 見出しと会社名。詳細では PageHeader を使わず、条件カードと視覚的に繋げる */}
+      <header className="flex flex-col gap-2">
+        <h1 className="text-2xl font-bold leading-snug tracking-tight">
+          {project.title}
+        </h1>
+        <p className="text-muted-foreground">{project.company_name}</p>
+      </header>
 
-      <dl className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <dt className="text-sm text-muted-foreground">時給</dt>
-          <dd className="font-medium tabular-nums">
-            {formatRate(project.hourly_rate_min, project.hourly_rate_max)}
-          </dd>
-        </div>
-        <div className="flex flex-col gap-1">
-          <dt className="text-sm text-muted-foreground">週の稼働時間</dt>
-          <dd className="font-medium tabular-nums">
-            {project.hours_per_week > 0
-              ? `${project.hours_per_week}時間`
-              : '応相談'}
-          </dd>
-        </div>
-        <div className="flex flex-col gap-1">
-          <dt className="text-sm text-muted-foreground">勤務形態</dt>
-          <dd className="font-medium">
-            {project.remote_ok ? 'フルリモート可' : '出社あり'}
-          </dd>
-        </div>
+      {/* 応募判断に直結する条件を最上部にまとめる（スクロールせずに見える位置） */}
+      <dl className="grid gap-4 rounded-lg border bg-card p-6 sm:grid-cols-3">
+        {conditions.map(({ icon: Icon, label, value, emphasized }) => (
+          <div key={label} className="flex items-start gap-3">
+            <Icon className="mt-0.5 size-5 text-primary" aria-hidden="true" />
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-sm text-muted-foreground">{label}</dt>
+              <dd
+                className={`font-bold tabular-nums ${emphasized ? '' : 'text-muted-foreground'}`}
+              >
+                {value}
+              </dd>
+            </div>
+          </div>
+        ))}
       </dl>
 
       {project.required_skills.length > 0 && (
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col gap-3">
           <h2 className="font-bold">必須スキル</h2>
           <ul className="flex flex-wrap gap-2">
             {project.required_skills.map((skill) => (
@@ -86,19 +110,29 @@ export default async function ProjectDetailPage({
       )}
 
       {project.description && (
-        <section className="flex flex-col gap-2">
-          <h2 className="font-bold">案件内容</h2>
-          {/* 改行を保持しつつ、長い単語で横スクロールしないようにする */}
-          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-            {project.description}
-          </p>
-        </section>
+        <>
+          <Separator />
+          <section className="flex flex-col gap-3">
+            <h2 className="font-bold">案件内容</h2>
+            {/* 改行を保持しつつ、長い単語で横スクロールしないようにする */}
+            <p className="whitespace-pre-wrap break-words leading-relaxed">
+              {project.description}
+            </p>
+          </section>
+        </>
       )}
 
+      <Separator />
+
       {/* 応募機能は Phase 3（状態機械①）で実装する */}
-      <Button className="h-11 self-start" disabled>
-        応募する（準備中）
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button className="h-11 self-start" disabled>
+          応募する
+        </Button>
+        <p className="text-sm text-muted-foreground">
+          応募機能は現在開発中です
+        </p>
+      </div>
     </article>
   )
 }
