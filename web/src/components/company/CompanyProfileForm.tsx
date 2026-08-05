@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useRouter } from 'next/navigation'
@@ -10,9 +11,11 @@ import {
 } from '@/lib/profileSchema'
 import { saveProfile } from '@/lib/profileClient'
 import type { CompanyProfile } from '@/lib/profile'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/SubmitButton'
+import { FormErrorSummary } from '@/components/FormErrorSummary'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/RequiredMark'
 import { Textarea } from '@/components/ui/textarea'
 
 const emptyProfile: CompanyProfileInput = {
@@ -22,13 +25,20 @@ const emptyProfile: CompanyProfileInput = {
   size: '',
 }
 
+// エラーサマリで内部名ではなく画面上のラベルを見せるための対応表
+const fieldLabels = {
+  name: '会社名',
+  description: '会社説明',
+  industry: '業種',
+  size: '従業員規模',
+}
+
 export function CompanyProfileForm({
   profile,
 }: {
   profile: CompanyProfile | null
 }) {
   const router = useRouter()
-  const [saved, setSaved] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
@@ -43,16 +53,17 @@ export function CompanyProfileForm({
 
   // handleSubmit が検証を通した後にだけ呼ばれる（引数は検証済みの値）
   async function onSubmit(values: CompanyProfileInput) {
-    setSaved(false)
     setServerError(null)
 
     const result = await saveProfile(values)
     if (!result.ok) {
       setServerError(result.error)
+      toast.error(result.error)
       return
     }
 
-    setSaved(true)
+    // 保存の成否はトーストで通知する（本文中のテキストは見落としやすい）
+    toast.success('プロフィールを保存しました')
     // RSC（ページ）を再取得して表示を最新化する
     router.refresh()
   }
@@ -63,9 +74,11 @@ export function CompanyProfileForm({
       className="flex w-full max-w-2xl flex-col gap-6"
       noValidate
     >
+      <FormErrorSummary errors={errors} labels={fieldLabels} />
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">
-          会社名 <span className="text-destructive">*</span>
+          会社名 <RequiredMark />
         </Label>
         <Input id="name" className="h-11" {...register('name')} />
         {errors.name && (
@@ -120,15 +133,10 @@ export function CompanyProfileForm({
           {serverError}
         </p>
       )}
-      {saved && (
-        <p role="status" className="text-sm text-primary">
-          保存しました
-        </p>
-      )}
 
-      <Button type="submit" disabled={isSubmitting} className="h-11 self-start">
-        {isSubmitting ? '保存中…' : '保存する'}
-      </Button>
+      <SubmitButton isSubmitting={isSubmitting} submittingLabel="保存中…">
+        保存する
+      </SubmitButton>
     </form>
   )
 }

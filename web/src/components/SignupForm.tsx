@@ -2,10 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { signup } from '@/lib/authClient'
 import { authCopyByRole } from '@/lib/nav'
 import type { CurrentUser } from '@/lib/auth'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/SubmitButton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -38,9 +39,11 @@ export function SignupForm({ role }: { role: CurrentUser['role'] }) {
 
     if (!result.ok) {
       setError(result.error)
+      toast.error(result.error)
       setSubmitting(false)
       return
     }
+    toast.success('登録が完了しました')
     // 成功時は submitting を戻さない（遷移完了までボタンを無効のまま保つ）
     router.push(result.redirectTo)
   }
@@ -90,9 +93,13 @@ export function SignupForm({ role }: { role: CurrentUser['role'] }) {
             </p>
           )}
 
-          <Button type="submit" disabled={submitting} className="h-11">
-            {submitting ? '登録中…' : '登録する'}
-          </Button>
+          <SubmitButton
+            isSubmitting={submitting}
+            submittingLabel="登録中…"
+            className="h-11"
+          >
+            登録する
+          </SubmitButton>
         </form>
       </CardContent>
     </Card>

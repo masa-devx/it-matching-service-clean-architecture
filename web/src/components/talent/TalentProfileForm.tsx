@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useForm } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useRouter } from 'next/navigation'
@@ -12,7 +13,8 @@ import {
 } from '@/lib/profileSchema'
 import { saveProfile } from '@/lib/profileClient'
 import type { TalentProfile } from '@/lib/profile'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/SubmitButton'
+import { FormErrorSummary } from '@/components/FormErrorSummary'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -38,13 +40,21 @@ function toFormValues(profile: TalentProfile): TalentProfileFormValues {
   }
 }
 
+// エラーサマリで内部名ではなく画面上のラベルを見せるための対応表
+const fieldLabels = {
+  bio: '自己紹介',
+  skills: 'スキル',
+  years_of_exp: '経験年数',
+  available_hours_per_week: '稼働可能時間',
+  desired_hourly_rate: '希望時給',
+}
+
 export function TalentProfileForm({
   profile,
 }: {
   profile: TalentProfile | null
 }) {
   const router = useRouter()
-  const [saved, setSaved] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
@@ -58,16 +68,17 @@ export function TalentProfileForm({
 
   // 引数は Zod の transform 適用後（skills が string[] になっている）
   async function onSubmit(values: TalentProfileInput) {
-    setSaved(false)
     setServerError(null)
 
     const result = await saveProfile(values)
     if (!result.ok) {
       setServerError(result.error)
+      toast.error(result.error)
       return
     }
 
-    setSaved(true)
+    // 保存の成否はトーストで通知する（本文中のテキストは見落としやすい）
+    toast.success('プロフィールを保存しました')
     router.refresh()
   }
 
@@ -77,6 +88,8 @@ export function TalentProfileForm({
       className="flex w-full max-w-2xl flex-col gap-6"
       noValidate
     >
+      <FormErrorSummary errors={errors} labels={fieldLabels} />
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="bio">自己紹介</Label>
         <Textarea
@@ -174,15 +187,10 @@ export function TalentProfileForm({
           {serverError}
         </p>
       )}
-      {saved && (
-        <p role="status" className="text-sm text-primary">
-          保存しました
-        </p>
-      )}
 
-      <Button type="submit" disabled={isSubmitting} className="h-11 self-start">
-        {isSubmitting ? '保存中…' : '保存する'}
-      </Button>
+      <SubmitButton isSubmitting={isSubmitting} submittingLabel="保存中…">
+        保存する
+      </SubmitButton>
     </form>
   )
 }
