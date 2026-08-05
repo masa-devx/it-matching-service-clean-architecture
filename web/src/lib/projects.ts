@@ -94,3 +94,17 @@ export async function countPublishedProjects(): Promise<number> {
   const result = await searchProjects({})
   return result?.total ?? 0
 }
+
+// 案件の詳細。存在しない・未公開なら null（呼び出し側で notFound() に変換する）
+export async function getProject(id: number): Promise<Project | null> {
+  const token = await getTokenCookie()
+  if (!token) {
+    return null
+  }
+
+  const res = await apiGet<Project>(`/projects/${id}`, token)
+  if (res.error) {
+    return null
+  }
+  return res.data
+}
