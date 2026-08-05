@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev-api dev-web docker-up docker-down db-up db-down migrate-up migrate-down migrate-status migrate-new seed test lint build
+.PHONY: help dev-api dev-web docker-up docker-down db-up db-down migrate-up migrate-down migrate-status migrate-new seed seed-large test lint build
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -44,6 +44,9 @@ migrate-new: ## 新規マイグレーション作成（例: make migrate-new NAM
 
 seed: ## 開発用シードデータを投入（2回実行しても安全・資格情報はREADME参照）
 	docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/seed.sql
+
+seed-large: ## 性能計測用に案件5万件を投入（ローカル専用・数十秒かかる）
+	time docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/seed_large.sql
 
 ## --- 品質チェック（CIと同一コマンド） ---
 
