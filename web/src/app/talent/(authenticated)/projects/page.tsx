@@ -10,6 +10,9 @@ import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { SearchX } from 'lucide-react'
 import { ProjectSearchForm } from '@/components/talent/ProjectSearchForm'
+import { ActiveFilters } from '@/components/talent/ActiveFilters'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 export const metadata = { title: '案件を探す | Tsunagu Works' }
 
@@ -36,12 +39,18 @@ export default async function TalentProjectsPage({
       />
 
       <ProjectSearchForm defaultValues={params} />
+      <ActiveFilters params={params} />
 
       {result.projects.length === 0 ? (
         <EmptyState
           icon={SearchX}
           title="条件に合う案件が見つかりませんでした"
           description="条件をゆるめると見つかるかもしれません"
+          action={
+            <Button asChild variant="outline" className="h-11">
+              <Link href="/talent/projects">条件をクリアする</Link>
+            </Button>
+          }
         />
       ) : (
         <ul className="flex flex-col gap-3">
