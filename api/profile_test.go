@@ -6,6 +6,13 @@ import (
 	"testing"
 )
 
+// TestValidateCompanyProfile は企業プロフィールの入力検証を網羅する。
+//
+// 目的: 必須項目（会社名）の欠落と、文字数上限の超過を確実に弾くこと。
+// 会社名は案件掲載時に表示される情報のため、空のまま保存されると一覧の見た目が壊れる。
+//
+// 観点: 必須チェック / 100文字・2000文字の境界（日本語で数えるため rune 単位）/
+// 任意項目が空でも通ること。
 func TestValidateCompanyProfile(t *testing.T) {
 	tests := []struct {
 		name string
@@ -53,6 +60,13 @@ func TestValidateCompanyProfile(t *testing.T) {
 	}
 }
 
+// TestValidateTalentProfile は人材プロフィールの入力検証を網羅する。
+//
+// 目的: 数値項目が現実にありえない値で保存されるのを防ぐ。特に週の稼働時間は
+// 168時間（24h×7日）が物理的な上限であり、ドメイン知識をバリデーションに落とし込んでいる。
+//
+// 観点: 全項目が未入力（ゼロ値）でも通ること / 文字数・個数の上限 /
+// 数値の範囲（0・70・168 などの境界を両側から）。
 func TestValidateTalentProfile(t *testing.T) {
 	tests := []struct {
 		name string
@@ -123,6 +137,14 @@ func TestValidateTalentProfile(t *testing.T) {
 	}
 }
 
+// TestNormalizeSkills はスキル配列の正規化を検証する。
+//
+// 目的: フォームから届く「揺れた入力」（前後の空白・空欄・重複）を保存前に整えること。
+// ここが甘いと DB に " Go" と "Go" が別物として入り、GINインデックスによる
+// 検索（skills @> '{Go}'）で取りこぼしが起きる。
+//
+// 観点: trim / 空要素の除去 / 重複排除（最初の出現を残す）/
+// nil を空スライスに正規化すること（JSONで null ではなく [] を返す契約のため）。
 func TestNormalizeSkills(t *testing.T) {
 	tests := []struct {
 		name  string
