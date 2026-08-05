@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -115,6 +116,7 @@ const (
 // 後からページング情報（次ページの有無・総件数）を足せるようにするため
 type projectListResponse struct {
 	Projects []projectResponse `json:"projects"`
+	Total    int               `json:"total"`
 	Limit    int               `json:"limit"`
 	Offset   int               `json:"offset"`
 }
@@ -128,17 +130,126 @@ const projectSelectSQL = `
 	FROM projects p
 	JOIN companies c ON c.id = p.company_id`
 
-// handleListProjects は GET /projects。公開中の案件を新しい順に返す
+// projectFilter は一覧の検索条件。ゼロ値は「指定なし＝絞り込まない」を意味する
+type projectFilter struct {
+	Skills     []string // すべて含む案件に絞る（AND条件）
+	RateMin    int      // 希望する時給の下限（案件の上限がこれ以上）
+	RateMax    int      // 希望する時給の上限（案件の下限がこれ以下）
+	HoursMax   int      // 週の稼働時間の上限
+	RemoteOnly bool     // true のときだけリモート可に絞る
+	Keyword    string   // タイトルの部分一致
+}
+
+const (
+	maxFilterSkills  = 10
+	maxKeywordLength = 100
+	maxRate          = 1000000
+	maxHoursPerWeek  = 168
+)
+
+// parseProjectFilter はクエリ文字列から検索条件を組み立てる。
+// 数値が不正な場合は 0（指定なし）として扱い、範囲の妥当性は validateFilter で検証する
+func parseProjectFilter(r *http.Request) projectFilter {
+	q := r.URL.Query()
+	return projectFilter{
+		Skills:     normalizeSkills(strings.Split(q.Get("skills"), ",")),
+		RateMin:    intQuery(r, "rate_min", 0, 0, math.MaxInt32),
+		RateMax:    intQuery(r, "rate_max", 0, 0, math.MaxInt32),
+		HoursMax:   intQuery(r, "hours_max", 0, 0, math.MaxInt32),
+		RemoteOnly: q.Get("remote_ok") == "true",
+		Keyword:    strings.TrimSpace(q.Get("q")),
+	}
+}
+
+// validateFilter は検索条件の妥当性を検証する。
+// 「無視して勝手に丸める」のではなく 400 で返し、意図と違う結果を黙って見せない
+func validateFilter(f projectFilter) string {
+	if len(f.Skills) > maxFilterSkills {
+		return "スキルは10個以内で指定してください"
+	}
+	if len([]rune(f.Keyword)) > maxKeywordLength {
+		return "キーワードは100文字以内で指定してください"
+	}
+	if f.RateMin > maxRate || f.RateMax > maxRate {
+		return "単価は0〜1000000の範囲で指定してください"
+	}
+	// 両方指定されている場合のみ大小関係を検証する（片方だけの指定は有効）
+	if f.RateMin > 0 && f.RateMax > 0 && f.RateMin > f.RateMax {
+		return "単価の下限は上限以下で指定してください"
+	}
+	if f.HoursMax > maxHoursPerWeek {
+		return "週の稼働時間は0〜168の範囲で指定してください"
+	}
+	return ""
+}
+
+// buildProjectWhere は検索条件から WHERE 句とプレースホルダの引数列を組み立てる。
+// 値は必ず args に積み、SQL文字列にはプレースホルダ番号だけを書く
+// （文字列連結で値を埋め込むと SQL インジェクションの穴になる）
+func buildProjectWhere(f projectFilter) (string, []any) {
+	// 一覧は常に公開中のものだけを対象にする
+	args := []any{projectStatusPublished}
+	conds := []string{"p.status = $1"}
+
+	// 配列の包含演算子。GINインデックス（projects_required_skills_idx）が使われる
+	if len(f.Skills) > 0 {
+		args = append(args, pgtype.FlatArray[string](f.Skills))
+		conds = append(conds, fmt.Sprintf("p.required_skills @> $%d", len(args)))
+	}
+	// 単価は「案件のレンジ」と「希望のレンジ」が重なるかで判定する。
+	// 希望下限より案件の上限が高く、希望上限より案件の下限が低ければ交差している
+	if f.RateMin > 0 {
+		args = append(args, f.RateMin)
+		conds = append(conds, fmt.Sprintf("p.hourly_rate_max >= $%d", len(args)))
+	}
+	if f.RateMax > 0 {
+		args = append(args, f.RateMax)
+		conds = append(conds, fmt.Sprintf("p.hourly_rate_min <= $%d", len(args)))
+	}
+	if f.HoursMax > 0 {
+		args = append(args, f.HoursMax)
+		conds = append(conds, fmt.Sprintf("p.hours_per_week <= $%d", len(args)))
+	}
+	// false は「リモートでなくてもよい」の意味なので、true のときだけ条件を足す
+	if f.RemoteOnly {
+		conds = append(conds, "p.remote_ok = true")
+	}
+	if f.Keyword != "" {
+		// ILIKE は大文字小文字を区別しない部分一致。ワイルドカードは値側に付ける
+		args = append(args, "%"+f.Keyword+"%")
+		conds = append(conds, fmt.Sprintf("p.title ILIKE $%d", len(args)))
+	}
+
+	return " WHERE " + strings.Join(conds, " AND "), args
+}
+
+// handleListProjects は GET /projects。公開中の案件を検索条件で絞り、新しい順に返す
 func handleListProjects(w http.ResponseWriter, r *http.Request) {
 	limit := intQuery(r, "limit", defaultLimit, 1, maxLimit)
 	offset := intQuery(r, "offset", 0, 0, math.MaxInt32)
 
+	filter := parseProjectFilter(r)
+	if msg := validateFilter(filter); msg != "" {
+		writeError(r.Context(), w, http.StatusBadRequest, msg, nil)
+		return
+	}
+	where, args := buildProjectWhere(filter)
+
+	// 総件数（ページャの表示に必要）。JOIN 不要な条件しか無いため projects 単体で数える
+	var total int
+	countSQL := `SELECT count(*) FROM projects p` + where
+	if err := db.QueryRow(countSQL, args...).Scan(&total); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "案件の取得に失敗しました", err)
+		return
+	}
+
+	// LIMIT/OFFSET は条件の後ろに続くので、プレースホルダ番号は args の続きになる
+	pageArgs := append(append([]any{}, args...), limit, offset)
 	rows, err := db.Query(
-		projectSelectSQL+`
-		 WHERE p.status = $1
+		projectSelectSQL+where+fmt.Sprintf(`
 		 ORDER BY p.created_at DESC, p.id DESC
-		 LIMIT $2 OFFSET $3`,
-		projectStatusPublished, limit, offset,
+		 LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2),
+		pageArgs...,
 	)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "案件の取得に失敗しました", err)
@@ -161,7 +272,12 @@ func handleListProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, projectListResponse{Projects: projects, Limit: limit, Offset: offset})
+	writeJSON(w, http.StatusOK, projectListResponse{
+		Projects: projects,
+		Total:    total,
+		Limit:    limit,
+		Offset:   offset,
+	})
 }
 
 // handleGetProject は GET /projects/{id}。公開中のもののみ返す（下書き・終了は404）

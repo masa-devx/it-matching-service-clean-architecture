@@ -7,7 +7,14 @@ import (
 	"testing"
 )
 
-// panic しても 500 が返り、テストプロセス自体は落ちないことを確認する
+// TestRecoverMiddleware は panic からの復帰を検証する。
+//
+// 目的: ハンドラ内の想定外のバグ（nil参照・範囲外アクセスなど）が起きても、
+// プロセスを落とさず 500 を返して次のリクエストを処理できる状態を保証する。
+// このテスト自体がプロセス内で panic を起こすため、回復に失敗すればテストごと落ちる。
+//
+// 観点: 文字列 panic / ランタイムエラー由来の panic / 正常なハンドラを素通しすること
+// （ミドルウェアが正常系に副作用を与えないことも同時に確認している）。
 func TestRecoverMiddleware(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -60,7 +67,12 @@ func TestRecoverMiddleware(t *testing.T) {
 	}
 }
 
-// panic の詳細（バグの内容）がクライアントに漏れないことを確認する
+// TestRecoverMiddlewareHidesPanicDetail は panic の内容が外部に漏れないことを検証する。
+//
+// 目的: panic の値には変数の中身や内部構造が含まれうるため、クライアントには
+// 定型文の 500 だけを返す仕様を固定する（詳細はログにのみ残す）。
+// 「エラー時に何を返さないか」はセキュリティ要件であり、実装を変えても崩せないよう
+// テストで縛っている。
 func TestRecoverMiddlewareHidesPanicDetail(t *testing.T) {
 	secret := "内部の秘密な詳細"
 	handler := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
