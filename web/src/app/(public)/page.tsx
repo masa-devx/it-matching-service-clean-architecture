@@ -1,33 +1,31 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { getCurrentUser } from '@/lib/auth'
-import { dashboardPath } from '@/lib/roleRedirect'
+import { Hero } from '@/components/landing/Hero'
+import { ProblemSolution } from '@/components/landing/ProblemSolution'
+import { Features } from '@/components/landing/Features'
+import { HowItWorks } from '@/components/landing/HowItWorks'
+import { FinalCta } from '@/components/landing/FinalCta'
+
+export const metadata = {
+  title: 'Tsunagu Works — 企業とIT人材の安心マッチング',
+  description:
+    '企業とIT人材（副業・フリーランス）をつなぐビジネスマッチング。エスクロー決済・連絡先マスキング・公平なレビューで安心して取引できます。',
+}
 
 export default async function Home() {
   const user = await getCurrentUser()
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4">
-      <h1 className="text-3xl font-bold tracking-tight">Tsunagu Works</h1>
-      <p className="text-muted-foreground">
-        企業とIT人材をつなぐビジネスマッチング
-      </p>
-      <div className="flex gap-3">
-        {user ? (
-          <Button asChild className="h-11">
-            <Link href={dashboardPath(user.role)}>ダッシュボードへ</Link>
-          </Button>
-        ) : (
-          <>
-            <Button asChild className="h-11">
-              <Link href="/signup">新規登録</Link>
-            </Button>
-            <Button asChild variant="outline" className="h-11">
-              <Link href="/login">ログイン</Link>
-            </Button>
-          </>
-        )}
+    <>
+      {/* 幅を持つセクション（背景色を全幅に広げる）は外側、内容は max-w-6xl で中央寄せ */}
+      <div className="mx-auto w-full max-w-6xl">
+        <Hero user={user} />
+        <ProblemSolution />
       </div>
-    </main>
+      <Features />
+      <div className="mx-auto w-full max-w-6xl">
+        <HowItWorks />
+      </div>
+      {!user && <FinalCta />}
+    </>
   )
 }
