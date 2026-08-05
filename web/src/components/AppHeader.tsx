@@ -4,6 +4,7 @@ import { navItemsByRole, roleLabel } from '@/lib/nav'
 import { dashboardPath } from '@/lib/roleRedirect'
 import { LogoutButton } from '@/components/LogoutButton'
 import { NavLinks } from '@/components/NavLinks'
+import { MobileNav } from '@/components/MobileNav'
 import { Badge } from '@/components/ui/badge'
 
 // 企業・人材のどちらのアプリからも使う共通ヘッダー。
@@ -19,7 +20,10 @@ export function AppHeader({ user }: { user: CurrentUser }) {
           >
             Tsunagu Works
           </Link>
-          <NavLinks items={navItemsByRole[user.role]} />
+          {/* 横幅が足りないモバイルでは Sheet に格納する */}
+          <div className="hidden md:block">
+            <NavLinks items={navItemsByRole[user.role]} />
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <span className="hidden text-sm text-muted-foreground sm:inline">
@@ -28,6 +32,7 @@ export function AppHeader({ user }: { user: CurrentUser }) {
           {/* ロールは「今どちらのモードか」を示す情報なので常に見せる */}
           <Badge variant="secondary">{roleLabel[user.role]}</Badge>
           <LogoutButton />
+          <MobileNav items={navItemsByRole[user.role]} />
         </div>
       </div>
     </header>

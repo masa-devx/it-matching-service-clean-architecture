@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/lib/auth'
+import { SkipLink } from '@/components/SkipLink'
 import { LandingHeader } from '@/components/landing/LandingHeader'
 import { LandingFooter } from '@/components/landing/LandingFooter'
 
@@ -11,8 +12,11 @@ export default async function PublicLayout({
 
   return (
     <div className="flex flex-1 flex-col">
+      <SkipLink />
       <LandingHeader user={user} />
-      <main className="flex-1">{children}</main>
+      <main id="main" className="flex-1">
+        {children}
+      </main>
       <LandingFooter />
     </div>
   )
