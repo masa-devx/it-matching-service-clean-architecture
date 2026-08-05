@@ -6,6 +6,7 @@ import {
 } from '@/lib/projects'
 import { ProjectCard } from '@/components/ProjectCard'
 import { Pagination } from '@/components/Pagination'
+import { ProjectSearchForm } from '@/components/talent/ProjectSearchForm'
 
 export const metadata = { title: '案件を探す | Tsunagu Works' }
 
@@ -33,6 +34,8 @@ export default async function TalentProjectsPage({
           件の募集中案件
         </p>
       </div>
+
+      <ProjectSearchForm defaultValues={params} />
 
       {result.projects.length === 0 ? (
         <p className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
