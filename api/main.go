@@ -43,6 +43,8 @@ func main() {
 	mux.Handle("GET /me", requireAuth(http.HandlerFunc(handleMe)))
 	mux.Handle("GET /me/profile", requireAuth(http.HandlerFunc(handleGetProfile)))
 	mux.Handle("PUT /me/profile", requireAuth(http.HandlerFunc(handlePutProfile)))
+	// 案件の掲載は企業のみ（requireAuth の内側で requireRole を重ねる）
+	mux.Handle("POST /projects", requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleCreateProject))))
 
 	srv := &http.Server{
 		Addr: ":" + cfg.port,

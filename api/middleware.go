@@ -128,6 +128,34 @@ func requireAuth(next http.Handler) http.Handler {
 	})
 }
 
+// requireRole は指定ロールのユーザーだけを通す（認可）。requireAuth の内側で使う。
+// 認証（誰か）と認可（何をしてよいか）は別の関心事なので、ミドルウェアも分ける
+func requireRole(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID, ok := userIDFrom(r.Context())
+			if !ok {
+				writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+				return
+			}
+
+			// ロールはトークンではなくDBを参照する（トークン発行後の変更を即座に反映するため）
+			actual, err := fetchRole(userID)
+			if err != nil {
+				writeError(r.Context(), w, http.StatusInternalServerError, "権限の確認に失敗しました", err)
+				return
+			}
+			if actual != role {
+				// 403: 認証は通っているが権限が足りない（401=誰か分からない、との違い）
+				writeError(r.Context(), w, http.StatusForbidden, "この操作を行う権限がありません", nil)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // userIDFrom は requireAuth が context に格納した userID を取り出す。
 // user_id は必ずここから取得する（リクエスト値を信用しない＝IDOR対策）
 func userIDFrom(ctx context.Context) (int64, bool) {
