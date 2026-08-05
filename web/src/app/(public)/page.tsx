@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getCurrentUser } from '@/lib/auth'
+import { dashboardPath } from '@/lib/roleRedirect'
 
 export default async function Home() {
   const user = await getCurrentUser()
@@ -14,7 +15,7 @@ export default async function Home() {
       <div className="flex gap-3">
         {user ? (
           <Button asChild className="h-11">
-            <Link href="/projects">案件一覧へ</Link>
+            <Link href={dashboardPath(user.role)}>ダッシュボードへ</Link>
           </Button>
         ) : (
           <>

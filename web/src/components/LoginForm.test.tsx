@@ -48,15 +48,15 @@ describe('LoginForm', () => {
     expect(screen.getByRole('button', { name: 'ログイン' })).toBeEnabled()
   })
 
-  it('ログイン成功時に / へ遷移し、ボタンは無効のまま', async () => {
-    loginMock.mockResolvedValue({ ok: true })
+  it('ログイン成功時にサーバーが指定した遷移先へ移動し、ボタンは無効のまま', async () => {
+    loginMock.mockResolvedValue({ ok: true, redirectTo: '/company/dashboard' })
     const user = userEvent.setup()
     render(<LoginForm />)
 
     await fillAndSubmit(user)
 
     await vi.waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/')
+      expect(pushMock).toHaveBeenCalledWith('/company/dashboard')
     })
     expect(loginMock).toHaveBeenCalledWith({
       email: 'user@example.com',

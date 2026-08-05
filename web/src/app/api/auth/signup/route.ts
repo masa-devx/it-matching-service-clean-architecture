@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { apiPost } from '@/lib/api'
 import { setTokenCookie } from '@/lib/authCookie'
+import { dashboardPath } from '@/lib/roleRedirect'
 
 type LoginResponse = { token: string }
 
@@ -27,5 +28,9 @@ export async function POST(req: Request) {
   }
 
   await setTokenCookie(login.data.token)
-  return NextResponse.json({ ok: true }, { status: 201 })
+  // 登録時は role が分かっているので、/me を呼ばずに遷移先を決められる
+  return NextResponse.json(
+    { ok: true, redirectTo: dashboardPath(role) },
+    { status: 201 },
+  )
 }

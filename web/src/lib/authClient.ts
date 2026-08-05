@@ -1,7 +1,8 @@
 // クライアント側から Next.js の BFF（/api/auth/*）を呼ぶ関数群。
 // Go API を直接呼ばない・トークンには一切触れない（httpOnly Cookie はブラウザが自動送信）
 
-export type AuthResult = { ok: true } | { ok: false; error: string }
+export type AuthResult =
+  { ok: true; redirectTo: string } | { ok: false; error: string }
 
 async function postJson(path: string, body: unknown): Promise<AuthResult> {
   let res: Response
@@ -18,11 +19,12 @@ async function postJson(path: string, body: unknown): Promise<AuthResult> {
     }
   }
 
+  const json = await res.json().catch(() => null)
   if (!res.ok) {
-    const json = await res.json().catch(() => null)
     return { ok: false, error: json?.error ?? 'エラーが発生しました' }
   }
-  return { ok: true }
+  // 遷移先はサーバーが決める。取得できない場合はトップに戻す
+  return { ok: true, redirectTo: json?.redirectTo ?? '/' }
 }
 
 export function signup(input: {
