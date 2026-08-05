@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev-api dev-web docker-up docker-down db-up db-down migrate-up migrate-down migrate-status migrate-new seed seed-large test lint build
+.PHONY: help dev-api dev-web docker-up docker-down db-up db-down migrate-up migrate-down migrate-status migrate-new seed seed-large perf perf-load test lint build
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -47,6 +47,14 @@ seed: ## 開発用シードデータを投入（2回実行しても安全・資�
 
 seed-large: ## 性能計測用に案件5万件を投入（ローカル専用・数十秒かかる）
 	time docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/seed_large.sql
+
+## --- 性能計測 ---
+
+perf: ## DBクエリの実行計画を計測（EXPLAIN ANALYZE・要 make seed-large）
+	docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/perf_queries.sql
+
+perf-load: ## APIの負荷試験（k6・要 make dev-api）
+	docker run --rm -i --add-host=host.docker.internal:host-gateway -v $(PWD)/k6:/scripts grafana/k6 run /scripts/list_projects.js
 
 ## --- 品質チェック（CIと同一コマンド） ---
 
