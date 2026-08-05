@@ -2,6 +2,7 @@ import 'server-only'
 
 import { apiGet } from './api'
 import { getTokenCookie } from './authCookie'
+import { getProfile } from './profile'
 
 export type Project = {
   id: number
@@ -107,4 +108,24 @@ export async function getProject(id: number): Promise<Project | null> {
     return null
   }
   return res.data
+}
+
+// 自社が掲載した案件の一覧（下書き・終了も含む）。
+// Go 側に企業向けの一覧APIがまだ無いため、当面は公開中のものだけを自社分に絞って表示する
+export async function getMyProjects(): Promise<Project[] | null> {
+  const [profile, result] = await Promise.all([
+    getProfile(),
+    searchProjects({}),
+  ])
+  if (!profile || !result) {
+    return null
+  }
+  if (profile.role !== 'company' || !profile.profile) {
+    return []
+  }
+
+  // 一覧APIは全件を返すため、company_name で自社分を抽出する
+  // （企業向けの絞り込みAPIは今後 #13 の続きで追加する）
+  const companyName = profile.profile.name
+  return result.projects.filter((p) => p.company_name === companyName)
 }
