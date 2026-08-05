@@ -1,4 +1,5 @@
 import { getProfile } from '@/lib/profile'
+import { PageHeader } from '@/components/PageHeader'
 import { CompanyProfileForm } from '@/components/company/CompanyProfileForm'
 
 export const metadata = { title: 'プロフィール | Tsunagu Works' }
@@ -14,14 +15,14 @@ export default async function CompanyProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">企業プロフィール</h1>
-        <p className="text-sm text-muted-foreground">
-          {data.profile
+      <PageHeader
+        title="企業プロフィール"
+        description={
+          data.profile
             ? '登録済みの内容を編集できます'
-            : 'まだ登録されていません。入力して保存してください'}
-        </p>
-      </div>
+            : 'まだ登録されていません。入力して保存してください'
+        }
+      />
       <CompanyProfileForm profile={data.profile} />
     </div>
   )

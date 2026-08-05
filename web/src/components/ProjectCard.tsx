@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Project } from '@/lib/projects'
+import { Badge } from '@/components/ui/badge'
 
 // 時給は「4,000〜6,000円」の形に整形する。未設定（0）は表示しない
 function formatRate(min: number, max: number): string {
@@ -22,13 +23,10 @@ export function ProjectCard({ project }: { project: Project }) {
       </div>
 
       {project.required_skills.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5">
+        <ul className="flex flex-wrap gap-2">
           {project.required_skills.map((skill) => (
-            <li
-              key={skill}
-              className="rounded-full bg-secondary px-2.5 py-0.5 text-xs"
-            >
-              {skill}
+            <li key={skill}>
+              <Badge variant="secondary">{skill}</Badge>
             </li>
           ))}
         </ul>

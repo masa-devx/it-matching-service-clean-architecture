@@ -4,6 +4,7 @@ import { navItemsByRole, roleLabel } from '@/lib/nav'
 import { dashboardPath } from '@/lib/roleRedirect'
 import { LogoutButton } from '@/components/LogoutButton'
 import { NavLinks } from '@/components/NavLinks'
+import { Badge } from '@/components/ui/badge'
 
 // 企業・人材のどちらのアプリからも使う共通ヘッダー。
 // 表示内容（ナビ・ロール表示）はロールから導出する
@@ -25,9 +26,7 @@ export function AppHeader({ user }: { user: CurrentUser }) {
             {user.email}
           </span>
           {/* ロールは「今どちらのモードか」を示す情報なので常に見せる */}
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-            {roleLabel[user.role]}
-          </span>
+          <Badge variant="secondary">{roleLabel[user.role]}</Badge>
           <LogoutButton />
         </div>
       </div>

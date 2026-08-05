@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/StatCard'
+import { PageHeader } from '@/components/PageHeader'
 import { ProfileIncompleteNotice } from '@/components/ProfileIncompleteNotice'
 
 export function TalentDashboard({
@@ -12,12 +13,10 @@ export function TalentDashboard({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">案件を探して応募する</h1>
-        <p className="text-sm text-muted-foreground">
-          スキルや稼働条件に合う案件を探せます
-        </p>
-      </div>
+      <PageHeader
+        title="案件を探して応募する"
+        description="スキルや稼働条件に合う案件を探せます"
+      />
 
       {/* 人材プロフィールは応募の必須条件ではないが、登録した方が有利という案内に留める */}
       {!hasProfile && (
