@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -101,6 +103,120 @@ func handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, res)
+}
+
+// 一覧の取得件数。上限を設けないと「limit=100000」で全件を引かれる
+const (
+	defaultLimit = 20
+	maxLimit     = 100
+)
+
+// projectListResponse は一覧のレスポンス。配列を直接返さず包むのは、
+// 後からページング情報（次ページの有無・総件数）を足せるようにするため
+type projectListResponse struct {
+	Projects []projectResponse `json:"projects"`
+	Limit    int               `json:"limit"`
+	Offset   int               `json:"offset"`
+}
+
+// 一覧・詳細で共通の SELECT。会社名を JOIN で同時に取り、N+1（案件ごとに会社を引く）を避ける
+const projectSelectSQL = `
+	SELECT p.id, p.company_id, c.name,
+	       p.title, p.description, p.required_skills,
+	       p.hourly_rate_min, p.hourly_rate_max, p.hours_per_week,
+	       p.remote_ok, p.status, p.created_at
+	FROM projects p
+	JOIN companies c ON c.id = p.company_id`
+
+// handleListProjects は GET /projects。公開中の案件を新しい順に返す
+func handleListProjects(w http.ResponseWriter, r *http.Request) {
+	limit := intQuery(r, "limit", defaultLimit, 1, maxLimit)
+	offset := intQuery(r, "offset", 0, 0, math.MaxInt32)
+
+	rows, err := db.Query(
+		projectSelectSQL+`
+		 WHERE p.status = $1
+		 ORDER BY p.created_at DESC, p.id DESC
+		 LIMIT $2 OFFSET $3`,
+		projectStatusPublished, limit, offset,
+	)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "案件の取得に失敗しました", err)
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	projects := make([]projectResponse, 0, limit)
+	for rows.Next() {
+		p, err := scanProject(rows)
+		if err != nil {
+			writeError(r.Context(), w, http.StatusInternalServerError, "案件の取得に失敗しました", err)
+			return
+		}
+		projects = append(projects, p)
+	}
+	// ループ中に発生したエラー（通信断など）は Err() で最後に確認する
+	if err := rows.Err(); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "案件の取得に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, projectListResponse{Projects: projects, Limit: limit, Offset: offset})
+}
+
+// handleGetProject は GET /projects/{id}。公開中のもののみ返す（下書き・終了は404）
+func handleGetProject(w http.ResponseWriter, r *http.Request) {
+	// Go 1.22+ のパスパラメータ。ルート定義 "GET /projects/{id}" の {id} を取り出す
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+
+	row := db.QueryRow(projectSelectSQL+` WHERE p.id = $1 AND p.status = $2`, id, projectStatusPublished)
+	p, err := scanProject(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		// 未公開と存在しないを区別せず404にする（下書きの存在を外部に漏らさない）
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "案件の取得に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, p)
+}
+
+// scanner は *sql.Row と *sql.Rows の共通部分。1行のスキャン処理を共有するための最小インターフェース
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanProject(s scanner) (projectResponse, error) {
+	var p projectResponse
+	err := s.Scan(
+		&p.ID, &p.CompanyID, &p.CompanyName,
+		&p.Title, &p.Description, pgtype.NewMap().SQLScanner(&p.RequiredSkills),
+		&p.HourlyRateMin, &p.HourlyRateMax, &p.HoursPerWeek,
+		&p.RemoteOK, &p.Status, &p.CreatedAt,
+	)
+	if err != nil {
+		return p, err
+	}
+	if p.RequiredSkills == nil {
+		p.RequiredSkills = []string{}
+	}
+	return p, nil
+}
+
+// intQuery はクエリ文字列の整数を範囲内に丸めて返す。不正値は既定値にフォールバックする
+func intQuery(r *http.Request, key string, fallback, minValue, maxValue int) int {
+	v, err := strconv.Atoi(r.URL.Query().Get(key))
+	if err != nil {
+		return fallback
+	}
+	return min(max(v, minValue), maxValue)
 }
 
 // fetchCompany は userID に紐づく企業プロフィールを返す（未作成なら sql.ErrNoRows）

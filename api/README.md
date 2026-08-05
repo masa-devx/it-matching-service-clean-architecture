@@ -14,6 +14,8 @@ api/
 ├── logger.go        # 構造化ログ（slog）の初期化・レベル判定・相関ID付き子ロガー
 ├── jwt.go           # トークンの発行と検証（対で同居・HS256強制）
 ├── auth.go          # ドメイン機能: signup / login / me（機能ごとに1ファイルの型）
+├── profile.go       # プロフィール（companies / talents）
+├── projects.go      # 案件（掲載・一覧・詳細）
 ├── health.go        # 死活確認（DB疎通込み）
 ├── .air.toml        # ホットリロード設定（開発ツール）
 └── .golangci.yml    # linter設定（gosec / errorlint / exhaustive 等）
@@ -36,6 +38,8 @@ api/
 - **main.go は組み立てだけ**。機能はドメイン語彙のファイルへ
 - **SQL はプレースホルダ必須・`SELECT *` 禁止**（列を明示）
 - **user_id は検証済みトークン（`userIDFrom(ctx)`）からのみ取得**（IDOR対策・入口一本化）
+- **認証と認可を分ける**: `requireAuth`（誰か＝401）と `requireRole`（何をしてよいか＝403）を重ね掛けする
+- **一覧で親子を出すときは JOIN 1回**（ループ内クエリ＝N+1 は禁止）。limit は上限をクランプする
 - 重複チェックは SELECT 事前確認でなく **INSERT + 一意制約違反(23505)の検出**（TOCTOU対策）
 - 認証失敗は**同一の401**（文言・ステータス・応答時間の3点で情報を漏らさない）
 - エラーは `(結果, error)` + `fmt.Errorf("%w")` ラップ。`_ =` は「判断して捨てた」印（理由コメント付き）
