@@ -2,10 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { login } from '@/lib/authClient'
 import { authCopyByRole } from '@/lib/nav'
 import type { CurrentUser } from '@/lib/auth'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/SubmitButton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -36,6 +37,7 @@ export function LoginForm({ role }: { role: CurrentUser['role'] }) {
 
     if (!result.ok) {
       setError(result.error)
+      toast.error(result.error)
       setSubmitting(false)
       return
     }
@@ -84,9 +86,13 @@ export function LoginForm({ role }: { role: CurrentUser['role'] }) {
             </p>
           )}
 
-          <Button type="submit" disabled={submitting} className="h-11">
-            {submitting ? 'ログイン中…' : 'ログイン'}
-          </Button>
+          <SubmitButton
+            isSubmitting={submitting}
+            submittingLabel="ログイン中…"
+            className="h-11"
+          >
+            ログイン
+          </SubmitButton>
         </form>
       </CardContent>
     </Card>

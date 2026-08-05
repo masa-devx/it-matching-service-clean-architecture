@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Controller, useForm } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useRouter } from 'next/navigation'
@@ -10,9 +11,12 @@ import {
   type ProjectInput,
 } from '@/lib/projectSchema'
 import { createProject } from '@/lib/projectClient'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/SubmitButton'
+import { FormErrorSummary } from '@/components/FormErrorSummary'
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/RequiredMark'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -33,6 +37,17 @@ const emptyProject: ProjectFormValues = {
   status: 'published',
 }
 
+// エラーサマリで内部名ではなく画面上のラベルを見せるための対応表
+const fieldLabels = {
+  title: '案件タイトル',
+  description: '案件内容',
+  required_skills: '必須スキル',
+  hourly_rate_min: '時給の下限',
+  hourly_rate_max: '時給の上限',
+  hours_per_week: '週の稼働時間',
+  status: '公開設定',
+}
+
 export function ProjectForm() {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -41,11 +56,14 @@ export function ProjectForm() {
     register,
     handleSubmit,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<ProjectFormValues, unknown, ProjectInput>({
     resolver: standardSchemaResolver(projectFormSchema),
     defaultValues: emptyProject,
   })
+
+  // 入力途中の離脱で内容が失われるのを防ぐ（掲載フォームは入力量が多い）
+  useUnsavedChangesWarning(isDirty && !isSubmitting)
 
   // 引数は Zod の transform 適用後（required_skills が string[] になっている）
   async function onSubmit(values: ProjectInput) {
@@ -54,8 +72,11 @@ export function ProjectForm() {
     const result = await createProject(values)
     if (!result.ok) {
       setServerError(result.error)
+      toast.error(result.error)
       return
     }
+
+    toast.success('案件を掲載しました')
 
     // 作成できたら管理一覧へ。refresh で RSC を再実行し、追加した案件を反映する
     router.push('/company/projects')
@@ -68,9 +89,11 @@ export function ProjectForm() {
       className="flex w-full max-w-2xl flex-col gap-6"
       noValidate
     >
+      <FormErrorSummary errors={errors} labels={fieldLabels} />
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">
-          案件タイトル <span className="text-destructive">*</span>
+          案件タイトル <RequiredMark />
         </Label>
         <Input
           id="title"
@@ -204,9 +227,9 @@ export function ProjectForm() {
         </p>
       )}
 
-      <Button type="submit" disabled={isSubmitting} className="h-11 self-start">
-        {isSubmitting ? '掲載中…' : '案件を掲載する'}
-      </Button>
+      <SubmitButton isSubmitting={isSubmitting} submittingLabel="掲載中…">
+        案件を掲載する
+      </SubmitButton>
     </form>
   )
 }
