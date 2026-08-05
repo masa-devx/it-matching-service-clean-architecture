@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { login } from '@/lib/authClient'
+import { authCopyByRole } from '@/lib/nav'
+import type { CurrentUser } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,7 +16,9 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
-export function LoginForm() {
+export function LoginForm({ role }: { role: CurrentUser['role'] }) {
+  const copy = authCopyByRole[role]
+
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -42,7 +46,7 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>ログイン</CardTitle>
+        <CardTitle>{copy.loginTitle}</CardTitle>
         <CardDescription>
           登録済みのメールアドレスでログインします
         </CardDescription>

@@ -35,7 +35,7 @@ describe('LoginForm', () => {
       error: 'メールアドレスまたはパスワードが正しくありません',
     })
     const user = userEvent.setup()
-    render(<LoginForm />)
+    render(<LoginForm role="company" />)
 
     await fillAndSubmit(user)
 
@@ -51,7 +51,7 @@ describe('LoginForm', () => {
   it('ログイン成功時にサーバーが指定した遷移先へ移動し、ボタンは無効のまま', async () => {
     loginMock.mockResolvedValue({ ok: true, redirectTo: '/company/dashboard' })
     const user = userEvent.setup()
-    render(<LoginForm />)
+    render(<LoginForm role="company" />)
 
     await fillAndSubmit(user)
 
