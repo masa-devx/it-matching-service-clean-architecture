@@ -32,7 +32,9 @@ export function RoleChoice({ action }: { action: 'login' | 'signup' }) {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>{isSignup ? '新規登録' : 'ログイン'}</CardTitle>
+        <CardTitle asChild>
+          <h1>{isSignup ? '新規登録' : 'ログイン'}</h1>
+        </CardTitle>
         <CardDescription>ご利用の立場を選んでください</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

@@ -48,7 +48,11 @@ export function LoginForm({ role }: { role: CurrentUser['role'] }) {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle>{copy.loginTitle}</CardTitle>
+        <CardTitle asChild>
+          {/* 認証画面ではこのカードがページの主題なので、見出しレベル1にする
+              （CardTitle は div のため、そのままだとページに h1 が存在しなくなる） */}
+          <h1>{copy.loginTitle}</h1>
+        </CardTitle>
         <CardDescription>
           登録済みのメールアドレスでログインします
         </CardDescription>
