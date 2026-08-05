@@ -6,6 +6,9 @@ import {
 } from '@/lib/projects'
 import { ProjectCard } from '@/components/ProjectCard'
 import { Pagination } from '@/components/Pagination'
+import { PageHeader } from '@/components/PageHeader'
+import { EmptyState } from '@/components/EmptyState'
+import { SearchX } from 'lucide-react'
 import { ProjectSearchForm } from '@/components/talent/ProjectSearchForm'
 
 export const metadata = { title: '案件を探す | Tsunagu Works' }
@@ -27,20 +30,19 @@ export default async function TalentProjectsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">案件を探す</h1>
-        <p className="text-sm text-muted-foreground">
-          <span className="tabular-nums">{result.total.toLocaleString()}</span>
-          件の募集中案件
-        </p>
-      </div>
+      <PageHeader
+        title="案件を探す"
+        description={`${result.total.toLocaleString()}件の募集中案件`}
+      />
 
       <ProjectSearchForm defaultValues={params} />
 
       {result.projects.length === 0 ? (
-        <p className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
-          条件に合う案件が見つかりませんでした
-        </p>
+        <EmptyState
+          icon={SearchX}
+          title="条件に合う案件が見つかりませんでした"
+          description="条件をゆるめると見つかるかもしれません"
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {result.projects.map((project) => (

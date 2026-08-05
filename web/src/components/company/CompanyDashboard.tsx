@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/StatCard'
+import { PageHeader } from '@/components/PageHeader'
 import { ProfileIncompleteNotice } from '@/components/ProfileIncompleteNotice'
 
 export function CompanyDashboard({
@@ -12,12 +13,10 @@ export function CompanyDashboard({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">案件を掲載して人材を探す</h1>
-        <p className="text-sm text-muted-foreground">
-          掲載した案件は人材ユーザーの一覧に表示されます
-        </p>
-      </div>
+      <PageHeader
+        title="案件を掲載して人材を探す"
+        description="掲載した案件は人材ユーザーの一覧に表示されます"
+      />
 
       {/* 企業プロフィールは案件掲載の前提条件（API側で400になる）ため強調して案内する */}
       {!hasProfile && (

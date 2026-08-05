@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useRouter } from 'next/navigation'
 import {
@@ -14,6 +14,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const emptyProject: ProjectFormValues = {
   title: '',
@@ -33,6 +40,7 @@ export function ProjectForm() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ProjectFormValues, unknown, ProjectInput>({
     resolver: standardSchemaResolver(projectFormSchema),
@@ -171,14 +179,23 @@ export function ProjectForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="status">公開設定</Label>
-        <select
-          id="status"
-          className="h-11 rounded-lg border border-input bg-transparent px-2.5 text-base md:text-sm"
-          {...register('status')}
-        >
-          <option value="published">すぐに公開する</option>
-          <option value="draft">下書きとして保存する</option>
-        </select>
+        {/* Radix の Select は <select> ではないため register では繋がらない。
+            Controller で RHF の管理下に置く（キーボード操作とa11yは部品側が担保） */}
+        <Controller
+          name="status"
+          control={control}
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger id="status" className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="published">すぐに公開する</SelectItem>
+                <SelectItem value="draft">下書きとして保存する</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
       </div>
 
       {serverError && (

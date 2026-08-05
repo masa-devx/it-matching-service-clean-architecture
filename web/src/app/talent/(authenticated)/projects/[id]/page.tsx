@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getProject } from '@/lib/projects'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/PageHeader'
 
 // 時給・稼働の表示は一覧と揃える（未設定=0 は「応相談」）
 function formatRate(min: number, max: number): string {
@@ -45,10 +47,7 @@ export default async function ProjectDetailPage({
         ← 案件一覧に戻る
       </Link>
 
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">{project.title}</h1>
-        <p className="text-muted-foreground">{project.company_name}</p>
-      </header>
+      <PageHeader title={project.title} description={project.company_name} />
 
       <dl className="grid gap-4 rounded-lg border bg-card p-4 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
@@ -76,13 +75,10 @@ export default async function ProjectDetailPage({
       {project.required_skills.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="font-bold">必須スキル</h2>
-          <ul className="flex flex-wrap gap-1.5">
+          <ul className="flex flex-wrap gap-2">
             {project.required_skills.map((skill) => (
-              <li
-                key={skill}
-                className="rounded-full bg-secondary px-2.5 py-1 text-sm"
-              >
-                {skill}
+              <li key={skill}>
+                <Badge variant="secondary">{skill}</Badge>
               </li>
             ))}
           </ul>

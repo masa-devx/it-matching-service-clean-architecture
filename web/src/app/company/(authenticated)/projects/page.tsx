@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { getMyProjects } from '@/lib/projects'
 import { Button } from '@/components/ui/button'
 import { ProjectCard } from '@/components/ProjectCard'
+import { PageHeader } from '@/components/PageHeader'
+import { EmptyState } from '@/components/EmptyState'
+import { FolderOpen } from 'lucide-react'
 
 export const metadata = { title: '案件管理 | Tsunagu Works' }
 
@@ -10,24 +13,29 @@ export default async function CompanyProjectsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">案件管理</h1>
-          <p className="text-sm text-muted-foreground">
-            自社が掲載した案件の一覧です
-          </p>
-        </div>
-        <Button asChild className="h-11">
-          <Link href="/company/projects/new">新規掲載</Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="案件管理"
+        description="自社が掲載した案件の一覧です"
+        action={
+          <Button asChild className="h-11">
+            <Link href="/company/projects/new">新規掲載</Link>
+          </Button>
+        }
+      />
 
       {projects === null ? (
         <p className="text-destructive">案件を取得できませんでした</p>
       ) : projects.length === 0 ? (
-        <p className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
-          まだ案件を掲載していません
-        </p>
+        <EmptyState
+          icon={FolderOpen}
+          title="まだ案件を掲載していません"
+          description="案件を掲載すると、人材ユーザーの一覧に表示されます"
+          action={
+            <Button asChild className="h-11">
+              <Link href="/company/projects/new">最初の案件を掲載する</Link>
+            </Button>
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {projects.map((project) => (
