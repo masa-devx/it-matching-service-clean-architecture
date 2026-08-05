@@ -1,18 +1,8 @@
-import Link from 'next/link'
-import { LoginForm } from '@/components/LoginForm'
+import { RoleChoice } from '@/components/RoleChoice'
 
 export const metadata = { title: 'ログイン | Tsunagu Works' }
 
-export default function LoginPage() {
-  return (
-    <>
-      <LoginForm />
-      <p className="text-sm text-muted-foreground">
-        アカウントをお持ちでない方は{' '}
-        <Link href="/signup" className="text-primary underline">
-          新規登録
-        </Link>
-      </p>
-    </>
-  )
+// 企業/人材の入口を選ぶ画面。実際のログインフォームは各ロール配下にある
+export default function LoginChoicePage() {
+  return <RoleChoice action="login" />
 }
