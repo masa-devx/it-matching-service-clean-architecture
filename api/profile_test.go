@@ -64,66 +64,89 @@ func TestValidateCompanyProfile(t *testing.T) {
 //
 // 目的: 数値項目が現実にありえない値で保存されるのを防ぐ。特に週の稼働時間は
 // 168時間（24h×7日）が物理的な上限であり、ドメイン知識をバリデーションに落とし込んでいる。
+// また表示名は企業が応募者を識別する唯一の手がかりであり、空のまま保存されると
+// 応募者一覧が「名無し」で埋まって選考できなくなるため、必須であることを固定する。
 //
-// 観点: 全項目が未入力（ゼロ値）でも通ること / 文字数・個数の上限 /
-// 数値の範囲（0・70・168 などの境界を両側から）。
+// 観点: 表示名の必須と文字数（50文字の境界を両側から）/ 表示名以外は未入力でも通ること /
+// 文字数・個数の上限 / 数値の範囲（0・70・168 などの境界を両側から）。
 func TestValidateTalentProfile(t *testing.T) {
+	valid := talentProfile{
+		DisplayName: "山田 太郎",
+		Bio:         "Goが得意です", Skills: []string{"Go", "React"},
+		YearsOfExp: 5, AvailableHoursPerWeek: 20, DesiredHourlyRate: 5000, RemoteOK: true,
+	}
+
+	// withValid は正常な値をベースに一部だけ差し替える（各ケースの差分を明確にする）
+	withValid := func(mutate func(*talentProfile)) talentProfile {
+		p := valid
+		mutate(&p)
+		return p
+	}
+
 	tests := []struct {
 		name string
 		p    talentProfile
 		want string
 	}{
+		{name: "正常系", p: valid, want: ""},
 		{
-			name: "正常系",
-			p: talentProfile{
-				Bio: "Goが得意です", Skills: []string{"Go", "React"},
-				YearsOfExp: 5, AvailableHoursPerWeek: 20, DesiredHourlyRate: 5000, RemoteOK: true,
-			},
+			name: "表示名が空",
+			p:    withValid(func(p *talentProfile) { p.DisplayName = "" }),
+			want: "表示名は必須です",
+		},
+		{
+			name: "表示名50文字は通る（境界値）",
+			p:    withValid(func(p *talentProfile) { p.DisplayName = strings.Repeat("あ", 50) }),
 			want: "",
 		},
 		{
-			name: "全て未入力（ゼロ値）でも通る",
-			p:    talentProfile{},
+			name: "表示名51文字",
+			p:    withValid(func(p *talentProfile) { p.DisplayName = strings.Repeat("あ", 51) }),
+			want: "表示名は50文字以内にしてください",
+		},
+		{
+			name: "表示名以外が未入力でも通る",
+			p:    talentProfile{DisplayName: "山田 太郎"},
 			want: "",
 		},
 		{
 			name: "自己紹介2001文字",
-			p:    talentProfile{Bio: strings.Repeat("あ", 2001)},
+			p:    withValid(func(p *talentProfile) { p.Bio = strings.Repeat("あ", 2001) }),
 			want: "自己紹介は2000文字以内にしてください",
 		},
 		{
 			name: "スキル31個",
-			p:    talentProfile{Skills: make([]string, 31)},
+			p:    withValid(func(p *talentProfile) { p.Skills = make([]string, 31) }),
 			want: "スキルは30個以内にしてください",
 		},
 		{
 			name: "スキル1つが51文字",
-			p:    talentProfile{Skills: []string{strings.Repeat("a", 51)}},
+			p:    withValid(func(p *talentProfile) { p.Skills = []string{strings.Repeat("a", 51)} }),
 			want: "各スキルは50文字以内にしてください",
 		},
 		{
 			name: "経験年数が負",
-			p:    talentProfile{YearsOfExp: -1},
+			p:    withValid(func(p *talentProfile) { p.YearsOfExp = -1 }),
 			want: "経験年数は0〜70の範囲で入力してください",
 		},
 		{
 			name: "経験年数70は通る（境界値）",
-			p:    talentProfile{YearsOfExp: 70},
+			p:    withValid(func(p *talentProfile) { p.YearsOfExp = 70 }),
 			want: "",
 		},
 		{
 			name: "週の稼働168は通る（境界値・1週間の総時間）",
-			p:    talentProfile{AvailableHoursPerWeek: 168},
+			p:    withValid(func(p *talentProfile) { p.AvailableHoursPerWeek = 168 }),
 			want: "",
 		},
 		{
 			name: "週の稼働169",
-			p:    talentProfile{AvailableHoursPerWeek: 169},
+			p:    withValid(func(p *talentProfile) { p.AvailableHoursPerWeek = 169 }),
 			want: "週の稼働可能時間は0〜168の範囲で入力してください",
 		},
 		{
 			name: "希望時給が負",
-			p:    talentProfile{DesiredHourlyRate: -1},
+			p:    withValid(func(p *talentProfile) { p.DesiredHourlyRate = -1 }),
 			want: "希望時給は0〜1000000の範囲で入力してください",
 		},
 	}

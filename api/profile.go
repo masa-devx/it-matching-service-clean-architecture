@@ -18,6 +18,8 @@ type companyProfile struct {
 }
 
 type talentProfile struct {
+	// 企業に見せる名前。companies.name と対になる（応募者一覧・応募履歴で使う）
+	DisplayName           string   `json:"display_name"`
 	Bio                   string   `json:"bio"`
 	Skills                []string `json:"skills"`
 	YearsOfExp            int      `json:"years_of_exp"`
@@ -96,6 +98,7 @@ func handlePutProfile(w http.ResponseWriter, r *http.Request) {
 			writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
 			return
 		}
+		req.DisplayName = strings.TrimSpace(req.DisplayName)
 		req.Skills = normalizeSkills(req.Skills)
 		if msg := validateTalentProfile(req); msg != "" {
 			writeError(r.Context(), w, http.StatusBadRequest, msg, nil)
@@ -130,17 +133,18 @@ func upsertCompanyProfile(userID int64, p companyProfile) error {
 
 func upsertTalentProfile(userID int64, p talentProfile) error {
 	_, err := db.Exec(
-		`INSERT INTO talents (user_id, bio, skills, years_of_exp, available_hours_per_week, desired_hourly_rate, remote_ok)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`INSERT INTO talents (user_id, display_name, bio, skills, years_of_exp, available_hours_per_week, desired_hourly_rate, remote_ok)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		 ON CONFLICT (user_id) DO UPDATE
-		 SET bio                      = EXCLUDED.bio,
+		 SET display_name             = EXCLUDED.display_name,
+		     bio                      = EXCLUDED.bio,
 		     skills                   = EXCLUDED.skills,
 		     years_of_exp             = EXCLUDED.years_of_exp,
 		     available_hours_per_week = EXCLUDED.available_hours_per_week,
 		     desired_hourly_rate      = EXCLUDED.desired_hourly_rate,
 		     remote_ok                = EXCLUDED.remote_ok,
 		     updated_at               = now()`,
-		userID, p.Bio, pgtype.FlatArray[string](p.Skills), p.YearsOfExp,
+		userID, p.DisplayName, p.Bio, pgtype.FlatArray[string](p.Skills), p.YearsOfExp,
 		p.AvailableHoursPerWeek, p.DesiredHourlyRate, p.RemoteOK,
 	)
 	return err
@@ -180,6 +184,13 @@ func validateCompanyProfile(p companyProfile) string {
 
 // validateTalentProfile は人材プロフィールの入力検証
 func validateTalentProfile(p talentProfile) string {
+	// DBは既存行のために空文字を許すが、保存時はここで必須にする（段階的な必須化）
+	if p.DisplayName == "" {
+		return "表示名は必須です"
+	}
+	if len([]rune(p.DisplayName)) > 50 {
+		return "表示名は50文字以内にしてください"
+	}
 	if len([]rune(p.Bio)) > 2000 {
 		return "自己紹介は2000文字以内にしてください"
 	}
@@ -234,10 +245,10 @@ func fetchProfile(userID int64, role string) (any, error) {
 		// sql.Scanner としてブリッジさせる（SQLScanner が []string への変換を担う）
 		var skills []string
 		err := db.QueryRow(
-			`SELECT bio, skills, years_of_exp, available_hours_per_week, desired_hourly_rate, remote_ok
+			`SELECT display_name, bio, skills, years_of_exp, available_hours_per_week, desired_hourly_rate, remote_ok
 			 FROM talents WHERE user_id = $1`,
 			userID,
-		).Scan(&p.Bio, pgtype.NewMap().SQLScanner(&skills), &p.YearsOfExp, &p.AvailableHoursPerWeek, &p.DesiredHourlyRate, &p.RemoteOK)
+		).Scan(&p.DisplayName, &p.Bio, pgtype.NewMap().SQLScanner(&skills), &p.YearsOfExp, &p.AvailableHoursPerWeek, &p.DesiredHourlyRate, &p.RemoteOK)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
