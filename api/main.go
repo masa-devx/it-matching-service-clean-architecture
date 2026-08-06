@@ -47,6 +47,9 @@ func main() {
 	mux.Handle("POST /projects", requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleCreateProject))))
 	mux.Handle("GET /projects", requireAuth(http.HandlerFunc(handleListProjects)))
 	mux.Handle("GET /projects/{id}", requireAuth(http.HandlerFunc(handleGetProject)))
+	// 応募は人材のみ。企業ロールをここで弾くことで自社案件への応募が構造的に起きない
+	mux.Handle("POST /projects/{id}/applications",
+		requireAuth(requireRole(roleTalent)(http.HandlerFunc(handleCreateApplication))))
 
 	srv := &http.Server{
 		Addr: ":" + cfg.port,
