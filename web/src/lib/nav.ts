@@ -13,6 +13,7 @@ export const navItemsByRole: Record<CurrentUser['role'], NavItem[]> = {
   talent: [
     { href: '/talent/dashboard', label: 'ダッシュボード' },
     { href: '/talent/projects', label: '案件を探す' },
+    { href: '/talent/applications', label: '応募履歴' },
     { href: '/talent/profile', label: 'プロフィール' },
   ],
 }

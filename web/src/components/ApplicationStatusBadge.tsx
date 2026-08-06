@@ -6,7 +6,11 @@ import type { ApplicationStatus } from '@/lib/applications'
 // 文字が似ているうえ、どちらが誰の行為か分かりにくいため）
 const statusMeta: Record<
   ApplicationStatus,
-  { label: string; description: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
+  {
+    label: string
+    description: string
+    variant: 'default' | 'secondary' | 'outline' | 'destructive'
+  }
 > = {
   applied: {
     label: '応募済み',

@@ -16,10 +16,7 @@ export async function PATCH(
   const { id } = await params
   const applicationId = Number(id)
   if (!Number.isInteger(applicationId) || applicationId <= 0) {
-    return NextResponse.json(
-      { error: '応募が見つかりません' },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: '応募が見つかりません' }, { status: 400 })
   }
 
   const body = await req.json()

@@ -63,10 +63,7 @@ export async function getMyApplications(
     query.set('status', params.status)
   }
   query.set('limit', String(perPage))
-  query.set(
-    'offset',
-    String((currentApplicationPage(params) - 1) * perPage),
-  )
+  query.set('offset', String((currentApplicationPage(params) - 1) * perPage))
 
   const res = await apiGet<TalentApplicationListResult>(
     `/me/applications?${query}`,
@@ -92,7 +89,5 @@ export async function findMyApplicationForProject(
   if (!result) {
     return null
   }
-  return (
-    result.applications.find((a) => a.project_id === projectId) ?? null
-  )
+  return result.applications.find((a) => a.project_id === projectId) ?? null
 }

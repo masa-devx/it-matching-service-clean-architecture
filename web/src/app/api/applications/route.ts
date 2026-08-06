@@ -14,10 +14,7 @@ export async function POST(req: Request) {
   const projectId = Number(body?.project_id)
   // URLに埋め込む値なので、数値であることをここで確定させる
   if (!Number.isInteger(projectId) || projectId <= 0) {
-    return NextResponse.json(
-      { error: '案件が見つかりません' },
-      { status: 400 },
-    )
+    return NextResponse.json({ error: '案件が見つかりません' }, { status: 400 })
   }
 
   const res = await apiPost(
