@@ -15,11 +15,13 @@ import { saveProfile } from '@/lib/profileClient'
 import type { TalentProfile } from '@/lib/profile'
 import { SubmitButton } from '@/components/SubmitButton'
 import { FormErrorSummary } from '@/components/FormErrorSummary'
+import { RequiredMark } from '@/components/RequiredMark'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
 const emptyProfile: TalentProfileFormValues = {
+  display_name: '',
   bio: '',
   skills: '',
   years_of_exp: 0,
@@ -31,6 +33,7 @@ const emptyProfile: TalentProfileFormValues = {
 // APIの形（skills が配列）をフォームの形（skills がカンマ区切り文字列）に変換する
 function toFormValues(profile: TalentProfile): TalentProfileFormValues {
   return {
+    display_name: profile.display_name,
     bio: profile.bio,
     skills: joinSkills(profile.skills),
     years_of_exp: profile.years_of_exp,
@@ -42,6 +45,7 @@ function toFormValues(profile: TalentProfile): TalentProfileFormValues {
 
 // エラーサマリで内部名ではなく画面上のラベルを見せるための対応表
 const fieldLabels = {
+  display_name: '表示名',
   bio: '自己紹介',
   skills: 'スキル',
   years_of_exp: '経験年数',
@@ -89,6 +93,26 @@ export function TalentProfileForm({
       noValidate
     >
       <FormErrorSummary errors={errors} labels={fieldLabels} />
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="display_name">
+          表示名 <RequiredMark />
+        </Label>
+        <Input
+          id="display_name"
+          className="h-11"
+          placeholder="山田 太郎"
+          {...register('display_name')}
+        />
+        <p className="text-xs text-muted-foreground">
+          企業の応募者一覧に表示されます（メールアドレスは公開されません）
+        </p>
+        {errors.display_name && (
+          <p role="alert" className="text-sm text-destructive">
+            {errors.display_name.message}
+          </p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="bio">自己紹介</Label>
