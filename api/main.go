@@ -50,6 +50,10 @@ func main() {
 	// 応募は人材のみ。企業ロールをここで弾くことで自社案件への応募が構造的に起きない
 	mux.Handle("POST /projects/{id}/applications",
 		requireAuth(requireRole(roleTalent)(http.HandlerFunc(handleCreateApplication))))
+	// 選考の状態更新は企業・人材の両方が使う。誰がどの遷移を実行できるかは遷移表で判定するため
+	// requireRole は付けない（ロールで入口を塞ぐのではなく、操作ごとに許可する）
+	mux.Handle("PATCH /applications/{id}/status",
+		requireAuth(http.HandlerFunc(handleUpdateApplicationStatus)))
 
 	srv := &http.Server{
 		Addr: ":" + cfg.port,

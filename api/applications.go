@@ -106,6 +106,115 @@ func handleCreateApplication(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, res)
 }
 
+type applicationStatusRequest struct {
+	Status string `json:"status"`
+}
+
+// handleUpdateApplicationStatus は PATCH /applications/{id}/status。
+// 企業・人材のどちらも叩くため requireRole は付けず、実行してよいかは遷移表が判定する。
+//
+// 認可は3層で確認する: 認証（requireAuth）→ 所有（取得クエリのJOINに自分のIDを入れる）
+// → 遷移可否（canTransition）。どれか1つでも欠けると他人の選考を進められてしまう
+func handleUpdateApplicationStatus(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "応募が見つかりません", nil)
+		return
+	}
+
+	var req applicationStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
+		return
+	}
+
+	role, err := fetchRole(userID)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "選考状態の更新に失敗しました", err)
+		return
+	}
+
+	current, err := fetchApplicationStatus(id, userID, role)
+	if errors.Is(err, sql.ErrNoRows) {
+		// 他人の応募は「存在しない」として扱う（他社の選考状況を漏らさない）
+		writeError(r.Context(), w, http.StatusNotFound, "応募が見つかりません", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "選考状態の更新に失敗しました", err)
+		return
+	}
+
+	if !canTransition(current, req.Status, role) {
+		// 409: 入力も権限も正しいが、現在の状態からは実行できない
+		writeError(r.Context(), w, http.StatusConflict, "この応募に対してその操作はできません", nil)
+		return
+	}
+
+	res, err := updateApplicationStatus(id, current, req.Status, role)
+	if errors.Is(err, sql.ErrNoRows) {
+		// 状態を読んでから更新するまでの間に他者が変更した（楽観ロックの検知）
+		writeError(r.Context(), w, http.StatusConflict, "他の操作により状態が変わりました。画面を更新してください", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "選考状態の更新に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, res)
+}
+
+// fetchApplicationStatus は自分が関与する応募の現在の状態を返す。
+// 所有チェックを WHERE に埋め込むことで、他人の応募はそもそも1行も返らない
+// （取得してから所有を判定する形にすると、判定漏れがそのまま権限昇格になる）
+func fetchApplicationStatus(id, userID int64, role string) (string, error) {
+	var query string
+	switch role {
+	case roleCompany:
+		query = `SELECT a.status FROM applications a
+		         JOIN projects p ON p.id = a.project_id
+		         JOIN companies c ON c.id = p.company_id
+		         WHERE a.id = $1 AND c.user_id = $2`
+	case roleTalent:
+		query = `SELECT a.status FROM applications a
+		         JOIN talents t ON t.id = a.talent_id
+		         WHERE a.id = $1 AND t.user_id = $2`
+	default:
+		return "", sql.ErrNoRows
+	}
+
+	var status string
+	err := db.QueryRow(query, id, userID).Scan(&status)
+	return status, err
+}
+
+// updateApplicationStatus は状態を進める。
+// WHERE に読み取り時の状態(from)を含めることで、読んでから更新するまでの間に
+// 他者が変更していた場合は0行更新となり sql.ErrNoRows で検知できる（楽観ロック）
+func updateApplicationStatus(id int64, from, to, role string) (applicationResponse, error) {
+	var res applicationResponse
+	// 意思表示の時刻は実行者側の列にだけ記録する。列名はプレースホルダにできないため
+	// CASE で選ぶ（role を文字列連結するとSQLインジェクションの穴になる）
+	err := db.QueryRow(
+		`UPDATE applications
+		 SET status = $1,
+		     updated_at = now(),
+		     company_acted_at = CASE WHEN $4 = 'company' THEN now() ELSE company_acted_at END,
+		     talent_acted_at  = CASE WHEN $4 = 'talent'  THEN now() ELSE talent_acted_at  END
+		 WHERE id = $2 AND status = $3
+		 RETURNING id, project_id, talent_id, status, message, created_at`,
+		to, id, from, role,
+	).Scan(&res.ID, &res.ProjectID, &res.TalentID, &res.Status, &res.Message, &res.CreatedAt)
+	return res, err
+}
+
 // isUniqueViolation は一意制約違反かどうかを判定する。
 // ドライバ固有のエラー型を取り出すため errors.As を使う（文字列一致は環境差で壊れる）
 func isUniqueViolation(err error) bool {
