@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { getMyProjects } from '@/lib/projects'
+import { getMyProjectsWithApplications } from '@/lib/companyProjects'
 import { Button } from '@/components/ui/button'
-import { ProjectCard } from '@/components/ProjectCard'
+import { CompanyProjectCard } from '@/components/company/CompanyProjectCard'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { FolderOpen } from 'lucide-react'
@@ -9,13 +9,13 @@ import { FolderOpen } from 'lucide-react'
 export const metadata = { title: '案件管理 | Tsunagu Works' }
 
 export default async function CompanyProjectsPage() {
-  const projects = await getMyProjects()
+  const projects = await getMyProjectsWithApplications()
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="案件管理"
-        description="自社が掲載した案件の一覧です"
+        description="掲載した案件と応募状況の一覧です"
         action={
           <Button asChild className="h-11">
             <Link href="/company/projects/new">新規掲載</Link>
@@ -40,7 +40,7 @@ export default async function CompanyProjectsPage() {
         <ul className="flex flex-col gap-3">
           {projects.map((project) => (
             <li key={project.id}>
-              <ProjectCard project={project} />
+              <CompanyProjectCard project={project} />
             </li>
           ))}
         </ul>
