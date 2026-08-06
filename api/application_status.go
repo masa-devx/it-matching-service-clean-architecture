@@ -1,5 +1,7 @@
 package main
 
+import "slices"
+
 // 選考の状態。DBのCHECK制約（applications.status）と対応させる
 const (
 	applicationStatusApplied   = "applied"
@@ -9,6 +11,22 @@ const (
 	applicationStatusWithdrawn = "withdrawn"
 	applicationStatusDeclined  = "declined"
 )
+
+// applicationStatuses は取りうる状態の一覧。DBのCHECK制約と対応させる。
+// 絞り込みクエリの検証に使う（存在しない状態を指定されたら400にするため）
+var applicationStatuses = []string{
+	applicationStatusApplied,
+	applicationStatusOffered,
+	applicationStatusAccepted,
+	applicationStatusRejected,
+	applicationStatusWithdrawn,
+	applicationStatusDeclined,
+}
+
+// isApplicationStatus は文字列が状態として定義済みかを返す
+func isApplicationStatus(s string) bool {
+	return slices.Contains(applicationStatuses, s)
+}
 
 // statusTransition は「どの状態から、どの状態へ」の1手。
 type statusTransition struct {

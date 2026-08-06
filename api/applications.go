@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // pgUniqueViolation は PostgreSQL の一意制約違反。
@@ -104,6 +106,237 @@ func handleCreateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, res)
+}
+
+// talentApplicationResponse は人材から見た応募（「どの案件に応募したか」が主役）。
+// 同じ applications テーブルでも、企業から見た形（誰が応募してきたか）とは別の型にする
+type talentApplicationResponse struct {
+	ID           int64     `json:"id"`
+	ProjectID    int64     `json:"project_id"`
+	ProjectTitle string    `json:"project_title"`
+	CompanyName  string    `json:"company_name"`
+	Status       string    `json:"status"`
+	Message      string    `json:"message"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type talentApplicationListResponse struct {
+	Applications []talentApplicationResponse `json:"applications"`
+	Total        int                         `json:"total"`
+	Limit        int                         `json:"limit"`
+	Offset       int                         `json:"offset"`
+}
+
+// 表示に必要な案件名・企業名を一度の結合で取る（件数分のクエリを発行しない＝N+1回避）。
+// talents を経由する結合が所有チェックも兼ねており、
+// トークンの持ち主以外の応募は数えることも読むこともできない。
+//
+// $2 は選考状態の絞り込み。空文字なら条件が無効になるため、
+// SQL文字列を条件によって組み替える必要がない（＝連結の余地を作らない）
+const myApplicationsFrom = `
+	FROM applications a
+	JOIN talents t   ON t.id = a.talent_id
+	JOIN projects p  ON p.id = a.project_id
+	JOIN companies c ON c.id = p.company_id
+	WHERE t.user_id = $1
+	  AND ($2 = '' OR a.status = $2)`
+
+const myApplicationsOrder = `
+	ORDER BY a.created_at DESC, a.id DESC
+	LIMIT $3 OFFSET $4`
+
+// handleListMyApplications は GET /me/applications。人材の応募履歴。
+// 案件名・企業名はループ内で引かずJOINで一度に取る（N+1を作らない）
+func handleListMyApplications(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	status := r.URL.Query().Get("status")
+	if status != "" && !isApplicationStatus(status) {
+		writeError(r.Context(), w, http.StatusBadRequest, "選考状態の指定が不正です", nil)
+		return
+	}
+	limit := intQuery(r, "limit", defaultLimit, 1, maxLimit)
+	offset := intQuery(r, "offset", 0, 0, math.MaxInt32)
+
+	// SQLは定数だけで組み立て、可変部分はすべてプレースホルダに渡す。
+	// 空文字を「絞り込みなし」として扱えば、status の値がSQL文字列に混ざる経路が無くなる
+	// （$2 IS NULL のような条件分岐をSQL側に持たせる書き方）
+	args := []any{userID, status}
+
+	var total int
+	if err := db.QueryRow(`SELECT count(*)`+myApplicationsFrom, args...).Scan(&total); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "応募履歴の取得に失敗しました", err)
+		return
+	}
+
+	rows, err := db.Query(
+		`SELECT a.id, a.project_id, p.title, c.name, a.status, a.message, a.created_at`+
+			myApplicationsFrom+myApplicationsOrder,
+		userID, status, limit, offset,
+	)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "応募履歴の取得に失敗しました", err)
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := make([]talentApplicationResponse, 0, limit)
+	for rows.Next() {
+		var a talentApplicationResponse
+		if err := rows.Scan(&a.ID, &a.ProjectID, &a.ProjectTitle, &a.CompanyName,
+			&a.Status, &a.Message, &a.CreatedAt); err != nil {
+			writeError(r.Context(), w, http.StatusInternalServerError, "応募履歴の取得に失敗しました", err)
+			return
+		}
+		list = append(list, a)
+	}
+	if err := rows.Err(); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "応募履歴の取得に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, talentApplicationListResponse{
+		Applications: list, Total: total, Limit: limit, Offset: offset,
+	})
+}
+
+// companyApplicationResponse は企業から見た応募（「誰が応募してきたか」が主役）。
+// 連絡先（email・電話）は含めない：直接取引を防ぐため、契約前に個人へ到達できる情報は渡さない
+type companyApplicationResponse struct {
+	ID          int64      `json:"id"`
+	TalentID    int64      `json:"talent_id"`
+	DisplayName string     `json:"display_name"`
+	Skills      []string   `json:"skills"`
+	YearsOfExp  int        `json:"years_of_exp"`
+	Status      string     `json:"status"`
+	Message     string     `json:"message"`
+	CreatedAt   time.Time  `json:"created_at"`
+	OfferedAt   *time.Time `json:"offered_at"`  // 企業の意思表示（未実施なら null）
+	AnsweredAt  *time.Time `json:"answered_at"` // 人材の意思表示（未実施なら null）
+}
+
+type companyApplicationListResponse struct {
+	Applications []companyApplicationResponse `json:"applications"`
+	Total        int                          `json:"total"`
+	Limit        int                          `json:"limit"`
+	Offset       int                          `json:"offset"`
+}
+
+// 応募者一覧。人材の表示名・スキルを結合して取る（N+1回避）。
+// 案件の所有は別クエリで先に確認するため、ここでは project_id だけで絞ってよい
+const projectApplicationsFrom = `
+	FROM applications a
+	JOIN talents t ON t.id = a.talent_id
+	WHERE a.project_id = $1
+	  AND ($2 = '' OR a.status = $2)`
+
+const projectApplicationsOrder = `
+	ORDER BY a.created_at DESC, a.id DESC
+	LIMIT $3 OFFSET $4`
+
+// handleListProjectApplications は GET /projects/{id}/applications。企業の応募者一覧。
+// 自社案件でなければ404（403にすると他社案件の存在を教えてしまう）
+func handleListProjectApplications(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	projectID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+
+	status := r.URL.Query().Get("status")
+	if status != "" && !isApplicationStatus(status) {
+		writeError(r.Context(), w, http.StatusBadRequest, "選考状態の指定が不正です", nil)
+		return
+	}
+	limit := intQuery(r, "limit", defaultLimit, 1, maxLimit)
+	offset := intQuery(r, "offset", 0, 0, math.MaxInt32)
+
+	// 案件の所有チェック。応募を引く前に「自社の案件か」を確定させる
+	var owned bool
+	err = db.QueryRow(
+		`SELECT EXISTS (
+		   SELECT 1 FROM projects p
+		   JOIN companies c ON c.id = p.company_id
+		   WHERE p.id = $1 AND c.user_id = $2)`,
+		projectID, userID,
+	).Scan(&owned)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "応募者の取得に失敗しました", err)
+		return
+	}
+	if !owned {
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+
+	var total int
+	if err := db.QueryRow(`SELECT count(*)`+projectApplicationsFrom, projectID, status).Scan(&total); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "応募者の取得に失敗しました", err)
+		return
+	}
+
+	rows, err := db.Query(
+		`SELECT a.id, a.talent_id, t.display_name, t.skills, t.years_of_exp,
+		        a.status, a.message, a.created_at, a.company_acted_at, a.talent_acted_at`+
+			projectApplicationsFrom+projectApplicationsOrder,
+		projectID, status, limit, offset,
+	)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "応募者の取得に失敗しました", err)
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := make([]companyApplicationResponse, 0, limit)
+	for rows.Next() {
+		var (
+			a          companyApplicationResponse
+			skills     []string
+			offeredAt  sql.NullTime
+			answeredAt sql.NullTime
+		)
+		if err := rows.Scan(&a.ID, &a.TalentID, &a.DisplayName,
+			pgtype.NewMap().SQLScanner(&skills), &a.YearsOfExp,
+			&a.Status, &a.Message, &a.CreatedAt, &offeredAt, &answeredAt); err != nil {
+			writeError(r.Context(), w, http.StatusInternalServerError, "応募者の取得に失敗しました", err)
+			return
+		}
+		// JSONで [] を返すため nil を空スライスに正規化する（null と [] の混在を避ける）
+		a.Skills = skills
+		if a.Skills == nil {
+			a.Skills = []string{}
+		}
+		a.OfferedAt = nullTimePtr(offeredAt)
+		a.AnsweredAt = nullTimePtr(answeredAt)
+		list = append(list, a)
+	}
+	if err := rows.Err(); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "応募者の取得に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, companyApplicationListResponse{
+		Applications: list, Total: total, Limit: limit, Offset: offset,
+	})
+}
+
+// nullTimePtr は NULL 可能な時刻をJSONの null に対応するポインタへ変換する。
+// 「未実施」を表現するため、ゼロ値ではなく null を返す必要がある
+func nullTimePtr(t sql.NullTime) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
 }
 
 type applicationStatusRequest struct {
