@@ -19,6 +19,12 @@ export type CompanyProfileInput = z.infer<typeof companyProfileSchema>
 
 // スキルはカンマ区切りの1入力で受け、送信時に配列へ変換する（タグUIは過剰）
 export const talentProfileSchema = z.object({
+  // 企業が応募者を識別する唯一の手がかりなので必須（連絡先は表示されないため）
+  display_name: z
+    .string()
+    .trim()
+    .min(1, '表示名は必須です')
+    .max(50, '表示名は50文字以内にしてください'),
   bio: z.string().max(2000, '自己紹介は2000文字以内にしてください'),
   skills: z
     .string()

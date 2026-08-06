@@ -11,6 +11,7 @@ export type CompanyProfile = {
 }
 
 export type TalentProfile = {
+  display_name: string
   bio: string
   skills: string[]
   years_of_exp: number

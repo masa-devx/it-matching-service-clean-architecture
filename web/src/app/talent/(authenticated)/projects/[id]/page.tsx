@@ -2,6 +2,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Banknote, Clock, MapPin } from 'lucide-react'
 import { getProject } from '@/lib/projects'
+import { findMyApplicationForProject } from '@/lib/applications'
+import { ApplyForm } from '@/components/talent/ApplyForm'
+import {
+  ApplicationStatusBadge,
+  applicationStatusDescription,
+} from '@/components/ApplicationStatusBadge'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -37,6 +43,9 @@ export default async function ProjectDetailPage({
   if (!project) {
     notFound()
   }
+
+  // 応募済みならフォームを出さない（すり抜けても API が 409 で拒否する）
+  const application = await findMyApplicationForProject(project.id)
 
   // 条件は「単価・稼働・勤務形態」の3点セットで判断されるため、まとめて上部に置く
   const conditions = [
@@ -124,15 +133,28 @@ export default async function ProjectDetailPage({
 
       <Separator />
 
-      {/* 応募機能は Phase 3（状態機械①）で実装する */}
-      <div className="flex flex-col gap-2">
-        <Button className="h-11 self-start" disabled>
-          応募する
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          応募機能は現在開発中です
-        </p>
-      </div>
+      <section className="flex flex-col gap-4">
+        <h2 className="font-bold">
+          {application ? '応募状況' : 'この案件に応募する'}
+        </h2>
+
+        {application ? (
+          // 応募済みなら二重に送信させない。状態は履歴と同じ表記で揃える
+          <div className="flex flex-col gap-3 rounded-lg border bg-card p-6">
+            <div className="flex items-center gap-3">
+              <ApplicationStatusBadge status={application.status} />
+              <p className="text-sm text-muted-foreground">
+                {applicationStatusDescription(application.status)}
+              </p>
+            </div>
+            <Button asChild variant="outline" className="h-11 self-start">
+              <Link href="/talent/applications">応募履歴で確認する</Link>
+            </Button>
+          </div>
+        ) : (
+          <ApplyForm projectId={project.id} />
+        )}
+      </section>
     </article>
   )
 }

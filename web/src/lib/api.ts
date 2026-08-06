@@ -55,6 +55,23 @@ export async function apiPut<T>(
   })
 }
 
+// PATCH は「リソースの一部を更新する」意味。応募の状態更新のように
+// 全体を送り直さない更新に使う（PUT は全体置換）
+export async function apiPatch<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<ApiResult<T>> {
+  return request<T>(path, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+}
+
 async function request<T>(
   path: string,
   init: RequestInit,
