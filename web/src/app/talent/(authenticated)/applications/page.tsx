@@ -4,15 +4,13 @@ import {
   getMyApplications,
   currentApplicationPage,
   APPLICATIONS_PER_PAGE,
-  APPLICATION_STATUSES,
   type ApplicationSearchParams,
-  type ApplicationStatus,
 } from '@/lib/applications'
 import {
   ApplicationStatusBadge,
   applicationStatusDescription,
-  applicationStatusLabel,
 } from '@/components/ApplicationStatusBadge'
+import { ApplicationStatusFilter } from '@/components/ApplicationStatusFilter'
 import { ApplicationActions } from '@/components/talent/ApplicationActions'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
@@ -51,18 +49,10 @@ export default async function TalentApplicationsPage({
         description={`${result.total.toLocaleString()}件の応募`}
       />
 
-      {/* 絞り込みはリンクで行う（RSCのまま完結し、状態をURLに持てる） */}
-      <nav aria-label="選考状態で絞り込み" className="flex flex-wrap gap-2">
-        <FilterLink current={params.status} value="" label="すべて" />
-        {APPLICATION_STATUSES.map((status) => (
-          <FilterLink
-            key={status}
-            current={params.status}
-            value={status}
-            label={applicationStatusLabel(status)}
-          />
-        ))}
-      </nav>
+      <ApplicationStatusFilter
+        basePath="/talent/applications"
+        current={params.status}
+      />
 
       {result.applications.length === 0 ? (
         <EmptyState
@@ -127,35 +117,5 @@ export default async function TalentApplicationsPage({
         perPage={APPLICATIONS_PER_PAGE}
       />
     </div>
-  )
-}
-
-// 選択中は aria-current で伝える（色だけに頼らない）
-function FilterLink({
-  current,
-  value,
-  label,
-}: {
-  current: string | undefined
-  value: ApplicationStatus | ''
-  label: string
-}) {
-  const active = (current ?? '') === value
-  const href = value
-    ? `/talent/applications?status=${value}`
-    : '/talent/applications'
-
-  return (
-    <Link
-      href={href}
-      aria-current={active ? 'page' : undefined}
-      className={`rounded-full border px-4 py-2 text-sm transition-colors ${
-        active
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'hover:bg-muted'
-      }`}
-    >
-      {label}
-    </Link>
   )
 }
