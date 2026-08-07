@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -180,19 +181,28 @@ type contractResponse struct {
 }
 
 // 契約1件の取得。相手の名前を出すため companies / talents を結合する。
-// 所有チェックは呼び出し側でロールごとの条件を足す（当事者の意味がロールで変わるため）
+// 所有チェックは呼び出し側でロールごとの条件を足す（当事者の意味がロールで変わるため）。
+//
+// 稼働報告の集計を含めるのは、一覧（contractListItem）と同じ形を返すため。
+// 一覧から詳細へ移ったときに情報が減ると、画面側が「詳細では件数が出せない」と
+// 分岐を持つことになる。1件取得でも LEFT JOIN + GROUP BY が必要になるが、
+// 対象が1契約に限られるので負荷は無視できる
 const contractSelectSQL = `
 	SELECT c.id, c.status, c.title, c.hourly_rate, c.hours_per_week, c.remote_ok,
 	       co.name, t.display_name, c.project_id,
-	       c.started_at, c.completed_at, c.created_at
+	       c.started_at, c.completed_at, c.created_at,
+	       count(wr.id)                                        AS work_report_count,
+	       count(wr.id) FILTER (WHERE wr.status = 'submitted') AS pending_report_count
 	FROM contracts c
 	JOIN companies co ON co.id = c.company_id
-	JOIN talents   t  ON t.id  = c.talent_id`
+	JOIN talents   t  ON t.id  = c.talent_id
+	LEFT JOIN work_reports wr ON wr.contract_id = c.id`
 
 // handleGetContract は GET /me/contracts/{id}。企業・人材のどちらも当事者として取得できる。
 //
-// 一覧（#106）より先にこの1件取得だけを用意しているのは、状態を変えたあとに
-// 結果を確認する手段が必要なため（画面がまだ無い段階では curl で確認する）
+// 稼働報告の一覧は別のエンドポイント（GET /contracts/{id}/work-reports）に分けている。
+// 1つにまとめると、報告を承認するたび契約の情報まで取り直すことになるため
+// （再取得の頻度が違うものは分ける）
 func handleGetContract(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFrom(r.Context())
 	if !ok {
@@ -225,14 +235,17 @@ func handleGetContract(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		res         contractResponse
+		res         contractListItem
 		startedAt   sql.NullTime
 		completedAt sql.NullTime
 	)
-	err = db.QueryRow(contractSelectSQL+where, id, userID).Scan(
+	// 集計を含むため GROUP BY が要る。WHERE で1行に絞ってから集約するので、
+	// グループ化のキーは主キーだけで足りる（PostgreSQL は主キーがあれば他の列も選べる）
+	err = db.QueryRow(contractSelectSQL+where+` GROUP BY c.id, co.id, t.id`, id, userID).Scan(
 		&res.ID, &res.Status, &res.Title, &res.HourlyRate, &res.HoursPerWeek, &res.RemoteOK,
 		&res.CompanyName, &res.TalentName, &res.ProjectID,
 		&startedAt, &completedAt, &res.CreatedAt,
+		&res.WorkReportCount, &res.PendingReportCount,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		// 当事者でない契約は「存在しない」として扱う（403だと他社の取引の存在が漏れる）
@@ -249,4 +262,148 @@ func handleGetContract(w http.ResponseWriter, r *http.Request) {
 	res.CompletedAt = nullTimePtr(completedAt)
 
 	writeJSON(w, http.StatusOK, res)
+}
+
+// contractListItem は一覧の1件。詳細（contractResponse）に稼働報告の集計を足したもの。
+//
+// 一覧と詳細で同じ形を返すことで、画面側が「一覧から詳細に移ったら情報が減った/増えた」を
+// 意識しなくて済む。埋め込みにしているのは、詳細のフィールドを二重に書かないため
+type contractListItem struct {
+	contractResponse
+	// 稼働報告の総数と、まだ企業が確認していない数（submitted）。
+	// 未確認数は企業にとっての「次にやること」を示す
+	WorkReportCount    int `json:"work_report_count"`
+	PendingReportCount int `json:"pending_report_count"`
+}
+
+type contractListResponse struct {
+	Contracts []contractListItem `json:"contracts"`
+	Total     int                `json:"total"`
+	Limit     int                `json:"limit"`
+	Offset    int                `json:"offset"`
+}
+
+// 一覧の FROM 句。$1=user_id / $2=状態（空文字は絞り込まない）。
+// 所有チェックの条件だけがロールで変わるため、呼び出し側で組み合わせる。
+//
+// 条件によってSQL文字列を組み替えないよう、状態の絞り込みは ($2 = ” OR ...) 形式にしている
+// （#85 で gosec の taint analysis に指摘されて以来の方針）
+const contractListFromCompany = `
+	FROM contracts c
+	JOIN companies co ON co.id = c.company_id
+	JOIN talents   t  ON t.id  = c.talent_id
+	WHERE co.user_id = $1
+	  AND ($2 = '' OR c.status = $2)`
+
+const contractListFromTalent = `
+	FROM contracts c
+	JOIN companies co ON co.id = c.company_id
+	JOIN talents   t  ON t.id  = c.talent_id
+	WHERE t.user_id = $1
+	  AND ($2 = '' OR c.status = $2)`
+
+// 稼働報告の集計。#96（案件一覧の応募件数）と同じ形。
+//
+// LEFT JOIN は必須：INNER にすると「報告がまだ1件も無い契約」が一覧から消える。
+// 成立直後の契約は必ず報告0件なので、INNER では新しい契約ほど見えなくなる。
+//
+// count(*) ではなく count(wr.id) を使うのも同じ理由で、LEFT JOIN が作る NULL 行を
+// 1件と数えてしまわないようにするため（count(列) は NULL を数えない）。
+//
+// FILTER 句により、同じ1回のスキャンから「全件」と「未確認だけ」の2つの集計が取れる
+const contractListSelect = `
+	SELECT c.id, c.status, c.title, c.hourly_rate, c.hours_per_week, c.remote_ok,
+	       co.name, t.display_name, c.project_id,
+	       c.started_at, c.completed_at, c.created_at,
+	       count(wr.id)                                        AS work_report_count,
+	       count(wr.id) FILTER (WHERE wr.status = 'submitted') AS pending_report_count`
+
+const contractListGroupOrder = `
+	GROUP BY c.id, co.id, t.id
+	ORDER BY c.created_at DESC, c.id DESC
+	LIMIT $3 OFFSET $4`
+
+// handleListContracts は GET /me/contracts。企業・人材のどちらも自分の契約を取得できる。
+//
+// 契約は当事者が同じものを見るため、視点でレスポンスの形を変えない（#104 と同じ判断）。
+// 変わるのは「自分の契約とは何か」の定義だけで、それは所有チェックの条件に現れる
+func handleListContracts(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	status := r.URL.Query().Get("status")
+	if status != "" && !isContractStatus(status) {
+		writeError(r.Context(), w, http.StatusBadRequest, "契約状態の指定が不正です", nil)
+		return
+	}
+	limit := intQuery(r, "limit", defaultLimit, 1, maxLimit)
+	offset := intQuery(r, "offset", 0, 0, math.MaxInt32)
+
+	role, err := fetchRole(userID)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", err)
+		return
+	}
+
+	var from string
+	switch role {
+	case roleCompany:
+		from = contractListFromCompany
+	case roleTalent:
+		from = contractListFromTalent
+	default:
+		writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", nil)
+		return
+	}
+
+	// 総件数は work_reports を結合せずに数える。
+	// JOIN は行を増やすため、報告3件の契約が3行に数えられて総件数が水増しされる
+	var total int
+	if err := db.QueryRow(`SELECT count(*)`+from, userID, status).Scan(&total); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", err)
+		return
+	}
+
+	rows, err := db.Query(
+		contractListSelect+from+`
+		LEFT JOIN work_reports wr ON wr.contract_id = c.id`+contractListGroupOrder,
+		userID, status, limit, offset,
+	)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", err)
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	list := make([]contractListItem, 0, limit)
+	for rows.Next() {
+		var (
+			item        contractListItem
+			startedAt   sql.NullTime
+			completedAt sql.NullTime
+		)
+		if err := rows.Scan(
+			&item.ID, &item.Status, &item.Title, &item.HourlyRate, &item.HoursPerWeek, &item.RemoteOK,
+			&item.CompanyName, &item.TalentName, &item.ProjectID,
+			&startedAt, &completedAt, &item.CreatedAt,
+			&item.WorkReportCount, &item.PendingReportCount,
+		); err != nil {
+			writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", err)
+			return
+		}
+		item.StartedAt = nullTimePtr(startedAt)
+		item.CompletedAt = nullTimePtr(completedAt)
+		list = append(list, item)
+	}
+	if err := rows.Err(); err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, contractListResponse{
+		Contracts: list, Total: total, Limit: limit, Offset: offset,
+	})
 }
