@@ -68,6 +68,10 @@ func main() {
 	// requireRole は付けない（ロールで入口を塞ぐのではなく、操作ごとに許可する）
 	mux.Handle("PATCH /applications/{id}/status",
 		requireAuth(http.HandlerFunc(handleUpdateApplicationStatus)))
+	// 契約は企業・人材の両方が当事者。誰がどの遷移を実行できるかは遷移表が判定するため、
+	// 応募の状態更新と同じく requireRole は付けない
+	mux.Handle("PATCH /contracts/{id}/status",
+		requireAuth(http.HandlerFunc(handleUpdateContractStatus)))
 
 	srv := &http.Server{
 		Addr: ":" + cfg.port,
