@@ -4,6 +4,7 @@ import { ArrowLeft, Banknote, Clock, MapPin } from 'lucide-react'
 import { getMyContract } from '@/lib/contracts'
 import { getWorkReports } from '@/lib/workReports'
 import { getMessages } from '@/lib/messages'
+import { getReviews } from '@/lib/reviews'
 import {
   ContractStatusBadge,
   contractStatusDescription,
@@ -12,6 +13,7 @@ import { WorkReportList } from '@/components/WorkReportList'
 import { ContractActions } from '@/components/talent/ContractActions'
 import { WorkReportForm } from '@/components/talent/WorkReportForm'
 import { WorkReportEditor } from '@/components/talent/WorkReportEditor'
+import { ReviewSection } from '@/components/ReviewSection'
 import { MessageThread } from '@/components/MessageThread'
 import { MessageForm } from '@/components/MessageForm'
 import { Separator } from '@/components/ui/separator'
@@ -35,11 +37,13 @@ export default async function TalentContractDetailPage({
   const contractId = Number(id)
 
   // 契約と稼働報告は別のエンドポイント。独立した取得なので並行実行する
-  const [contract, reportResult, messageResult] = await Promise.all([
-    getMyContract(contractId),
-    getWorkReports(contractId),
-    getMessages(contractId),
-  ])
+  const [contract, reportResult, messageResult, reviewResult] =
+    await Promise.all([
+      getMyContract(contractId),
+      getWorkReports(contractId),
+      getMessages(contractId),
+      getReviews(contractId),
+    ])
   // 当事者でない契約・存在しない契約は API が404を返す
   if (!contract) {
     notFound()
@@ -169,6 +173,23 @@ export default async function TalentContractDetailPage({
           </>
         )}
       </section>
+
+      {/* レビューは完了した契約にだけ表示する。
+          進行中に評価を書けると「悪い評価をつけられたくないから検収を通す」という
+          圧力が生まれ、検収の中立性が失われる（api も409で拒否する） */}
+      {contract.status === 'completed' && reviewResult && (
+        <>
+          <Separator />
+          <section className="flex flex-col gap-4">
+            <h2 className="font-bold">レビュー</h2>
+            <ReviewSection
+              contractId={contract.id}
+              result={reviewResult}
+              currentRole="talent"
+            />
+          </section>
+        </>
+      )}
 
       <Separator />
 
