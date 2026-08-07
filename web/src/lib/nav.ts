@@ -8,6 +8,7 @@ export const navItemsByRole: Record<CurrentUser['role'], NavItem[]> = {
   company: [
     { href: '/company/dashboard', label: 'ダッシュボード' },
     { href: '/company/projects', label: '案件管理' },
+    { href: '/company/contracts', label: '契約' },
     { href: '/company/profile', label: 'プロフィール' },
   ],
   talent: [
