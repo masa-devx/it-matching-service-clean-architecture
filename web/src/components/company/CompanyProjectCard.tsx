@@ -17,7 +17,7 @@ function formatRate(min: number, max: number): string {
 export function CompanyProjectCard({ project }: { project: MyProject }) {
   return (
     <Link
-      href={`/company/projects/${project.id}/applications`}
+      href={`/company/projects/${project.id}`}
       className="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary hover:bg-primary/5"
     >
       <div className="flex flex-wrap items-center gap-2">
