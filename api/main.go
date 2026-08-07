@@ -47,6 +47,9 @@ func main() {
 	mux.Handle("POST /projects", requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleCreateProject))))
 	mux.Handle("GET /projects", requireAuth(http.HandlerFunc(handleListProjects)))
 	mux.Handle("GET /projects/{id}", requireAuth(http.HandlerFunc(handleGetProject)))
+	// 自社案件の一覧は下書き・募集終了も含むため、公開中だけを返す GET /projects とは別に用意する
+	mux.Handle("GET /me/projects",
+		requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleListMyProjects))))
 	// 応募は人材のみ。企業ロールをここで弾くことで自社案件への応募が構造的に起きない
 	mux.Handle("POST /projects/{id}/applications",
 		requireAuth(requireRole(roleTalent)(http.HandlerFunc(handleCreateApplication))))
