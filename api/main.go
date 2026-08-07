@@ -69,6 +69,17 @@ func main() {
 	mux.Handle("PATCH /applications/{id}/status",
 		requireAuth(http.HandlerFunc(handleUpdateApplicationStatus)))
 	mux.Handle("GET /me/contracts/{id}", requireAuth(http.HandlerFunc(handleGetContract)))
+	// 稼働報告の提出・修正は人材の作業。企業は確認する側なので requireRole で分ける
+	mux.Handle("POST /contracts/{id}/work-reports",
+		requireAuth(requireRole(roleTalent)(http.HandlerFunc(handleCreateWorkReport))))
+	mux.Handle("PUT /work-reports/{id}",
+		requireAuth(requireRole(roleTalent)(http.HandlerFunc(handleUpdateWorkReport))))
+	// 承認・差し戻しは企業の確認行為
+	mux.Handle("PATCH /work-reports/{id}/status",
+		requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleUpdateWorkReportStatus))))
+	// 一覧は当事者の双方が見る（記録として共有するもの）
+	mux.Handle("GET /contracts/{id}/work-reports",
+		requireAuth(http.HandlerFunc(handleListWorkReports)))
 	// 契約は企業・人材の両方が当事者。誰がどの遷移を実行できるかは遷移表が判定するため、
 	// 応募の状態更新と同じく requireRole は付けない
 	mux.Handle("PATCH /contracts/{id}/status",
