@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Clock, MapPin, Users } from 'lucide-react'
-import type { ProjectWithApplications } from '@/lib/companyProjects'
-import { Badge } from '@/components/ui/badge'
+import type { MyProject } from '@/lib/companyProjects'
+import { ProjectStatusBadge } from '@/components/company/ProjectStatusBadge'
 
 // 人材向けの ProjectCard とは見せる情報も遷移先も違うため、共通化せず別部品にする
 // （人材＝案件を探す / 企業＝応募状況を管理する）
@@ -14,32 +14,14 @@ function formatRate(min: number, max: number): string {
   return min === max ? `${format(min)}円` : `${format(min)}〜${format(max)}円`
 }
 
-const statusLabel: Record<
-  string,
-  { label: string; variant: 'default' | 'secondary' | 'outline' }
-> = {
-  draft: { label: '下書き', variant: 'outline' },
-  published: { label: '公開中', variant: 'default' },
-  closed: { label: '募集終了', variant: 'secondary' },
-}
-
-export function CompanyProjectCard({
-  project,
-}: {
-  project: ProjectWithApplications
-}) {
-  const status = statusLabel[project.status] ?? {
-    label: project.status,
-    variant: 'outline' as const,
-  }
-
+export function CompanyProjectCard({ project }: { project: MyProject }) {
   return (
     <Link
       href={`/company/projects/${project.id}/applications`}
       className="flex flex-col gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary hover:bg-primary/5"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={status.variant}>{status.label}</Badge>
+        <ProjectStatusBadge status={project.status} />
         <h2 className="font-bold leading-snug">{project.title}</h2>
       </div>
 
@@ -64,16 +46,16 @@ export function CompanyProjectCard({
       {/* 企業が一覧で最も知りたいのは「応募が来ているか・対応が残っているか」 */}
       <p className="flex items-center gap-1.5 text-sm">
         <Users className="size-4 text-muted-foreground" aria-hidden="true" />
-        {project.applicationCount === 0 ? (
+        {project.applications_count === 0 ? (
           <span className="text-muted-foreground">応募はまだありません</span>
         ) : (
           <>
             <span className="font-medium tabular-nums">
-              応募 {project.applicationCount}件
+              応募 {project.applications_count}件
             </span>
-            {project.pendingCount > 0 && (
+            {project.pending_count > 0 && (
               <span className="font-medium text-primary tabular-nums">
-                （{project.pendingCount}件が未対応）
+                （{project.pending_count}件が未対応）
               </span>
             )}
           </>

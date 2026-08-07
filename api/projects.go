@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,18 @@ const (
 	projectStatusPublished = "published"
 	projectStatusClosed    = "closed"
 )
+
+// projectStatuses は取りうる掲載状態の一覧。絞り込みクエリの検証に使う
+var projectStatuses = []string{
+	projectStatusDraft,
+	projectStatusPublished,
+	projectStatusClosed,
+}
+
+// isProjectStatus は文字列が掲載状態として定義済みかを返す
+func isProjectStatus(s string) bool {
+	return slices.Contains(projectStatuses, s)
+}
 
 type projectRequest struct {
 	Title          string   `json:"title"`
