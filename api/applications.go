@@ -396,6 +396,12 @@ func handleUpdateApplicationStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(r.Context(), w, http.StatusConflict, "他の操作により状態が変わりました。画面を更新してください", nil)
 		return
 	}
+	if isUniqueViolation(err) {
+		// 契約の application_id が重複した＝同時に2回承諾された。
+		// 先に成立した1件が正なので、こちらは競合として扱う
+		writeError(r.Context(), w, http.StatusConflict, "他の操作により状態が変わりました。画面を更新してください", nil)
+		return
+	}
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "選考状態の更新に失敗しました", err)
 		return
@@ -428,14 +434,28 @@ func fetchApplicationStatus(id, userID int64, role string) (string, error) {
 	return status, err
 }
 
-// updateApplicationStatus は状態を進める。
+// updateApplicationStatus は状態を進める。承諾（accepted）のときは契約も同時に作る。
+//
 // WHERE に読み取り時の状態(from)を含めることで、読んでから更新するまでの間に
-// 他者が変更していた場合は0行更新となり sql.ErrNoRows で検知できる（楽観ロック）
+// 他者が変更していた場合は0行更新となり sql.ErrNoRows で検知できる（楽観ロック）。
+//
+// 状態の更新と契約の作成をトランザクションでまとめるのは、片方だけ成功する状態を
+// 作らないため。遷移表により accepted へ入れるのは「offered から・人材のみ」の1通りだけなので、
+// 契約が生まれるのはダブルオプトインが成立した瞬間に限られる
 func updateApplicationStatus(id int64, from, to, role string) (applicationResponse, error) {
 	var res applicationResponse
+
+	tx, err := db.Begin()
+	if err != nil {
+		return res, err
+	}
+	// 先に defer しておくことで、途中で return してもロールバックされる。
+	// Commit 済みなら Rollback は何もしない（返るエラーは無視してよい）
+	defer func() { _ = tx.Rollback() }()
+
 	// 意思表示の時刻は実行者側の列にだけ記録する。列名はプレースホルダにできないため
 	// CASE で選ぶ（role を文字列連結するとSQLインジェクションの穴になる）
-	err := db.QueryRow(
+	err = tx.QueryRow(
 		`UPDATE applications
 		 SET status = $1,
 		     updated_at = now(),
@@ -445,7 +465,17 @@ func updateApplicationStatus(id int64, from, to, role string) (applicationRespon
 		 RETURNING id, project_id, talent_id, status, message, created_at`,
 		to, id, from, role,
 	).Scan(&res.ID, &res.ProjectID, &res.TalentID, &res.Status, &res.Message, &res.CreatedAt)
-	return res, err
+	if err != nil {
+		return res, err
+	}
+
+	if to == applicationStatusAccepted {
+		if err := createContractFromApplication(tx, id); err != nil {
+			return res, err
+		}
+	}
+
+	return res, tx.Commit()
 }
 
 // isUniqueViolation は一意制約違反かどうかを判定する。
