@@ -57,3 +57,8 @@ function splitSkills(value: string): string[] {
     .map((s) => s.trim())
     .filter((s) => s !== '' && !seen.has(s) && seen.add(s) !== undefined)
 }
+
+// APIから受け取った配列を、フォームの入力欄（カンマ区切り）へ戻す
+export function joinSkills(skills: string[]): string {
+  return skills.join(', ')
+}

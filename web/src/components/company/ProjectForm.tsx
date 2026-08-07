@@ -10,7 +10,9 @@ import {
   type ProjectFormValues,
   type ProjectInput,
 } from '@/lib/projectSchema'
-import { createProject } from '@/lib/projectClient'
+import { createProject, updateProject } from '@/lib/projectClient'
+import { joinSkills } from '@/lib/projectSchema'
+import type { MyProject } from '@/lib/companyProjects'
 import { SubmitButton } from '@/components/SubmitButton'
 import { FormErrorSummary } from '@/components/FormErrorSummary'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
@@ -37,6 +39,22 @@ const emptyProject: ProjectFormValues = {
   status: 'published',
 }
 
+// APIの形（required_skills が配列）をフォームの形（カンマ区切り文字列）に変換する。
+// status はフォームに出さないが、スキーマの型を満たすため現在値を入れておく
+// （PUT では Go 側が status を無視するため、送っても掲載状態は変わらない）
+function toFormValues(project: MyProject): ProjectFormValues {
+  return {
+    title: project.title,
+    description: project.description,
+    required_skills: joinSkills(project.required_skills),
+    hourly_rate_min: project.hourly_rate_min,
+    hourly_rate_max: project.hourly_rate_max,
+    hours_per_week: project.hours_per_week,
+    remote_ok: project.remote_ok,
+    status: project.status === 'draft' ? 'draft' : 'published',
+  }
+}
+
 // エラーサマリで内部名ではなく画面上のラベルを見せるための対応表
 const fieldLabels = {
   title: '案件タイトル',
@@ -48,9 +66,12 @@ const fieldLabels = {
   status: '公開設定',
 }
 
-export function ProjectForm() {
+// project を渡すと編集モードになる。新規と編集で入力項目は同じだが、
+// 掲載状態だけは扱いが違う（新規＝初期状態を選ぶ / 編集＝詳細画面の専用操作で変える）
+export function ProjectForm({ project }: { project?: MyProject }) {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
+  const isEdit = project != null
 
   const {
     register,
@@ -59,7 +80,7 @@ export function ProjectForm() {
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProjectFormValues, unknown, ProjectInput>({
     resolver: standardSchemaResolver(projectFormSchema),
-    defaultValues: emptyProject,
+    defaultValues: project ? toFormValues(project) : emptyProject,
   })
 
   // 入力途中の離脱で内容が失われるのを防ぐ（掲載フォームは入力量が多い）
@@ -69,17 +90,22 @@ export function ProjectForm() {
   async function onSubmit(values: ProjectInput) {
     setServerError(null)
 
-    const result = await createProject(values)
+    const result = isEdit
+      ? await updateProject(project.id, values)
+      : await createProject(values)
     if (!result.ok) {
       setServerError(result.error)
       toast.error(result.error)
       return
     }
 
-    toast.success('案件を掲載しました')
+    toast.success(isEdit ? '案件を更新しました' : '案件を掲載しました')
 
-    // 作成できたら管理一覧へ。refresh で RSC を再実行し、追加した案件を反映する
-    router.push('/company/projects')
+    // 保存できたら一覧（新規）または詳細（編集）へ。
+    // refresh で RSC を再実行し、変更を反映する
+    router.push(
+      isEdit ? `/company/projects/${project.id}` : '/company/projects',
+    )
     router.refresh()
   }
 
@@ -200,26 +226,30 @@ export function ProjectForm() {
         フルリモート可
       </label>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="status">公開設定</Label>
-        {/* Radix の Select は <select> ではないため register では繋がらない。
-            Controller で RHF の管理下に置く（キーボード操作とa11yは部品側が担保） */}
-        <Controller
-          name="status"
-          control={control}
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger id="status" className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="published">すぐに公開する</SelectItem>
-                <SelectItem value="draft">下書きとして保存する</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </div>
+      {/* 公開設定は新規作成のときだけ。編集で出すと「文言を直しただけで
+          意図せず公開される」事故が起きるため、掲載状態の変更は詳細画面の専用操作に分けている */}
+      {!isEdit && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="status">公開設定</Label>
+          {/* Radix の Select は <select> ではないため register では繋がらない。
+              Controller で RHF の管理下に置く（キーボード操作とa11yは部品側が担保） */}
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="status" className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="published">すぐに公開する</SelectItem>
+                  <SelectItem value="draft">下書きとして保存する</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+      )}
 
       {serverError && (
         <p role="alert" className="text-sm text-destructive">
@@ -227,8 +257,11 @@ export function ProjectForm() {
         </p>
       )}
 
-      <SubmitButton isSubmitting={isSubmitting} submittingLabel="掲載中…">
-        案件を掲載する
+      <SubmitButton
+        isSubmitting={isSubmitting}
+        submittingLabel={isEdit ? '保存中…' : '掲載中…'}
+      >
+        {isEdit ? '変更を保存する' : '案件を掲載する'}
       </SubmitButton>
     </form>
   )
