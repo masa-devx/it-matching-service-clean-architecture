@@ -47,6 +47,8 @@ func main() {
 	mux.Handle("POST /projects", requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleCreateProject))))
 	mux.Handle("GET /projects", requireAuth(http.HandlerFunc(handleListProjects)))
 	mux.Handle("GET /projects/{id}", requireAuth(http.HandlerFunc(handleGetProject)))
+	mux.Handle("PUT /projects/{id}",
+		requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleUpdateProject))))
 	// 掲載状態の変更は内容の編集と分ける（「保存」と「公開」は別の意思決定）
 	mux.Handle("PATCH /projects/{id}/status",
 		requireAuth(requireRole(roleCompany)(http.HandlerFunc(handleUpdateProjectStatus))))

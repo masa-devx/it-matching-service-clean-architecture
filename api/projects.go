@@ -361,8 +361,20 @@ func fetchCompany(userID int64) (int64, string, error) {
 	return id, name, err
 }
 
-// validateProject は案件の入力検証
+// validateProject は新規掲載の入力検証。作成時は初期状態を指定できるため status も検証する
 func validateProject(req projectRequest) string {
+	if msg := validateProjectContent(req); msg != "" {
+		return msg
+	}
+	if !isProjectStatus(req.Status) {
+		return "status は draft / published / closed のいずれかを指定してください"
+	}
+	return ""
+}
+
+// validateProjectContent は掲載状態を除く内容の検証。
+// 更新（PUT）は status を扱わないため、この関数だけを使う
+func validateProjectContent(req projectRequest) string {
 	if req.Title == "" {
 		return "案件タイトルは必須です"
 	}
@@ -390,10 +402,6 @@ func validateProject(req projectRequest) string {
 	}
 	if req.HoursPerWeek < 0 || req.HoursPerWeek > 168 {
 		return "週の稼働時間は0〜168の範囲で入力してください"
-	}
-	if req.Status != projectStatusDraft && req.Status != projectStatusPublished &&
-		req.Status != projectStatusClosed {
-		return "status は draft / published / closed のいずれかを指定してください"
 	}
 	return ""
 }
@@ -474,4 +482,72 @@ func fetchOwnedProjectStatus(id, userID int64) (string, error) {
 		id, userID,
 	).Scan(&status)
 	return status, err
+}
+
+// handleUpdateProject は PUT /projects/{id}。企業ユーザーのみ。
+//
+// 掲載状態は扱わない（PATCH /projects/{id}/status の責務）。
+// リクエストに status が含まれていても無視することで、
+// 「文言を直しただけで意図せず公開される」事故を構造的に防ぐ
+func handleUpdateProject(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+
+	var req projectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
+		return
+	}
+
+	req.Title = strings.TrimSpace(req.Title)
+	req.RequiredSkills = normalizeSkills(req.RequiredSkills)
+	if msg := validateProjectContent(req); msg != "" {
+		writeError(r.Context(), w, http.StatusBadRequest, msg, nil)
+		return
+	}
+
+	// 所有チェックを UPDATE の WHERE に埋め込む。他社の案件は1行も更新されず、
+	// RETURNING が空になるため sql.ErrNoRows で検知できる（取得してから判定しない）
+	var res projectResponse
+	err = db.QueryRow(
+		`UPDATE projects p
+		 SET title = $1, description = $2, required_skills = $3,
+		     hourly_rate_min = $4, hourly_rate_max = $5, hours_per_week = $6,
+		     remote_ok = $7, updated_at = now()
+		 FROM companies c
+		 WHERE p.id = $8 AND c.id = p.company_id AND c.user_id = $9
+		 RETURNING p.id, p.company_id, c.name, p.title, p.description, p.required_skills,
+		           p.hourly_rate_min, p.hourly_rate_max, p.hours_per_week,
+		           p.remote_ok, p.status, p.created_at`,
+		req.Title, req.Description, pgtype.FlatArray[string](req.RequiredSkills),
+		req.HourlyRateMin, req.HourlyRateMax, req.HoursPerWeek, req.RemoteOK,
+		id, userID,
+	).Scan(
+		&res.ID, &res.CompanyID, &res.CompanyName,
+		&res.Title, &res.Description, pgtype.NewMap().SQLScanner(&res.RequiredSkills),
+		&res.HourlyRateMin, &res.HourlyRateMax, &res.HoursPerWeek,
+		&res.RemoteOK, &res.Status, &res.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "案件の更新に失敗しました", err)
+		return
+	}
+	if res.RequiredSkills == nil {
+		res.RequiredSkills = []string{}
+	}
+
+	writeJSON(w, http.StatusOK, res)
 }
