@@ -116,3 +116,99 @@
 - [ ] TOCTOU を具体的な状況で説明できる
 - [ ] `(a, b)` の索引が `b` 単独に効かない理由を言える
 - [ ] 時刻列だけ NULL を許容した理由を言える
+
+---
+
+## Phase1 #96: JOIN と集計（LEFT JOIN・count(*) の罠・FILTER 句）
+
+### 何をした
+企業向け案件一覧 `GET /me/projects` を実装し、**案件ごとの応募件数をDB側で集計**するようにした。フロントが案件ごとにAPIを叩いていた fan-out（2N+1 リクエスト）が**1リクエスト**になった。
+
+> 図解: `docs/sql-join.html`（JOINの種類を切り替えて、生成される行の変化を確認できる）
+
+### 概念
+
+#### JOIN は「行を作る」操作
+ベン図では「どのデータが含まれるか」しか表せず、**結果が何行になるか**を表せない。実務の落とし穴はほぼ全部そちら側にある。
+
+正しい理解は **「2つの表から、条件に合う行の組み合わせを1行ずつ作る」**。作られた中間結果に対して、そのあと `WHERE` / `GROUP BY` / `count()` が働く。
+
+- **JOIN は行を増やす**: 応募が2件ある案件は、結合結果では2行になる
+- **INNER は相手がいない行を消す**: 応募0件の案件が一覧から消える
+
+#### LEFT JOIN は「左を必ず残す」
+相手が見つからない場合、**右側の列をすべて NULL で埋めた行**を作る。この行は「存在する」——ここが次の罠に直結する。
+
+#### count(*) が 0 件を 1 と数える
+```sql
+SELECT p.title, count(*)      -- ❌ 応募0件の案件が「1」になる
+FROM projects p
+LEFT JOIN applications a ON a.project_id = p.id
+GROUP BY p.id
+```
+- `count(*)` は**行の数**を数える。LEFT JOIN が作った「NULL で埋まった行」も1行なので 1 と答える
+- `count(a.id)` は**その列が NULL でない行**だけ数えるので、正しく 0 になる
+- **普段この2つは同じ結果になる**（NOT NULL の列なら常に一致）。**LEFT JOIN と組み合わせたときだけ意味が変わる**
+
+#### FILTER 句 — 1スキャンで複数の集計
+```sql
+count(a.id)                                     AS applications_count,
+count(a.id) FILTER (WHERE a.status = 'applied') AS pending_count
+```
+- 集約関数に条件を付けられる（PostgreSQL 9.4+）
+- **同じ結合結果を1回スキャンするだけ**で2つの数字が取れる
+- 古い書き方は `sum(CASE WHEN ... THEN 1 ELSE 0 END)`。動作は同じだが FILTER のほうが意図が読める
+
+#### 同じクエリ内で JOIN を使い分ける
+```sql
+JOIN      companies c    ON c.id = p.company_id      -- 会社は必ず存在する（FKがNOT NULL）
+LEFT JOIN applications a ON a.project_id = p.id      -- 応募は0件かもしれない
+```
+判断基準は **「相手が必ず存在するか」**。外部キーが NOT NULL なら INNER、0件がありうるなら LEFT。
+
+#### 件数を数えるクエリでは結合を外す
+**JOIN は行を増やす**ので、表示用の FROM 句を流用すると総件数が水増しされる（応募3件の案件が3行に数えられる）。
+- 一覧用（LEFT JOIN あり）と件数用（結合なし）で **FROM を別々に定義する**
+- 「何を1件と数えたいのか」を決めてから、必要な結合だけを書く
+
+#### 主キーでの GROUP BY
+PostgreSQL は**主キーで GROUP BY すれば同じテーブルの他の列も選べる**（主キーが決まれば行が一意に決まるため）。`p.title` 等を列挙せずに済む。
+
+#### RIGHT JOIN を使わない理由
+`FROM a RIGHT JOIN b` と `FROM b LEFT JOIN a` は**完全に同じ結果**。SQLは「主役の表 → 付け足す表」と読むので、**FROM に主役を書き、LEFT で足していく**と決めると3表以上でも追える。
+- そもそも**外部キー制約がある限り「親のいない子」は存在しない**ため、RIGHT の出番はほぼ無い
+
+### 実測（EXPLAIN ANALYZE）
+
+最悪ケース（**1社が5000件の案件を持つ**シードデータ）で計測:
+
+```
+Limit                    (actual time=3.666..3.669 rows=20)
+  -> Sort                Sort Method: top-N heapsort  Memory: 29kB
+    -> HashAggregate     (actual time=2.816..3.218 rows=5000)
+      -> Bitmap Index Scan on projects_company_id_idx  (rows=5000)
+```
+
+- `projects_company_id_idx` が効いている（Seq Scan ではない）
+- **LIMIT 20 なのに 5000行すべてを集約している** → `GROUP BY` + `ORDER BY` + `LIMIT` では、上位20件がどれかを知るために全件集約が必要
+- それでも **3.7ms**。1社が5000件掲載するのは非現実的なので問題なしと判断
+- **`top-N heapsort`**: 全件ソートせず「上位20件だけ保持する」最適化をプランナが選んでいる
+
+### ✅ベストプラクティス
+- **集計はDBに任せる**（アプリでループして数えない）
+- 件数のクエリでは「**何を1件と数えるのか**」を確認し、不要な結合を外す
+- 実行計画は**最悪ケースのデータ**で測る
+- 複数の集計は `FILTER` で1回のスキャンにまとめる
+
+### ⚠️アンチパターン
+- 集計に INNER JOIN（0件の親が消える）
+- LEFT JOIN で `count(*)`（0件が1件になる）
+- 一覧と件数で同じ FROM を使い回す
+- RIGHT JOIN（表の順番を入れ替えて LEFT に直す）
+
+### 理解度チェック
+- [ ] INNER にすると何が起きるか、行レベルで説明できる
+- [ ] LEFT JOIN で `count(*)` が 0 を 1 と数える理由を言える
+- [ ] `count(*)` と `count(列)` が普段同じ結果になるのはなぜか言える
+- [ ] 同じクエリ内で INNER と LEFT を使い分ける基準を言える
+- [ ] 件数クエリで結合を外す理由を言える
