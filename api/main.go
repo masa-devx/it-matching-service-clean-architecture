@@ -87,6 +87,12 @@ func main() {
 		requireAuth(http.HandlerFunc(handleCreateMessage)))
 	mux.Handle("GET /contracts/{id}/messages",
 		requireAuth(http.HandlerFunc(handleListMessages)))
+	// レビューは完了した契約に対して双方が投稿する。
+	// 両者が提出するまで互いに見えない（同時公開）
+	mux.Handle("POST /contracts/{id}/reviews",
+		requireAuth(http.HandlerFunc(handleCreateReview)))
+	mux.Handle("GET /contracts/{id}/reviews",
+		requireAuth(http.HandlerFunc(handleListReviews)))
 	// 契約は企業・人材の両方が当事者。誰がどの遷移を実行できるかは遷移表が判定するため、
 	// 応募の状態更新と同じく requireRole は付けない
 	mux.Handle("PATCH /contracts/{id}/status",
