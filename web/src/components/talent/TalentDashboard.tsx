@@ -7,9 +7,11 @@ import { ProfileIncompleteNotice } from '@/components/ProfileIncompleteNotice'
 export function TalentDashboard({
   hasProfile,
   publishedCount,
+  activeContractCount,
 }: {
   hasProfile: boolean
   publishedCount: number
+  activeContractCount: number
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -33,6 +35,7 @@ export function TalentDashboard({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="稼働中の契約" value={activeContractCount} />
         <StatCard label="公開中の案件" value={publishedCount} />
       </div>
     </div>

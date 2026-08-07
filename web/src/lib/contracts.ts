@@ -96,3 +96,26 @@ export async function getMyContract(id: number): Promise<Contract | null> {
   }
   return res.data
 }
+
+// ダッシュボードで「対応が必要な件数」を出すための集計。
+//
+// 一覧APIを1ページ分だけ引いて数えている。件数の上限（20件）を超えると
+// 正確でなくなるが、ダッシュボードは「対応が必要かどうか」の気づきを与えるのが目的で、
+// 正確な件数は契約一覧で確認できるため許容している。
+// 契約数が増えて実害が出たら、API側に集計を足す（#96 → #103 と同じ流れ）
+export async function countPendingWorkReports(): Promise<number> {
+  const result = await getMyContracts()
+  if (!result) {
+    return 0
+  }
+  return result.contracts.reduce(
+    (sum, contract) => sum + contract.pending_report_count,
+    0,
+  )
+}
+
+// 稼働中の契約数。人材・企業のどちらのダッシュボードでも「今の仕事」を示す
+export async function countActiveContracts(): Promise<number> {
+  const result = await getMyContracts({ status: 'working' })
+  return result?.total ?? 0
+}

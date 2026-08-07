@@ -35,6 +35,20 @@ export async function resubmitWorkReport(
   return send(`/api/work-reports/${workReportId}`, 'PUT', input)
 }
 
+// 稼働報告の承認・差し戻し（企業）。
+// 差し戻しでは理由が必須だが、その検証は Go 側が行う。
+// 画面では「理由が空なら実行ボタンを押せない」ようにして、送信前に気づけるようにする
+export async function reviewWorkReport(
+  workReportId: number,
+  status: 'approved' | 'rejected',
+  reviewNote: string,
+): Promise<ContractResult> {
+  return send(`/api/work-reports/${workReportId}/status`, 'PATCH', {
+    status,
+    review_note: reviewNote,
+  })
+}
+
 async function send(
   url: string,
   method: 'POST' | 'PUT' | 'PATCH',

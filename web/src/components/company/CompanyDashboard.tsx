@@ -7,9 +7,13 @@ import { ProfileIncompleteNotice } from '@/components/ProfileIncompleteNotice'
 export function CompanyDashboard({
   hasProfile,
   publishedCount,
+  activeContractCount,
+  pendingReportCount,
 }: {
   hasProfile: boolean
   publishedCount: number
+  activeContractCount: number
+  pendingReportCount: number
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -44,7 +48,24 @@ export function CompanyDashboard({
         </Button>
       </div>
 
+      {/* 未確認の稼働報告は「相手を待たせている」状態なので、件数だけでなく導線も出す。
+          0件のときは何も出さない（対応が不要なのに通知があると、次から見なくなる） */}
+      {pendingReportCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm">
+            <span className="font-bold tabular-nums text-primary">
+              {pendingReportCount}件
+            </span>
+            の稼働報告が未確認です
+          </p>
+          <Button asChild className="h-11">
+            <Link href="/company/contracts">契約を確認する</Link>
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="稼働中の契約" value={activeContractCount} />
         <StatCard label="公開中の案件（全体）" value={publishedCount} />
       </div>
     </div>
