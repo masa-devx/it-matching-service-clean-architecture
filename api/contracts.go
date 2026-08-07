@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // createContractFromApplication は承諾された応募から契約を作る。
@@ -153,4 +154,99 @@ func updateContractStatus(id int64, from, to string) (string, error) {
 		to, id, from,
 	).Scan(&status)
 	return status, err
+}
+
+// contractResponse は契約1件の表現。企業・人材のどちらから見ても同じ形にしている。
+//
+// 応募（applications）では視点ごとに型を分けた（人材は案件名、企業は応募者名を見たい）が、
+// 契約は「合意した内容と、その進み具合」を双方が同じように見るため、型を分ける理由がない。
+// 相手が誰かは、企業には talent_name、人材には company_name を入れて示す
+type contractResponse struct {
+	ID     int64  `json:"id"`
+	Status string `json:"status"`
+	// 承諾時点でコピーした条件。案件を編集してもここは変わらない（#103）
+	Title        string `json:"title"`
+	HourlyRate   int    `json:"hourly_rate"`
+	HoursPerWeek int    `json:"hours_per_week"`
+	RemoteOK     bool   `json:"remote_ok"`
+	// 取引の相手。自分側の名前は自明なので返さない
+	CompanyName string `json:"company_name"`
+	TalentName  string `json:"talent_name"`
+	// 由来の案件。人材が案件詳細へ戻れるようにIDだけ返す
+	ProjectID   int64      `json:"project_id"`
+	StartedAt   *time.Time `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// 契約1件の取得。相手の名前を出すため companies / talents を結合する。
+// 所有チェックは呼び出し側でロールごとの条件を足す（当事者の意味がロールで変わるため）
+const contractSelectSQL = `
+	SELECT c.id, c.status, c.title, c.hourly_rate, c.hours_per_week, c.remote_ok,
+	       co.name, t.display_name, c.project_id,
+	       c.started_at, c.completed_at, c.created_at
+	FROM contracts c
+	JOIN companies co ON co.id = c.company_id
+	JOIN talents   t  ON t.id  = c.talent_id`
+
+// handleGetContract は GET /me/contracts/{id}。企業・人材のどちらも当事者として取得できる。
+//
+// 一覧（#106）より先にこの1件取得だけを用意しているのは、状態を変えたあとに
+// 結果を確認する手段が必要なため（画面がまだ無い段階では curl で確認する）
+func handleGetContract(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "契約が見つかりません", nil)
+		return
+	}
+
+	role, err := fetchRole(userID)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", err)
+		return
+	}
+
+	// 所有チェックを WHERE に埋め込む。当事者でない契約はそもそも1行も返らない
+	var where string
+	switch role {
+	case roleCompany:
+		where = ` WHERE c.id = $1 AND co.user_id = $2`
+	case roleTalent:
+		where = ` WHERE c.id = $1 AND t.user_id = $2`
+	default:
+		writeError(r.Context(), w, http.StatusNotFound, "契約が見つかりません", nil)
+		return
+	}
+
+	var (
+		res         contractResponse
+		startedAt   sql.NullTime
+		completedAt sql.NullTime
+	)
+	err = db.QueryRow(contractSelectSQL+where, id, userID).Scan(
+		&res.ID, &res.Status, &res.Title, &res.HourlyRate, &res.HoursPerWeek, &res.RemoteOK,
+		&res.CompanyName, &res.TalentName, &res.ProjectID,
+		&startedAt, &completedAt, &res.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		// 当事者でない契約は「存在しない」として扱う（403だと他社の取引の存在が漏れる）
+		writeError(r.Context(), w, http.StatusNotFound, "契約が見つかりません", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "契約の取得に失敗しました", err)
+		return
+	}
+	// DBのNULL可能な時刻を、JSONのnullに対応するポインタへ変換する
+	// （time.Time のまま受けると未設定が西暦1年になる）
+	res.StartedAt = nullTimePtr(startedAt)
+	res.CompletedAt = nullTimePtr(completedAt)
+
+	writeJSON(w, http.StatusOK, res)
 }
