@@ -1,8 +1,11 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -123,4 +126,58 @@ func handleListMyProjects(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, myProjectListResponse{
 		Projects: projects, Total: total, Limit: limit, Offset: offset,
 	})
+}
+
+// 1件取得。一覧（myProjectsSelectSQL）と同じ集計を、案件IDで絞って行う。
+// $2 が空文字のときに全状態を通す条件は不要なので、WHERE は所有チェックとIDだけ
+const myProjectSelectSQL = `
+	SELECT p.id, p.title, p.description, p.required_skills,
+	       p.hourly_rate_min, p.hourly_rate_max, p.hours_per_week,
+	       p.remote_ok, p.status, p.created_at,
+	       count(a.id)                                    AS applications_count,
+	       count(a.id) FILTER (WHERE a.status = 'applied') AS pending_count
+	FROM projects p
+	JOIN companies c ON c.id = p.company_id
+	LEFT JOIN applications a ON a.project_id = p.id
+	WHERE p.id = $1 AND c.user_id = $2
+	GROUP BY p.id, c.id`
+
+// handleGetMyProject は GET /me/projects/{id}。企業ユーザーのみ。
+//
+// 公開中しか返さない GET /projects/{id} とは別に用意する。
+// 下書き・募集終了の案件も編集・状態変更の対象になるため、所有者には見せる必要がある
+func handleGetMyProject(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+
+	var p myProjectResponse
+	err = db.QueryRow(myProjectSelectSQL, id, userID).Scan(
+		&p.ID, &p.Title, &p.Description, pgtype.NewMap().SQLScanner(&p.RequiredSkills),
+		&p.HourlyRateMin, &p.HourlyRateMax, &p.HoursPerWeek,
+		&p.RemoteOK, &p.Status, &p.CreatedAt,
+		&p.ApplicationsCount, &p.PendingCount,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		// 他社の案件は「存在しない」として扱う（403だと存在が漏れる）
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "案件の取得に失敗しました", err)
+		return
+	}
+	if p.RequiredSkills == nil {
+		p.RequiredSkills = []string{}
+	}
+
+	writeJSON(w, http.StatusOK, p)
 }
