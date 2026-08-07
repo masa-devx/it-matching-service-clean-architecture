@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, Banknote, Clock, MapPin } from 'lucide-react'
 import { getMyContract } from '@/lib/contracts'
 import { getWorkReports } from '@/lib/workReports'
+import { getMessages } from '@/lib/messages'
 import {
   ContractStatusBadge,
   contractStatusDescription,
@@ -10,6 +11,8 @@ import {
 import { WorkReportList } from '@/components/WorkReportList'
 import { CompanyContractActions } from '@/components/company/CompanyContractActions'
 import { WorkReportReviewActions } from '@/components/company/WorkReportReviewActions'
+import { MessageThread } from '@/components/MessageThread'
+import { MessageForm } from '@/components/MessageForm'
 import { Separator } from '@/components/ui/separator'
 
 export const metadata = { title: '契約の詳細 | Tsunagu Works' }
@@ -31,14 +34,20 @@ export default async function CompanyContractDetailPage({
   const contractId = Number(id)
 
   // 契約と稼働報告は別のエンドポイント。独立した取得なので並行実行する
-  const [contract, reportResult] = await Promise.all([
+  const [contract, reportResult, messageResult] = await Promise.all([
     getMyContract(contractId),
     getWorkReports(contractId),
+    getMessages(contractId),
   ])
   // 当事者でない契約・存在しない契約は API が404を返す
   if (!contract) {
     notFound()
   }
+
+  // 進行中の契約だけメッセージを送れる（api/messages.go の messageSendableStatuses と対応）
+  const canSendMessage = ['active', 'working', 'reviewing'].includes(
+    contract.status,
+  )
 
   const conditions = [
     {
@@ -150,6 +159,27 @@ export default async function CompanyContractDetailPage({
             )}
           />
         )}
+      </section>
+
+      <Separator />
+
+      {/* メッセージは契約の文脈で交わされるため、別ページにせず詳細に置く
+          （条件や稼働報告を見ながら書けるようにする） */}
+      <section className="flex flex-col gap-4">
+        <h2 className="font-bold">メッセージ</h2>
+
+        {messageResult === null ? (
+          <p className="text-destructive">メッセージを取得できませんでした</p>
+        ) : (
+          <MessageThread
+            messages={messageResult.messages}
+            currentRole="company"
+          />
+        )}
+
+        {/* 終了した契約には送信できない（api も409で拒否する）。
+            押せるのに必ず失敗するフォームは出さない */}
+        {canSendMessage && <MessageForm contractId={contract.id} />}
       </section>
     </article>
   )
