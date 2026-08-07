@@ -181,19 +181,28 @@ type contractResponse struct {
 }
 
 // 契約1件の取得。相手の名前を出すため companies / talents を結合する。
-// 所有チェックは呼び出し側でロールごとの条件を足す（当事者の意味がロールで変わるため）
+// 所有チェックは呼び出し側でロールごとの条件を足す（当事者の意味がロールで変わるため）。
+//
+// 稼働報告の集計を含めるのは、一覧（contractListItem）と同じ形を返すため。
+// 一覧から詳細へ移ったときに情報が減ると、画面側が「詳細では件数が出せない」と
+// 分岐を持つことになる。1件取得でも LEFT JOIN + GROUP BY が必要になるが、
+// 対象が1契約に限られるので負荷は無視できる
 const contractSelectSQL = `
 	SELECT c.id, c.status, c.title, c.hourly_rate, c.hours_per_week, c.remote_ok,
 	       co.name, t.display_name, c.project_id,
-	       c.started_at, c.completed_at, c.created_at
+	       c.started_at, c.completed_at, c.created_at,
+	       count(wr.id)                                        AS work_report_count,
+	       count(wr.id) FILTER (WHERE wr.status = 'submitted') AS pending_report_count
 	FROM contracts c
 	JOIN companies co ON co.id = c.company_id
-	JOIN talents   t  ON t.id  = c.talent_id`
+	JOIN talents   t  ON t.id  = c.talent_id
+	LEFT JOIN work_reports wr ON wr.contract_id = c.id`
 
 // handleGetContract は GET /me/contracts/{id}。企業・人材のどちらも当事者として取得できる。
 //
-// 一覧（#106）より先にこの1件取得だけを用意しているのは、状態を変えたあとに
-// 結果を確認する手段が必要なため（画面がまだ無い段階では curl で確認する）
+// 稼働報告の一覧は別のエンドポイント（GET /contracts/{id}/work-reports）に分けている。
+// 1つにまとめると、報告を承認するたび契約の情報まで取り直すことになるため
+// （再取得の頻度が違うものは分ける）
 func handleGetContract(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFrom(r.Context())
 	if !ok {
@@ -226,14 +235,17 @@ func handleGetContract(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		res         contractResponse
+		res         contractListItem
 		startedAt   sql.NullTime
 		completedAt sql.NullTime
 	)
-	err = db.QueryRow(contractSelectSQL+where, id, userID).Scan(
+	// 集計を含むため GROUP BY が要る。WHERE で1行に絞ってから集約するので、
+	// グループ化のキーは主キーだけで足りる（PostgreSQL は主キーがあれば他の列も選べる）
+	err = db.QueryRow(contractSelectSQL+where+` GROUP BY c.id, co.id, t.id`, id, userID).Scan(
 		&res.ID, &res.Status, &res.Title, &res.HourlyRate, &res.HoursPerWeek, &res.RemoteOK,
 		&res.CompanyName, &res.TalentName, &res.ProjectID,
 		&startedAt, &completedAt, &res.CreatedAt,
+		&res.WorkReportCount, &res.PendingReportCount,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		// 当事者でない契約は「存在しない」として扱う（403だと他社の取引の存在が漏れる）
