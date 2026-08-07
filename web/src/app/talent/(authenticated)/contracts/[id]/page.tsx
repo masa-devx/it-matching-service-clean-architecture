@@ -8,6 +8,9 @@ import {
   contractStatusDescription,
 } from '@/components/ContractStatusBadge'
 import { WorkReportList } from '@/components/WorkReportList'
+import { ContractActions } from '@/components/talent/ContractActions'
+import { WorkReportForm } from '@/components/talent/WorkReportForm'
+import { WorkReportEditor } from '@/components/talent/WorkReportEditor'
 import { Separator } from '@/components/ui/separator'
 
 export const metadata = { title: '契約の詳細 | Tsunagu Works' }
@@ -91,6 +94,9 @@ export default async function TalentContractDetailPage({
         ))}
       </dl>
 
+      {/* 現在の状態で実行できる操作だけが並ぶ（遷移表の写し） */}
+      <ContractActions contractId={contract.id} status={contract.status} />
+
       {/* 条件が案件と違って見えることがあるため、固定されている事実を明示する */}
       <p className="text-sm text-muted-foreground">
         この契約の条件は、承諾した時点の内容で固定されています（案件の掲載内容が変更されても影響しません）。
@@ -126,10 +132,32 @@ export default async function TalentContractDetailPage({
         {reportResult === null ? (
           <p className="text-destructive">稼働報告を取得できませんでした</p>
         ) : (
-          <WorkReportList
-            reports={reportResult.work_reports}
-            emptyMessage="稼働中になると、週ごとに報告を提出できます"
-          />
+          <>
+            {/* 提出できるのは稼働中の契約だけ（api 側も409で拒否する）。
+                検収待ち・完了後にフォームを出すと、押せるのに失敗するボタンになる */}
+            {contract.status === 'working' && (
+              <div className="flex flex-col gap-4 rounded-lg border bg-card p-6">
+                <h3 className="font-medium">今週の稼働を報告する</h3>
+                <WorkReportForm
+                  contractId={contract.id}
+                  submittedWeeks={reportResult.work_reports.map(
+                    (r) => r.week_start,
+                  )}
+                />
+              </div>
+            )}
+
+            <WorkReportList
+              reports={reportResult.work_reports}
+              emptyMessage="稼働中になると、週ごとに報告を提出できます"
+              // 差し戻された報告だけ修正できる。承認済み・確認待ちは触れない
+              renderActions={(report) =>
+                report.status === 'rejected' ? (
+                  <WorkReportEditor report={report} />
+                ) : null
+              }
+            />
+          </>
         )}
       </section>
     </article>

@@ -3,9 +3,7 @@ import { z } from 'zod'
 // Go 側（api/work_reports.go の validateWorkReport）と同じ制約を張る。
 // server-only を付けないこと（クライアントコンポーネントから import するため）
 
-// 週の選択と内容を分けているのは、再提出では週を変更できないため
-// （対象週を変えるなら、それは別の報告になる）
-export const workReportContentSchema = z.object({
+export const workReportSchema = z.object({
   hours: z.coerce
     .number()
     .int('整数で入力してください')
@@ -17,13 +15,12 @@ export const workReportContentSchema = z.object({
     .trim()
     .min(1, '作業内容は必須です')
     .max(2000, '作業内容は2000文字以内にしてください'),
-})
-
-export const workReportSchema = workReportContentSchema.extend({
+  // 再提出では週を変更できない（週を変えるなら別の報告になる）が、
+  // フォームの値としては保持する。入力欄は出さず、送信時も使わない
+  // （api 側も PUT では週を受け取らない）
   week_start: z.string().min(1, '対象の週を選択してください'),
 })
 
-export type WorkReportContentValues = z.input<typeof workReportContentSchema>
 export type WorkReportFormValues = z.input<typeof workReportSchema>
 export type WorkReportInputValues = z.output<typeof workReportSchema>
 
