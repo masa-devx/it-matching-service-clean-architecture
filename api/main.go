@@ -82,6 +82,11 @@ func main() {
 	// 一覧は当事者の双方が見る（記録として共有するもの）
 	mux.Handle("GET /contracts/{id}/work-reports",
 		requireAuth(http.HandlerFunc(handleListWorkReports)))
+	// メッセージは契約の当事者の双方が送受信する（共有された会話）
+	mux.Handle("POST /contracts/{id}/messages",
+		requireAuth(http.HandlerFunc(handleCreateMessage)))
+	mux.Handle("GET /contracts/{id}/messages",
+		requireAuth(http.HandlerFunc(handleListMessages)))
 	// 契約は企業・人材の両方が当事者。誰がどの遷移を実行できるかは遷移表が判定するため、
 	// 応募の状態更新と同じく requireRole は付けない
 	mux.Handle("PATCH /contracts/{id}/status",
