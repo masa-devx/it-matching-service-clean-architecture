@@ -397,3 +397,81 @@ func validateProject(req projectRequest) string {
 	}
 	return ""
 }
+
+type projectStatusRequest struct {
+	Status string `json:"status"`
+}
+
+// handleUpdateProjectStatus は PATCH /projects/{id}/status。企業ユーザーのみ。
+//
+// 内容の編集（PUT /projects/{id}）と分けているのは、「保存」と「公開」が
+// 別の意思決定だから。文言を直しただけで意図せず公開される事故を防ぐ。
+// また状態だけ送れば済むため、一覧から直接切り替えられる
+func handleUpdateProjectStatus(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r.Context())
+	if !ok {
+		writeError(r.Context(), w, http.StatusUnauthorized, "認証が必要です", nil)
+		return
+	}
+
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+
+	var req projectStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(r.Context(), w, http.StatusBadRequest, "リクエストボディが不正です", err)
+		return
+	}
+
+	current, err := fetchOwnedProjectStatus(id, userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		// 他社の案件は「存在しない」として扱う（403だと存在が漏れる）
+		writeError(r.Context(), w, http.StatusNotFound, "案件が見つかりません", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "掲載状態の更新に失敗しました", err)
+		return
+	}
+
+	if !canTransitionProject(current, req.Status) {
+		// 409: 入力も権限も正しいが、現在の状態からは実行できない
+		writeError(r.Context(), w, http.StatusConflict, "この案件に対してその操作はできません", nil)
+		return
+	}
+
+	// WHERE に読み取り時の状態を含め、その間に他の操作が入っていたら0行更新にする（楽観ロック）
+	var status string
+	err = db.QueryRow(
+		`UPDATE projects SET status = $1, updated_at = now()
+		 WHERE id = $2 AND status = $3
+		 RETURNING status`,
+		req.Status, id, current,
+	).Scan(&status)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeError(r.Context(), w, http.StatusConflict, "他の操作により状態が変わりました。画面を更新してください", nil)
+		return
+	}
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, "掲載状態の更新に失敗しました", err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": status})
+}
+
+// fetchOwnedProjectStatus は自社案件の現在の掲載状態を返す。
+// 所有チェックを WHERE に埋め込むことで、他社の案件はそもそも1行も返らない
+func fetchOwnedProjectStatus(id, userID int64) (string, error) {
+	var status string
+	err := db.QueryRow(
+		`SELECT p.status FROM projects p
+		 JOIN companies c ON c.id = p.company_id
+		 WHERE p.id = $1 AND c.user_id = $2`,
+		id, userID,
+	).Scan(&status)
+	return status, err
+}
