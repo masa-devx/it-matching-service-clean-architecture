@@ -72,3 +72,18 @@ export async function getMyProjects(
   }
   return res.data
 }
+
+// 自社案件の1件取得。下書き・募集終了も取得できる（公開中しか返さない getProject とは別）。
+// 他社の案件・存在しないIDは API が 404 を返すため null になる
+export async function getMyProject(id: number): Promise<MyProject | null> {
+  const token = await getTokenCookie()
+  if (!token) {
+    return null
+  }
+
+  const res = await apiGet<MyProject>(`/me/projects/${id}`, token)
+  if (res.error) {
+    return null
+  }
+  return res.data
+}
