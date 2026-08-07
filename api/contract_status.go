@@ -12,14 +12,19 @@ const (
 )
 
 // contractStatuses は取りうる状態の一覧。
-// テストで「全組み合わせを網羅したか」を検算するために使う
-// （絞り込みクエリの検証に使う isContractStatus は、必要になる #106 で追加する）
+// 絞り込みクエリの検証と、テストで「全組み合わせを網羅したか」の検算に使う
 var contractStatuses = []string{
 	contractStatusActive,
 	contractStatusWorking,
 	contractStatusReviewing,
 	contractStatusCompleted,
 	contractStatusCancelled,
+}
+
+// isContractStatus は文字列が状態として定義済みかを返す。
+// 一覧の絞り込みで、存在しない状態を指定されたら400にするために使う
+func isContractStatus(s string) bool {
+	return slices.Contains(contractStatuses, s)
 }
 
 // contractTransitions は許可される契約の状態遷移と、それを実行できるロール。状態機械②の唯一の定義。

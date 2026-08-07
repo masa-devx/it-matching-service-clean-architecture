@@ -68,6 +68,8 @@ func main() {
 	// requireRole は付けない（ロールで入口を塞ぐのではなく、操作ごとに許可する）
 	mux.Handle("PATCH /applications/{id}/status",
 		requireAuth(http.HandlerFunc(handleUpdateApplicationStatus)))
+	// 契約は企業・人材の双方が当事者として取得する（視点でレスポンスの形は変えない）
+	mux.Handle("GET /me/contracts", requireAuth(http.HandlerFunc(handleListContracts)))
 	mux.Handle("GET /me/contracts/{id}", requireAuth(http.HandlerFunc(handleGetContract)))
 	// 稼働報告の提出・修正は人材の作業。企業は確認する側なので requireRole で分ける
 	mux.Handle("POST /contracts/{id}/work-reports",
