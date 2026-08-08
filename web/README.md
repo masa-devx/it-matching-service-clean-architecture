@@ -55,15 +55,15 @@ web/src/
 
 ## 技術選定と理由
 
-| 選定                                           | 理由（詳細は docs/フロントエンド.md の判断ログ）                                                                                                |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **REST + 素のfetch（axios不使用）**            | Next.jsのキャッシュ・revalidateはfetch拡張前提。axiosの利点（インターセプタ）はlib/の薄いラッパーで代替                                         |
-| **GraphQL不使用**                              | 「複数クライアント×複雑データ形状×専任チーム」が揃って初めて回収できる投資。型安全は後継設計の **TypeSpec → OpenAPI → orval 生成**で獲得する    |
-| **BFFはRoute Handler（Server Actions不使用）** | 仕組みを手で書いて理解する学習優先。読み取りはRSC直fetchでBFF不要のため増殖しない。後継設計では **Server Actions を採用**し、両方式を比較して語る |
+| 選定                                           | 理由（詳細は docs/フロントエンド.md の判断ログ）                                                                                                   |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **REST + 素のfetch（axios不使用）**            | Next.jsのキャッシュ・revalidateはfetch拡張前提。axiosの利点（インターセプタ）はlib/の薄いラッパーで代替                                            |
+| **GraphQL不使用**                              | 「複数クライアント×複雑データ形状×専任チーム」が揃って初めて回収できる投資。型安全は後継設計の **TypeSpec → OpenAPI → orval 生成**で獲得する       |
+| **BFFはRoute Handler（Server Actions不使用）** | 仕組みを手で書いて理解する学習優先。読み取りはRSC直fetchでBFF不要のため増殖しない。後継設計では **Server Actions を採用**し、両方式を比較して語る  |
 | **React Hook Form 後回し**                     | 認証フォームは2〜3欄で検証の正はサーバー側。useState+HTML標準検証で十分。後継設計では **RHF ＋ 生成Zod**（orval）の組み合わせを Phase 0 で検証する |
-| **shadcn/ui**                                  | npm依存でなくコードのコピーイン＝自分のコードとして改造できる。トークン（--primary等）の上書きで全体テーマ変更                                  |
-| **Tailwind v4**                                | 設定はCSS内 `@theme`。ユーティリティファースト                                                                                                  |
-| **Vitest + Testing Library**                   | 「ユーザーから見える振る舞い」でテスト（getByRole/getByLabelText）。a11yとテスト容易性が同じ方向を向く                                          |
+| **shadcn/ui**                                  | npm依存でなくコードのコピーイン＝自分のコードとして改造できる。トークン（--primary等）の上書きで全体テーマ変更                                     |
+| **Tailwind v4**                                | 設定はCSS内 `@theme`。ユーティリティファースト                                                                                                     |
+| **Vitest + Testing Library**                   | 「ユーザーから見える振る舞い」でテスト（getByRole/getByLabelText）。a11yとテスト容易性が同じ方向を向く                                             |
 
 ## テスト
 
@@ -87,13 +87,13 @@ web/src/
 
 現行コードには目標構成への「切り込み線」が入っている：
 
-| 現行コード | 移行先 |
-| --- | --- |
-| `lib/api.ts`（Go API 呼び出し・server-only） | `external/client/` |
-| `lib/authClient.ts`（クライアント→BFF） | `features/{domain}/actions/`（Server Actions 化） |
-| `app/api/auth/*`（Route Handler の BFF） | Server Actions ＋ `external/handler/` |
-| `hooks/`（mutation・ローディング/エラー集約） | `features/{domain}/hooks/`（TanStack Query） |
-| `lib/types.ts`（手書きの共有型） | `packages/api-client`（orval 生成） |
-| ルートグループによるロール分岐 | **アプリ境界そのもの**（company / talent 分割） |
+| 現行コード                                    | 移行先                                            |
+| --------------------------------------------- | ------------------------------------------------- |
+| `lib/api.ts`（Go API 呼び出し・server-only）  | `external/client/`                                |
+| `lib/authClient.ts`（クライアント→BFF）       | `features/{domain}/actions/`（Server Actions 化） |
+| `app/api/auth/*`（Route Handler の BFF）      | Server Actions ＋ `external/handler/`             |
+| `hooks/`（mutation・ローディング/エラー集約） | `features/{domain}/hooks/`（TanStack Query）      |
+| `lib/types.ts`（手書きの共有型）              | `packages/api-client`（orval 生成）               |
+| ルートグループによるロール分岐                | **アプリ境界そのもの**（company / talent 分割）   |
 
 - 参考ゴール構成: [next-app-router-architecture](https://github.com/YukiOnishi1129/next-app-router-architecture)
