@@ -1,4 +1,4 @@
-# CLAUDE.md — Tsunagu Works
+# CLAUDE.md — Tsunagu Works アーキテクチャ再実装
 
 必ず日本語で回答してください。
 
@@ -15,102 +15,104 @@
 
 ## プロジェクト概要
 
-**企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチング「Tsunagu Works」**。
-転職ポートフォリオ旗艦。独自機能＝**信頼の設計**（エスクロー決済・連絡先マスキング・レビュー同時公開・稼働報告）。
+**企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチング「Tsunagu Works」を、別の設計で再実装するリポジトリ。**
 
-詳細仕様: `仕様ドラフト.html` ／ Obsidian（コンセプト・仕様の正）: `~/Desktop/obsidian/20_projects/personal-apps/tsunagu-works/tsunagu-works.md`
+[tsunagu-works](https://github.com/masahiro96848/tsunagu-works)（フラット構成・MVP完成済み）と同じドメインを、スキーマ駆動・層分割・モノレポ構成で作り直す。**2つのリポジトリを並べて「どの規模で、どちらの設計を選ぶか」という判断を示す**のがゴール。MVPフェーズは終了しており、以後は通常のIssue駆動開発で進める。
+
+- **設計の正**: `docs/後継リポジトリ設計プラン.md`（技術選定・認可設計・テスト戦略・Phase計画。疑問が出たらまずここ）
+- 現在のコードは tsunagu-works MVP のスナップショット（＝リファクタの出発点）
 
 | 項目 | 内容 |
 | --- | --- |
-| バックエンド | Go（net/http・まずフラット構成 → R1でクリーンアーキへ） |
-| フロント | Next.js App Router + TypeScript |
-| 状態管理 | まず素のfetch → 後段で TanStack Query 導入 |
-| スタイル | Tailwind CSS + shadcn/ui（導入は画面着手時） |
-| DB | PostgreSQL（Docker） |
-| 認証 | 自前JWT（bcrypt・httpOnly Cookie）＝ todo-app の型 |
-| テスト | go test / Vitest / Playwright（段階導入） |
+| モノレポ | Turborepo + pnpm workspace（Goもタスクグラフに載せ、仕様変更→生成→ビルドを連鎖させる） |
+| API仕様 | TypeSpec → OpenAPI → oapi-codegen（Go・StrictHandler）/ orval（TS: 型+Fetch Client+Zod）。生成物はコミットし、CIで差分チェック |
+| バックエンド | Go。`internal/{company,talent,shared}` の**視点→層**分割（handler / usecase / validator + shared/domain） |
+| フロント | Next.js App Router + TypeScript。**company / talent の2アプリ**に分割 |
+| DB | PostgreSQL（Docker）＋ **sqlc**（repository層は作らない。`Queries` が repository 相当） |
+| サーバー状態 | TanStack Query（prefetch / Hydration）。書き込みは Server Actions |
+| 認証・認可 | 自前JWT（bcrypt・httpOnly Cookie）。**ロール認可はパスプレフィックス（/company/*, /talent/*）×ミドルウェアで一律** |
+| テスト | go-txdb + factories（実DB・モックしない）/ Vitest / Playwright |
+| デプロイ | Cloud Run + Cloud Run Job（migrate）+ Neon |
 
 ### ポート（他プロジェクトと衝突しない値に固定）
 
 | 用途 | ポート | 備考 |
 | --- | --- | --- |
-| PostgreSQL | **5434** | 5432=ローカルPostgres、5433=todo-app が使用中 |
-| Go API | **8081** | 8080=todo-app api と衝突回避 |
-| Next.js | 3000 | |
+| PostgreSQL | **5435** | 5432=ローカルPostgres、5433=todo-app、5434=tsunagu-works |
+| Go API | **8082** | 8080=todo-app、8081=tsunagu-works |
+| Next.js（company／現行の web） | **3001** | 3000=tsunagu-works web と衝突回避 |
+| Next.js（talent） | **3002** | 2アプリ分割後に使用 |
 
 ---
 
 ## ドメイン仕様の核心（毎セッションの前提知識）
 
-> マッチングの本質＝出会わせることではなく、**知らない者同士が安心して取引できる仕組み**。独自機能はすべて「信頼の設計」に集中させる。
+> マッチングの本質＝出会わせることではなく、**知らない者同士が安心して取引できる仕組み**。独自機能は「信頼の設計」（連絡先マスキング・レビュー同時公開・稼働報告・エスクロー構想）に集中させる。ドメインの詳細は `docs/サービス概要.md`。
 
-**信頼の設計・4本柱**
+### このリポジトリの実装スコープ（4ドメインのみ）
 
-- **エスクロー決済**: 仮払い→検収→支払い。「未払い」と「前払い」のリスクを同時に解決
-- **連絡先マスキング**: メッセージ内のメール/電話を検出して伏せる（直接取引防止＝事業の生命線。原文は監査用に保存）
-- **レビュー同時公開**: 両者提出まで非公開→同時公開（報復レビュー防止・Airbnb方式）
-- **稼働報告**: 週次レポートで「働きぶりが見えない」不安と「証拠を残したい」を同時解決
+| ドメイン | 見せ場 |
+| --- | --- |
+| 認証 ＋ プロフィール | JWT・Cookie・ロールミドルウェア（company / talent の2系統） |
+| 案件（CRUD・検索） | 層分けした CRUD・**seek ページネーション** |
+| 応募（状態機械） | **遷移表を `shared/domain` に置く**＝domain 層の見せ場 |
+| eKYC（ファイルアップロード） | multipart・Cloud Storage・署名付きURL・機微情報（Phase 7・talent側のみ） |
 
-**状態機械3本（設計の見せ場）**
+- **スコープ外**: 契約・稼働報告・メッセージ・レビュー・エスクロー決済（同じパターンの繰り返しで新しく示せることが少ない。機能の量は tsunagu-works が担う）、AI機能・リアルタイムチャット・モバイル
+- ⚠️ tsunagu-works では KYC を除外したが、**このリポジトリでは eKYC はスコープ内**（ファイル操作・オブジェクトストレージの学習題材として Phase 7 で実装）
+- **データ設計（コア・5テーブル）**: `users / companies / talents / projects / applications`
+
+### Phase 0〜7（ブランチ命名の phase{N} はこの番号に対応）
 
 ```
-① 選考: 応募 → 書類 → 面談 → 承諾(ダブルオプトイン) / 見送り / 取り下げ
-② 契約: 成立 → 稼働中 → 検収待ち → 完了 / 中止（差し戻し→稼働中）
-③ 決済: 仮払い待ち → 仮払い済み(エスクロー) → 検収OK → 支払い実行 → 完了 / 返金
-※ ②業務と③お金を「別の状態機械に分離して同期」させるのが核心
+0: 1エンドポイント貫通（生成品質の検証。ここで詰まったら設計見直し）← まずここだけやる
+1: 土台（層構成・DI・go-txdb・CI・依存方向の強制）
+2: 認証＋プロフィール（2系統・ロールMW） → 3: 案件 → 4: 応募（状態機械）
+5: デプロイ（Cloud Run） → 6: E2E・トレーシング → 7: eKYC
 ```
-
-**データ設計（コア）**: `users / companies / talents / projects / applications / contracts / work_reports / payments(idempotency_key) / messages(masked_body) / reviews(submitted_at・published_at) / notifications`
-
-**MVPビルド順**: 環境(Phase0) → 認証＋プロフィール(1) → 案件CRUD＋検索(2) → 応募〜承諾＝状態機械①(3) → 契約＋稼働報告＋検収＝状態機械②(4) → マスキング＋レビュー同時公開(5)＝MVP完成 → 拡張: Stripeエスクロー・ダッシュボード・1万件計測
-
-**スコープ外**: AI機能・リアルタイムチャット・モバイル・**KYC（本人確認）**（完成優先・2026-08-04にKYC除外を決定）
 
 ---
 
-## 参照ドキュメント（必要時に読む・Obsidian側）
+## 参照ドキュメント（必要時に読む）
 
 | ドキュメント | パス | 読むタイミング |
 | --- | --- | --- |
+| **後継リポジトリ設計プラン** | `docs/後継リポジトリ設計プラン.md` | **設計の疑問・Phase着手時（一次情報）** |
+| 出発点の設計記録 | `docs/アーキテクチャ.md`・`api/README.md`・`web/README.md` | 現行コードを読む・触るとき |
 | コンセプト・仕様の正 | `~/Desktop/obsidian/20_projects/personal-apps/tsunagu-works/tsunagu-works.md` | 仕様の疑問・決定ログ確認時 |
 | 画面イメージ（仕様デッキ） | 同フォルダ `tsunagu-works-仕様デッキ.html` | 画面実装の着手時 |
 | 参考実装の設計研究 | `~/Desktop/obsidian/02_notes/references/` 配下 | アーキテクチャ判断で外部実装を確認したいとき |
-| 学習ロードマップ | `~/Desktop/obsidian/10_career/learning-roadmap/` | 学習の優先順位に迷ったとき |
 
 ---
 
-## ディレクトリ構成（Stage 1：シンプル開始）
+## ディレクトリ構成
 
 ```
-api/            # Go: フラット構成（main.go / db.go / auth.go / projects.go …機能ごと1ファイル）
-migrations/     # DBスキーマ（sql-migrate: ddl/*.sql + dbconfig.yml + Makefile）
-web/src/
-  app/          # (public)/(guest)/(authenticated) ルートグループ＝アクセス制御の境界。page は薄く
-  components/   # UI部品
-  hooks/        # カスタムフック
-  lib/          # ★API呼び出しは必ずここに集約（コンポーネントに fetch を書かない）
-docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md / DB.md / フロントエンド.md）
+【出発点（現行・リファクタ対象）】          【目標（Turborepo・設計プラン§4）】
+api/            Go フラット構成             apps/api-server/   internal/{company,talent,shared}
+web/src/        Next.js 1アプリ             apps/company/      apps/talent/
+migrations/     sql-migrate                 packages/          spec / api-client / ui
+docs/           設計書・学習ログ            migrations/ddl/    docs/adr/
 ```
 
-### 成長ロードマップ（痛みを感じたらリファクタ）
-
-| 段階 | リファクタ | 発動条件 |
-| --- | --- | --- |
-| R1 | api: フラット → クリーンアーキ（handler/usecase/repository。`_templates/go-api-boilerplate` の形へ） | ハンドラが太った・状態機械のテストを書きたい |
-| R2 | web: components/hooks/lib → `features/` ドメイン分割 | ドメインが3つ超で探すのが辛い |
-| R3 | web: lib → `external/`（dto/handler/repository・server-only）＋ prefetch/Hydration | Zod検証・Server-first を入れたい |
-
-> ゴール構成の参考: [next-app-router-architecture](https://github.com/YukiOnishi1129/next-app-router-architecture)（フロント）／ go-api-boilerplate（バック）
+- 移行の対応表（現行コードのどこが目標のどの層になるか）は `api/README.md` / `web/README.md` 末尾のロードマップを参照
 
 ---
 
-## アーキテクチャ原則（Stage 1 版）
+## アーキテクチャ原則
 
-- **fetch は `web/src/lib/` のみ**。コンポーネント・フックに直接書かない（将来の external 化の種）
-- **ルートグループ `(public)` / `(guest)` / `(authenticated)` を崩さない**（アクセス制御の境界。ガードは各グループのlayoutに集約）。page.tsx は薄く保つ
-- **api の main.go は「組み立て」だけ**。機能はドメイン語彙のファイル（projects.go 等）に分け、太ったら分割
-- **user_id は必ず検証済みトークンから取る**（クライアント供給値を信用しない＝IDOR対策）
-- SQL は**プレースホルダ必須**・`SELECT *` 禁止・状態遷移の定義はコード上で1か所にまとめる
+**不変の原則（どちらの構成でも厳守）**
+
+- **user_id / company_id は必ず検証済みトークンから取る**（クライアント供給値を信用しない＝IDOR対策）
+- SQL は**プレースホルダ必須**・`SELECT *` 禁止（列を明示）
+- **状態遷移の定義はコード上の1か所（遷移表・ホワイトリスト）**にまとめる
+- 所有チェックは **SQL の WHERE に埋め込む**（取得してから判定しない）
+- **未公開・原文は「取得しない」**（画面で隠さない）
+- 確定した合意は**値でコピーする**（スナップショット）
+
+**出発点コード（api/ web/）を触る場合**: fetch は `web/src/lib/` のみ・ルートグループ境界を崩さない・`main.go` は組み立てだけ（詳細は `.claude/rules/`）
+
+**新構成（apps/ packages/）**: 設計プラン §4〜7 を正とする。依存方向は仕組みで強制する（golangci-lint の depguard / ESLint の import 制約）
 
 詳細ルール:
 @.claude/rules/workflow.md
@@ -126,7 +128,7 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 1. `git branch --show-current` と `git status` で作業中のブランチ・未コミット変更を確認
 2. `gh issue list --state open` で残タスクを確認（ブランチ名 `phase{N}/{Issue番号}-…` が現在作業中の Issue を指す）
 3. 直近の学びの文脈が必要なら `docs/学習ログ.md` を参照
-4. 仕様・コンセプトの確認が必要なら上記 Obsidian の仕様ノートを読む
+4. 設計の疑問は `docs/後継リポジトリ設計プラン.md` を読む
 
 把握した現在地（ブランチ・対応Issue・次のステップ）を最初に短く報告してから作業に入ること。
 
@@ -157,11 +159,13 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 
 - コード内コメントは**実務品質**：「なぜそうするか（意図・理由・注意）」だけを書く。学習用の逐行解説はコードに書かない
 - 学習向けの詳細解説は**チャットと `docs/` 学習ログ側**に置く（リポジトリは採用担当が読む前提を保つ）
+- **生成物（`gen/` 等）は編集しない**。直したければ仕様（.tsp / queries）を直して再生成する
 
 ## 実装を渡す前の検証（Claude 必須）
 
 - api を触ったら: `go vet ./...` && `go build ./...`
 - web を触ったら: `npm run build`（型チェック込み）
+- Turborepo 化後は `turbo build`（生成→ビルドの連鎖込み）に置き換える
 - 上記が通った状態で解説し、ユーザーに引き渡す（コミット可能な状態にしておく）
 
 ## ブランチ・コミット・PR（ユーザーが実施）
@@ -174,14 +178,14 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 
 | 種類 | 形式 | 例 |
 | --- | --- | --- |
-| 機能実装（サブIssue） | `phase{N}/{Issue番号}-{内容}` | `phase0/3-signup` |
+| 機能実装（サブIssue） | `phase{N}/{Issue番号}-{内容}` | `phase0/3-typespec-setup` |
 | リファクタ | `refactor/{内容}` | `refactor/api-clean-architecture` |
 | ドキュメント | `docs/{内容}` | `docs/architecture` |
 | バグ修正 | `fix/{Issue番号}-{内容}` | `fix/21-login-redirect` |
 
-- **phase番号はマイルストーン番号と対応**（M0 → `phase0`、M1 → `phase1` …）
+- **phase番号は上記 Phase 0〜7 と対応**（マイルストーン M0 → `phase0` …）
 - 内容は英小文字ケバブケース・短く（2〜3語まで）
-- **ブランチの作成・切り替えは Claude が行う**：ユーザーが **`/start <Issue番号>`**（または「#3へ」等の指示）で Issue を選択したら、Claude が main を最新化 → 該当ブランチ（`phase0/3-signup` 等）を作成・切り替えてから実装に入る。作業前にブランチが正しいか `git branch` で確認する
+- **ブランチの作成・切り替えは Claude が行う**：ユーザーが **`/start <Issue番号>`**（または「#3へ」等の指示）で Issue を選択したら、Claude が main を最新化 → 該当ブランチを作成・切り替えてから実装に入る。作業前にブランチが正しいか `git branch` で確認する
 - **PR作成はユーザーが `/pr` を実行したときのみ** Claude が行う（テンプレ準拠・`Close #N` 自動付与。勝手に作らない）
 
 ### コミット・PR
@@ -197,11 +201,10 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 | 企業 | `company` | 発注側ユーザー |
 | 人材 | `talent` | 受注側ユーザー（副業・フリーランスエンジニア） |
 | 案件 | `project` | 企業が掲載する仕事 |
-| 応募 | `application` | 人材→案件への応募（状態機械①） |
-| 契約 | `contract` | 承諾後の取引単位（状態機械②） |
-| 稼働報告 | `work_report` | 週次の作業レポート |
-| 検収 | `acceptance` | 企業による成果確認 |
-| レビュー | `review` | 相互評価（同時公開） |
+| 応募 | `application` | 人材→案件への応募（状態機械） |
+| 本人確認 | `kyc` | eKYC。人材の本人確認書類（Phase 7） |
+
+※ 契約（contract）・稼働報告（work_report）・検収（acceptance）・レビュー（review）は tsunagu-works 側の語彙（このリポジトリではスコープ外）
 
 ---
 
@@ -209,5 +212,5 @@ docs/           # 学習ログ（学習ログ.md=目次 / バックエンド.md 
 
 - 実値は `.env`（gitignore）、キー名の見本は `.env.example` をコミット
 - **必須**（未設定なら起動失敗）: `DATABASE_URL` / `JWT_SECRET`
-- **任意**（安全なデフォルトあり）: `PORT`（既定8081） / `WEB_ORIGIN`（既定 http://localhost:3000） / `NEXT_PUBLIC_API_URL`
-- api側の環境変数の読み取りは `api/config.go` に集約（ハードコード禁止）
+- **任意**（安全なデフォルトあり）: `PORT`（既定8082） / `WEB_ORIGIN`（既定 http://localhost:3001） / `NEXT_PUBLIC_API_URL`
+- 環境変数の読み取りは1か所に集約（出発点では `api/config.go`。新構成では `apps/api-server` 側の config に集約）・ハードコード禁止
