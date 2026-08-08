@@ -1,6 +1,8 @@
-# api — Go バックエンド設計
+# api — Go バックエンド設計（出発点）
 
-Go 標準ライブラリ（net/http）によるREST API。**Stage 1: フラット構成**（`package main` のファイル分割）で運用中。
+Go 標準ライブラリ（net/http）によるREST API。tsunagu-works MVP の**フラット構成**（`package main` のファイル分割）を、リファクタの出発点としてそのまま保持している。
+
+> ⚠️ このディレクトリは **Before（リファクタ対象）**。[後継リポジトリ設計プラン](../docs/後継リポジトリ設計プラン.md)に沿って、`apps/api-server/`（視点→層分割・スキーマ駆動・sqlc）へ段階的に作り替えていく。目標構成は末尾の[ロードマップ](#進化のロードマップ設計プランへ移行)へ。
 
 ## 構成とファイル責務
 
@@ -15,7 +17,9 @@ api/
 ├── jwt.go           # トークンの発行と検証（対で同居・HS256強制）
 ├── auth.go          # ドメイン機能: signup / login / me（機能ごとに1ファイルの型）
 ├── profile.go       # プロフィール（companies / talents）
-├── projects.go      # 案件（掲載・一覧・詳細）
+├── projects.go      # 案件。ほか applications / contracts / work_reports /
+│                    #   messages / masking / reviews が同じ型で並ぶ
+├── *_status.go      # 状態遷移表（応募・掲載・契約・稼働報告）＝純粋関数＋テスト
 ├── health.go        # 死活確認（DB疎通込み）
 ├── .air.toml        # ホットリロード設定（開発ツール）
 └── .golangci.yml    # linter設定（gosec / errorlint / exhaustive 等）
@@ -49,8 +53,8 @@ api/
 
 | 選定                                 | 理由（詳細は docs/ の判断ログ）                                                                                                                                              |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **net/http（フレームワーク不使用）** | Go 1.22+ でメソッド指定・パスパラメータが標準化されルーティングの主要動機が消滅。仕組みを隠蔽せず学べる・依存ゼロ。痛み（ミドルウェアの重ね掛け煩雑化等）が出たら chi を検討 |
-| **database/sql + pgx（ORM不使用）**  | SQL とDB挙動そのものが学習対象・状態機械のクエリを自分で制御。スキャンが辛くなったら sqlx、R1 で repository 層を切るとき sqlc（型安全なコード生成）を検討                    |
+| **net/http（フレームワーク不使用）** | Go 1.22+ でメソッド指定・パスパラメータが標準化されルーティングの主要動機が消滅。仕組みを隠蔽せず学べる・依存ゼロ。後継設計では**ルーティング自体を oapi-codegen の生成コードに任せる** |
+| **database/sql + pgx（ORM不使用）**  | SQL とDB挙動そのものが学習対象・状態機械のクエリを自分で制御。後継設計では **sqlc** を採用し、書いたSQLを資産として持ち越したまま型安全化する                                |
 | **sql-migrate**                      | up/down/status の履歴管理。DDLは psql 直接実行禁止                                                                                                           |
 | **golang-jwt/v5 + bcrypt**           | JWT はHS256を検証側で強制（algすり替え拒否）。パスワードは bcrypt（遅さが価値）                                                                                              |
 | **air / golangci-lint**              | 開発マシンのツールとして go install（go.mod に入れない）                                                                                                                     |
@@ -60,14 +64,25 @@ api/
 - `go test ./...`。テーブル駆動テスト（`auth_test.go` が見本）
 - 検証ロジックは純粋関数に切り出してテスト可能に（`validateSignup`）
 
-## 進化のロードマップ（R1）
+## 進化のロードマップ（設計プランへ移行）
 
-**発動条件**: ハンドラが太った・状態機械（Phase 3〜）のテストを書きたくなったとき。
+旧計画（R1: handler / usecase / repository への分割）は、[後継リポジトリ設計プラン](../docs/後継リポジトリ設計プラン.md)に**置き換えられた**。repository 層は作らず、sqlc の生成する `Queries` をその代わりに使う。
 
 ```
-現在: handler内に検証・SQL・レスポンスが同居
-  ↓ R1
-handler（HTTP入出力） → usecase（業務ロジック・状態遷移・テスト対象の本丸） → repository（SQL）
+現在: api/ フラット構成（handler内に検証・SQL・レスポンスが同居）
+  ↓
+目標: apps/api-server/internal/{company, talent, shared}
+      handler（oapi-codegen 生成IFの実装）
+        → usecase（業務ロジック・トランザクション境界）
+        → gen/db（sqlc の Queries）        ※ repository 層は作らない
+      shared/domain（状態遷移表・不変条件） ← DBにもHTTPにも依存しない
 ```
 
-`validateSignup`（純粋関数）は usecase の種、`db.QueryRow` 部分は repository の種として、切り込み線を入れてある。
+現行コードには目標構成への「切り込み線」が既に入っている：
+
+| 現行コード | 移行先 |
+| --- | --- |
+| `*_status.go` の遷移表（純粋関数） | `shared/domain` |
+| `validateSignup` などの検証関数 | `validator/` |
+| `db.QueryRow` に渡している手書きSQL | `queries/*.sql`（sqlc の入力） |
+| `requireAuth` / `requireRole` | `shared/auth` のミドルウェア（ロールはパスで一律） |

@@ -4,7 +4,7 @@ import 'server-only'
 // "server-only" により、クライアントコンポーネントから import するとビルドエラーになる
 // （トークンを扱う処理がブラウザに漏れる事故をコンパイル時に防ぐ）
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8081'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8082'
 
 export type ApiError = {
   status: number
