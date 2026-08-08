@@ -1,0 +1,2 @@
+# emitter（OpenAPI 出力）は Phase 0-2（#6）で設定する。現状はコンパイルチェックのみ
+emit: []
