@@ -7,7 +7,7 @@
 
 ## Phase0 #3 Step1: users テーブルと sql-migrate 導入
 
-**何をした**: sql-migrate（it-support-service と同じ）を導入し、最初のマイグレーション `migrations/ddl/20260803000001-create_users.sql` で users テーブルを定義（email UNIQUE / password_hash / role CHECK / TIMESTAMPTZ）。`dbconfig.yml`・`Makefile`（up/down/status/new）を整備。
+**何をした**: sql-migrate を導入し、最初のマイグレーション `migrations/ddl/20260803000001-create_users.sql` で users テーブルを定義（email UNIQUE / password_hash / role CHECK / TIMESTAMPTZ）。`dbconfig.yml`・`Makefile`（up/down/status/new）を整備。
 
 **概念**
 

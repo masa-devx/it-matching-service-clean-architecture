@@ -60,12 +60,12 @@
 
 <header class="hero">
   <h1>🤝 Tsunagu Works — 企業×IT人材マッチング 仕様 v1</h1>
-  <p>副業・フリーランスエンジニアと企業をつなぐビジネスマッチング ｜ it-support-service 忠実模倣 ＋ 独自機能で差す旗艦ポートフォリオ</p>
+  <p>副業・フリーランスエンジニアと企業をつなぐビジネスマッチング ｜ 独自機能で差す旗艦ポートフォリオ</p>
 </header>
 
 <div class="pitch">
   <b>一言コンセプト：</b>「<b>正社員採用は難しい、でも技術力が要る」企業と、「副業を始めたい」エンジニアを、<b>安心の仕組み（エスクロー・KYC・公平なレビュー）</b>つきでつなぐマッチングプラットフォーム。
-  <br><span class="muted">構造は it-support-service（Go＋Next.js＋スキーマ駆動）を層ごとに模倣し、「説明できる設計」を獲得する。</span>
+  <br><span class="muted">Go＋Next.js＋スキーマ駆動の構造を層ごとに積み上げ、「説明できる設計」を獲得する。</span>
 </div>
 
 <div class="toc">
@@ -74,7 +74,7 @@
     <li><a href="#s1">決定事項サマリー</a></li>
     <li><a href="#s2">解決する課題（なぜ作るか）</a></li>
     <li><a href="#s3">機能一覧（＝課題との対応表）</a></li>
-    <li><a href="#s4">it-support との構造対応</a></li>
+    <li><a href="#s4">ドメイン要素と学習テーマの対応</a></li>
     <li><a href="#s5">状態遷移（状態機械3本）</a></li>
     <li><a href="#s6">データ設計</a></li>
     <li><a href="#s7">技術スタック（求人スキル対応）</a></li>
@@ -90,8 +90,8 @@
   <h2>1. 決定事項サマリー</h2>
   <table>
     <tr><th>項目</th><th>決定</th></tr>
-    <tr><td>ドメイン</td><td><b>企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチング</b>（it-support-service と同じ土俵）</td></tr>
-    <tr><td>作り方</td><td><b>it-support-service を忠実に模倣</b>（Go クリーンアーキ＋Next.js App Router＋スキーマ駆動）。層ごとに参考実装と見比べて「説明できる設計」を獲得する</td></tr>
+    <tr><td>ドメイン</td><td><b>企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチング</b></td></tr>
+    <tr><td>作り方</td><td><b>Go クリーンアーキ＋Next.js App Router＋スキーマ駆動</b>を層ごとに積み上げ、各層の判断理由を言語化しながら「説明できる設計」を獲得する</td></tr>
     <tr><td>オリジナリティ</td><td>ドメインでなく<b>機能と実装の深さ</b>で出す：エスクロー決済・連絡先マスキング・同時公開レビュー・稼働報告</td></tr>
     <tr><td>学習の狙い</td><td><b>フロントエンドの知識・経験を深める</b>（7社の必須/歓迎スキル対応）＋ Go/DB のバックエンド越境</td></tr>
     <tr><td>当事者性</td><td>自分自身がエンジニアで転職・副業市場の当事者。<b>発注側・受注側の両方を最も高解像度で想像できるドメイン</b></td></tr>
@@ -129,7 +129,7 @@
     <tr><th>機能</th><th>なぜ作るか（解決する課題）</th><th>区分</th></tr>
     <tr><td>会員登録・認証（JWT＋httpOnly Cookie）</td><td>基盤（todo-appの型を再利用）</td><td><span class="badge b-mvp">MVP</span></td></tr>
     <tr><td>企業プロフィール／人材プロフィール（スキル・稼働可能時間・希望単価・経歴）</td><td>「誰なのか」を構造化して<b>見極めコストを下げる</b></td><td><span class="badge b-mvp">MVP</span></td></tr>
-    <tr><td><b>KYC（本人確認）</b>：書類アップロード→審査→承認バッジ</td><td>「音信不通・なりすまし」への安心。<b>it-supportのKYC構造を模倣</b></td><td><span class="badge b-mvp">MVP（簡易版）</span></td></tr>
+    <tr><td><b>KYC（本人確認）</b>：書類アップロード→審査→承認バッジ</td><td>「音信不通・なりすまし」への安心。<b>書類の保管とアクセス制御が設計の要</b></td><td><span class="badge b-mvp">MVP（簡易版）</span></td></tr>
     <tr><td>実績バッジ・累計稼働時間の可視化</td><td>「実績が形に残らない」→ 続けるほど信頼が積み上がる</td><td><span class="badge b-ext">拡張</span></td></tr>
   </table>
 
@@ -181,18 +181,19 @@
 </section>
 
 <section id="s4">
-  <h2>4. it-support-service との構造対応（模倣マップ）</h2>
+  <h2>4. ドメイン要素と学習テーマの対応</h2>
   <table>
-    <tr><th>it-support-service</th><th>→ 本サービス</th><th>模倣で学ぶこと</th></tr>
-    <tr><td>企業（支援を求める側）</td><td>企業（発注側）</td><td rowspan="6">Go クリーンアーキ（handler→usecase→repository）／スキーマ駆動（TypeSpec/OpenAPI→型生成）／状態遷移設計／KYCワークフロー／Next.js App Router・RSC の境界設計</td></tr>
-    <tr><td>サポーター（提供側）</td><td>IT人材（副業・フリーランス）</td></tr>
-    <tr><td>プロジェクト掲載</td><td>案件掲載</td></tr>
-    <tr><td>支援プラン・契約（状態遷移）</td><td>応募→選考→契約→検収→完了（状態機械①②）</td></tr>
-    <tr><td>KYC（本人確認）</td><td>KYC（書類→審査→バッジ）</td></tr>
-    <tr><td>決済</td><td><b>エスクロー決済（状態機械③）</b>← 本作で深化させる部分</td></tr>
+    <tr><th>ドメイン要素</th><th>実装で扱うもの</th><th>ここで学ぶこと</th></tr>
+    <tr><td>企業 / IT人材</td><td>ロール別の認証・プロフィール</td><td>JWT・Cookie・認可の境界設計</td></tr>
+    <tr><td>案件掲載</td><td>CRUD＋検索・掲載状態</td><td>層分けした CRUD／検索条件の組み立て</td></tr>
+    <tr><td>応募 → 選考 → 承諾</td><td><b>状態機械①</b></td><td>状態遷移表・ホワイトリスト・楽観ロック</td></tr>
+    <tr><td>契約 → 稼働報告 → 検収</td><td><b>状態機械②</b></td><td>トランザクション境界・スナップショット</td></tr>
+    <tr><td>エスクロー決済</td><td><b>状態機械③</b>（拡張フェーズ）</td><td>業務の状態とお金の状態の分離・冪等性</td></tr>
+    <tr><td>連絡先マスキング / 同時公開レビュー</td><td>独自の柱</td><td>「取得しない」設計・TOCTOU の回避</td></tr>
   </table>
   <div class="box green">
-    <b>模倣の進め方：</b>各Phaseで「①参考実装の該当層を読む → ②自分のドメイン語彙で再実装 → ③差分を説明できるか確認」。丸写しではなく<b>「読んで・書いて・比べる」</b>のサイクルで、面接で『なぜこの設計か』を自分の言葉にする。
+    <b>進め方：</b>各Phaseで「①なぜこの設計かを先に言語化 → ②実装 → ③後から読んで説明できるか確認」。
+    <b>動くものを量産するのではなく、全行を自分の言葉で説明できる状態</b>で積み上げ、面接で『なぜこの設計か』に即答できるようにする。
   </div>
 </section>
 
@@ -272,7 +273,7 @@ notifications   id, user_id, type, payload, read_at</pre>
     <tr><td><b>Vitest + Testing Library / Playwright / MSW</b></td><td>必須(TORIHADA)/歓迎: テスト（5社）</td><td>テスティングトロフィー（SODA方針と一致）</td></tr>
     <tr><td><b>TanStack Virtual + seekページング + Web Vitals計測</b></td><td>歓迎: パフォーマンス（5社）</td><td>1万件一覧のbefore/after数値</td></tr>
     <tr><td>アクセシビリティ（Radix基盤・jsx-a11y）</td><td>歓迎(TORIHADA)</td><td>フォーム・テーブルのa11y</td></tr>
-    <tr><td><b>OpenAPI スキーマ駆動</b>（TypeSpec→型/クライアント生成）</td><td>TS型設計</td><td>「APIの型がフロントを貫く」（it-support模倣）</td></tr>
+    <tr><td><b>OpenAPI スキーマ駆動</b>（TypeSpec→型/クライアント生成）</td><td>TS型設計</td><td>「APIの型がフロントを貫く」</td></tr>
     <tr><td><b>Go クリーンアーキ / PostgreSQL / docker</b></td><td>バックエンド越境（mikanスタックにGo）</td><td>handler→usecase→repository・DI・状態遷移テスト</td></tr>
     <tr><td>Stripe（エスクロー・拡張）</td><td>決済（mikanの決済基盤ミッションと接点）</td><td>与信/キャプチャ・Webhook冪等性</td></tr>
     <tr><td>生成AI活用（Claude Code・記録）</td><td>歓迎（全社）</td><td>開発プロセスのアウトプット化</td></tr>
@@ -290,7 +291,7 @@ notifications   id, user_id, type, payload, read_at</pre>
     <tr><td><b>検索パフォーマンス</b></td><td>スキル配列×レンジ×ソートの複合条件で1万件</td><td>GINインデックス・seekページング・EXPLAIN ANALYZEで計測 → before/after数値化</td></tr>
     <tr><td><b>楽観的更新の整合</b></td><td>応募・承諾の連打・失敗時のUI巻き戻し</td><td>TanStack Queryの<code>onMutate/onError/onSettled</code>でロールバック＋invalidate</td></tr>
     <tr><td><b>認可</b></td><td>企業/人材/運営のロール×所有者チェック（自分の案件だけ編集等）</td><td>todo-appのIDOR対策を発展：<b>ロール×リソース所有の二重チェック</b>をミドルウェア＋usecaseで</td></tr>
-    <tr><td><b>スキーマ駆動の運用</b></td><td>API変更のたびに型がズレる問題</td><td>OpenAPI定義を単一の真実に→生成型をフロント/バック両方が参照（it-supportの手法を模倣）</td></tr>
+    <tr><td><b>スキーマ駆動の運用</b></td><td>API変更のたびに型がズレる問題</td><td>OpenAPI定義を単一の真実に→生成型をフロント/バック両方が参照</td></tr>
   </table>
 </section>
 
@@ -318,7 +319,7 @@ notifications   id, user_id, type, payload, read_at</pre>
   </div>
   <table>
     <tr><th>Phase</th><th>作るもの</th><th>学びの核</th></tr>
-    <tr><td>0</td><td>環境（monorepo api/web・docker・OpenAPIセットアップ）＋ <b>it-support読解</b>（設計研究ノートと突き合わせ）</td><td>参考実装の全体像</td></tr>
+    <tr><td>0</td><td>環境（monorepo api/web・docker・OpenAPIセットアップ）</td><td>全体の骨格を通す</td></tr>
     <tr><td>1</td><td>認証＋企業/人材プロフィール（Goクリーンアーキの土台・簡易KYC）</td><td>handler→usecase→repository・DI</td></tr>
     <tr><td>2</td><td>案件CRUD＋検索一覧（RSC・フォーム・シードデータ）</td><td>RSC境界・検索設計・フォームUX</td></tr>
     <tr><td>3</td><td>応募→選考→承諾（状態機械①・楽観的更新・トラッカー）</td><td>TanStack Query・状態遷移テスト</td></tr>
@@ -341,7 +342,7 @@ notifications   id, user_id, type, payload, read_at</pre>
   </table>
   <div class="box brand">
     <h4>面接での語り（型）</h4>
-    「マッチングサービスの本質は"出会わせる"ことではなく、<b>知らない者同士が安心して取引できる仕組み</b>だと考えました。実務レベルの参考実装（Go＋Next.jsのマッチングサービス）を層ごとに研究した上で、同じアーキテクチャを自分で再構築し、独自要素として<b>信頼の設計</b>——エスクロー決済（業務とお金の状態機械を分離して同期）・連絡先マスキング（直接取引防止）・レビュー同時公開（報復レビュー防止）——を作り込みました。技術的には<b>状態機械3本のテーブル駆動テスト、Webhookの冪等性、1万件一覧の計測</b>が見どころです。」
+    「マッチングサービスの本質は"出会わせる"ことではなく、<b>知らない者同士が安心して取引できる仕組み</b>だと考えました。実務を想定したアーキテクチャ（Go＋Next.js＋スキーマ駆動）を層ごとに設計した上で、<b>信頼の設計</b>——エスクロー決済（業務とお金の状態機械を分離して同期）・連絡先マスキング（直接取引防止）・レビュー同時公開（報復レビュー防止）——を作り込みました。技術的には<b>状態機械3本のテーブル駆動テスト、Webhookの冪等性、1万件一覧の計測</b>が見どころです。」
   </div>
 </section>
 
@@ -363,12 +364,11 @@ notifications   id, user_id, type, payload, read_at</pre>
       <li><b>名前</b>：上の4案 or 別案？</li>
       <li><b>MVP範囲</b>：Phase 0〜5（エスクローは拡張最優先・KYCは簡易版）でよいか？</li>
       <li><b>メッセージ機能</b>：MVP後半（Phase 5）としたが、先送りして更にスリム化する選択もあり</li>
-      <li>OK後の流れ：<b>it-support-service 読解（Phase 0）→ リポジトリ作成（main＋ブランチ運用）→ Phase 1 着手</b>。todo-appと同じ「小さく刻む→解説→確認→コミット」方式・学習ログ蓄積で進める</li>
+      <li>OK後の流れ：<b>環境構築（Phase 0）→ リポジトリ作成（main＋ブランチ運用）→ Phase 1 着手</b>。todo-appと同じ「小さく刻む→解説→確認→コミット」方式・学習ログ蓄積で進める</li>
     </ol>
   </div>
   <h3>参考</h3>
   <ul>
-    <li>参考実装: <a href="https://github.com/yamao-sys/it-support-service">yamao-sys/it-support-service</a>（Go＋Next.js＋TypeSpec/OpenAPI＋Cloud Run）</li>
     <li>関連ドキュメント: kata-サマリー.html（旧構想）／mindgrove/仕様ドラフト.html（フロント特化の相方）／edu-match/仕様ドラフト.html（教育版・温存）</li>
   </ul>
 </section>

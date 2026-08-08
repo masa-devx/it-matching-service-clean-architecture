@@ -16,7 +16,7 @@
 ## プロジェクト概要
 
 **企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチング「Tsunagu Works」**。
-[it-support-service](https://github.com/yamao-sys/it-support-service) を参考にした転職ポートフォリオ旗艦。独自機能＝**信頼の設計**（エスクロー決済・連絡先マスキング・レビュー同時公開・稼働報告）。
+転職ポートフォリオ旗艦。独自機能＝**信頼の設計**（エスクロー決済・連絡先マスキング・レビュー同時公開・稼働報告）。
 
 詳細仕様: `仕様ドラフト.html` ／ Obsidian（コンセプト・仕様の正）: `~/Desktop/obsidian/20_projects/personal-apps/tsunagu-works/tsunagu-works.md`
 
@@ -74,7 +74,7 @@
 | --- | --- | --- |
 | コンセプト・仕様の正 | `~/Desktop/obsidian/20_projects/personal-apps/tsunagu-works/tsunagu-works.md` | 仕様の疑問・決定ログ確認時 |
 | 画面イメージ（仕様デッキ） | 同フォルダ `tsunagu-works-仕様デッキ.html` | 画面実装の着手時 |
-| 参考実装の設計研究 | `~/Desktop/obsidian/02_notes/references/it-support-serviceの設計研究.md` | アーキテクチャ判断・模倣元の確認時 |
+| 参考実装の設計研究 | `~/Desktop/obsidian/02_notes/references/` 配下 | アーキテクチャ判断で外部実装を確認したいとき |
 | 学習ロードマップ | `~/Desktop/obsidian/10_career/learning-roadmap/` | 学習の優先順位に迷ったとき |
 
 ---
