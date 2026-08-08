@@ -1,6 +1,8 @@
-# web — Next.js フロントエンド設計
+# web — Next.js フロントエンド設計（出発点）
 
-Next.js（App Router）+ TypeScript + Tailwind CSS v4 + shadcn/ui。**Stage 1: lib集約構成**で運用中。
+Next.js（App Router）+ TypeScript + Tailwind CSS v4 + shadcn/ui。tsunagu-works MVP の **lib集約構成**を、リファクタの出発点としてそのまま保持している。
+
+> ⚠️ このディレクトリは **Before（リファクタ対象）**。[後継リポジトリ設計プラン](../docs/後継リポジトリ設計プラン.md)に沿って、**company / talent の2アプリ**（`apps/{company,talent}` ＋ `packages/`）へ段階的に作り替えていく。目標構成は末尾の[ロードマップ](#進化のロードマップ設計プランへ移行)へ。
 
 ## 構成とディレクトリ責務
 
@@ -56,9 +58,9 @@ web/src/
 | 選定                                           | 理由（詳細は docs/フロントエンド.md の判断ログ）                                                                                                |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **REST + 素のfetch（axios不使用）**            | Next.jsのキャッシュ・revalidateはfetch拡張前提。axiosの利点（インターセプタ）はlib/の薄いラッパーで代替                                         |
-| **GraphQL不使用**                              | 「複数クライアント×複雑データ形状×専任チーム」が揃って初めて回収できる投資。型安全は将来OpenAPIスキーマ駆動で獲得                               |
-| **BFFはRoute Handler（Server Actions不使用）** | 仕組みを手で書いて理解する学習優先。読み取りはRSC直fetchでBFF不要のため増殖しない。辛くなったら汎用プロキシ／コード生成／Server Actionsを再検討 |
-| **React Hook Form 後回し**                     | 認証フォームは2〜3欄で検証の正はサーバー側。useState+HTML標準検証で十分。RHF+Zodは複雑フォーム（案件掲載）でデビュー予定                        |
+| **GraphQL不使用**                              | 「複数クライアント×複雑データ形状×専任チーム」が揃って初めて回収できる投資。型安全は後継設計の **TypeSpec → OpenAPI → orval 生成**で獲得する    |
+| **BFFはRoute Handler（Server Actions不使用）** | 仕組みを手で書いて理解する学習優先。読み取りはRSC直fetchでBFF不要のため増殖しない。後継設計では **Server Actions を採用**し、両方式を比較して語る |
+| **React Hook Form 後回し**                     | 認証フォームは2〜3欄で検証の正はサーバー側。useState+HTML標準検証で十分。後継設計では **RHF ＋ 生成Zod**（orval）の組み合わせを Phase 0 で検証する |
 | **shadcn/ui**                                  | npm依存でなくコードのコピーイン＝自分のコードとして改造できる。トークン（--primary等）の上書きで全体テーマ変更                                  |
 | **Tailwind v4**                                | 設定はCSS内 `@theme`。ユーティリティファースト                                                                                                  |
 | **Vitest + Testing Library**                   | 「ユーザーから見える振る舞い」でテスト（getByRole/getByLabelText）。a11yとテスト容易性が同じ方向を向く                                          |
@@ -68,8 +70,30 @@ web/src/
 - `npm run test`（CI と同一）／`npm run test:watch`（開発時）
 - lib/ に通信を集約してあるため、**lib関数1つの vi.mock でコンポーネントをテスト**できる（`LoginForm.test.tsx` が見本）
 
-## 進化のロードマップ（R2 / R3）
+## 進化のロードマップ（設計プランへ移行）
 
-- **R2（features分割）**: ドメインが3つ超えて探すのが辛くなったら `features/projects/` のようにドメイン単位へ再編
-- **R3（external層）**: Zod検証・Server-firstを入れたくなったら `lib/` → `external/`（dto / handler / repository・server-only）へ。`api.ts`（通信）は repository、`authClient.ts`（操作）は handler に対応する切り込み線
+旧計画（R2: features分割 → R3: external層）は、[後継リポジトリ設計プラン](../docs/後継リポジトリ設計プラン.md)に**置き換えられた**。1アプリ内のロール分岐をやめ、**company / talent の2アプリ（Turborepo）**に分割する。
+
+```
+現在: web/ 1アプリ（app / components / hooks / lib）
+  ↓
+目標: apps/{company|talent}/src/
+      ├─ features/{domain}/   # components(server/client) / hooks(TanStack Query) /
+      │                       #   queries / actions(Server Actions) / schemas(生成Zodの加工)
+      ├─ external/            # データ取得の境界: handler（入口）→ client（Go API・server-only）
+      └─ middleware.ts
+      ※ 型・Fetch Client・Zod は packages/api-client（orval 生成）から供給される
+```
+
+現行コードには目標構成への「切り込み線」が入っている：
+
+| 現行コード | 移行先 |
+| --- | --- |
+| `lib/api.ts`（Go API 呼び出し・server-only） | `external/client/` |
+| `lib/authClient.ts`（クライアント→BFF） | `features/{domain}/actions/`（Server Actions 化） |
+| `app/api/auth/*`（Route Handler の BFF） | Server Actions ＋ `external/handler/` |
+| `hooks/`（mutation・ローディング/エラー集約） | `features/{domain}/hooks/`（TanStack Query） |
+| `lib/types.ts`（手書きの共有型） | `packages/api-client`（orval 生成） |
+| ルートグループによるロール分岐 | **アプリ境界そのもの**（company / talent 分割） |
+
 - 参考ゴール構成: [next-app-router-architecture](https://github.com/YukiOnishi1129/next-app-router-architecture)
