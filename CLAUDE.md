@@ -43,6 +43,8 @@
 | Next.js（company／現行の web） | **3001** | 3000=tsunagu-works web と衝突回避 |
 | Next.js（talent） | **3002** | 2アプリ分割後に使用 |
 
+（経緯の記録: [ADR-0005](docs/adr/0005-separate-ports-containers.md)）
+
 ---
 
 ## ドメイン仕様の核心（毎セッションの前提知識）
