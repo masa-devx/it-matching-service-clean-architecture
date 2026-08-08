@@ -18,8 +18,8 @@ type config struct {
 // ポートなど「デフォルトで安全に動く設定」は任意＋既定値、と使い分ける
 func loadConfig() config {
 	return config{
-		port:      envOr("PORT", "8081"),
-		webOrigin: envOr("WEB_ORIGIN", "http://localhost:3000"),
+		port:      envOr("PORT", "8082"),
+		webOrigin: envOr("WEB_ORIGIN", "http://localhost:3001"),
 		logFormat: envOr("LOG_FORMAT", "text"),
 		logLevel:  envOr("LOG_LEVEL", "info"),
 	}

@@ -37,7 +37,7 @@ web/src/
    ├─ RSC: cookies() → Bearer付きで Go を直接fetch（読み取り・中継ルート不要）
    └─ Route Handler(/api/auth/*): Go呼び出し → token を httpOnly Cookie に変換（書き込み）
    ▼
-[Go API :8081]
+[Go API :8082]
 ```
 
 - **トークンはブラウザに一切渡さない**（httpOnly Cookie・XSS対策）

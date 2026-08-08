@@ -2,6 +2,6 @@
 # パスワードはローカル学習用（docker-compose.yml と同値）。本番想定では環境変数で渡す
 development:
   dialect: postgres
-  datasource: host=localhost port=5434 user=tsunagu password=tsunagu dbname=tsunagu sslmode=disable
+  datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu sslmode=disable
   dir: ddl
   table: gorp_migrations

@@ -10,10 +10,10 @@ help: ## コマンド一覧を表示
 
 ## --- 開発サーバー ---
 
-dev-api: ## Go API を起動（air ホットリロード・:8081）
+dev-api: ## Go API を起動（air ホットリロード・:8082）
 	cd api && air
 
-dev-web: ## Next.js を起動（:3000）
+dev-web: ## Next.js を起動（:3001）
 	cd web && npm run dev
 
 docker-up: ## db + api + web を全部Dockerで起動（ローカル直起動と同時使用不可＝ポート衝突）

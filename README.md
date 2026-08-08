@@ -94,7 +94,7 @@ packages/spec/shared/models.tsp（1箇所で定義）
 > ⚠️ 以下は**リファクタ前の現行構成**（Go フラット構成 + Next.js 1アプリ）の手順。Phase 0 以降、Turborepo 構成へ段階的に置き換わる。
 
 ```
-ブラウザ ── Next.js (App Router / :3000) ── Go API (:8081) ── PostgreSQL (:5434)
+ブラウザ ── Next.js (App Router / :3001) ── Go API (:8082) ── PostgreSQL (:5435)
 ```
 
 ```bash
@@ -111,8 +111,8 @@ cp web/.env.example web/.env.local   # NEXT_PUBLIC_API_URL
 make db-up && make migrate-up && make seed
 
 # 3. 開発サーバー（別ターミナルで各々）
-make dev-api   # Go API（air ホットリロード・:8081）
-make dev-web   # Next.js（:3000）
+make dev-api   # Go API（air ホットリロード・:8082）
+make dev-web   # Next.js（:3001）
 ```
 
 - その他のコマンドは `make help`（テスト: `make test` / lint: `make lint` / ビルド: `make build`）
