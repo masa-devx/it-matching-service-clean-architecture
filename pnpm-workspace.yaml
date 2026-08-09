@@ -1,3 +1,9 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# 依存パッケージのビルドスクリプトを実行しない（pnpm 10 の承認制に対する明示的な回答。
+# sharp / unrs-resolver は Next.js の任意最適化で、実行しなくても動作する）
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
