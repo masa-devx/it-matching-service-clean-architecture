@@ -1,0 +1,11 @@
+{
+  "name": "@repo/spec",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsp compile ."
+  },
+  "devDependencies": {
+    "@typespec/compiler": "^1.14.0"
+  }
+}

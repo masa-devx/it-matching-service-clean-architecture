@@ -11,7 +11,11 @@ out/
 
 # Go
 api/bin/
+apps/api-server/bin/
 *.exe
+
+# Turborepo
+.turbo/
 
 # Claude ローカル設定
 .claude/settings.local.json
