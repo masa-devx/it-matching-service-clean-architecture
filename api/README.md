@@ -74,7 +74,7 @@ api/
 目標: apps/api-server/internal/{company, talent, shared}
       handler（oapi-codegen 生成IFの実装）
         → usecase（業務ロジック・トランザクション境界）
-        → gen/db（sqlc の Queries）        ※ repository 層は作らない
+        → generated/db（sqlc の Queries）        ※ repository 層は作らない
       shared/domain（状態遷移表・不変条件） ← DBにもHTTPにも依存しない
 ```
 

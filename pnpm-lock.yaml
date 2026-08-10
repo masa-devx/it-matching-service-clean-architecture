@@ -12,7 +12,11 @@ importers:
         specifier: ^2.10.9
         version: 2.10.9
 
-  apps/api-server: {}
+  apps/api-server:
+    devDependencies:
+      '@repo/spec':
+        specifier: workspace:*
+        version: link:../../packages/spec
 
   apps/company:
     dependencies:

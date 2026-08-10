@@ -16,7 +16,7 @@ repository 層は作らない。usecase が sqlc の生成する `Queries` を�
 `Queries` を1対1でラップする自作インターフェースも作らない。
 
 ```
-handler → usecase → gen/db（sqlc の Queries）→ DB
+handler → usecase → generated/db（sqlc の Queries）→ DB
 ```
 
 ## 代替案と却下理由

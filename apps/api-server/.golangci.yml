@@ -20,6 +20,9 @@ linters:
     - bidichk # 不可視Unicode制御文字（Trojan Source）検出
     - bodyclose # HTTPレスポンスBodyのClose漏れ（外部API連携時に効く）
   exclusions:
+    # 生成物は lint 対象外（直すなら仕様か生成設定を直して再生成する）
+    paths:
+      - generated/
     rules:
       - path: _test\.go
         linters:
@@ -37,6 +40,9 @@ linters:
       # （捨てる箇所には理由コメントを書く運用。詳細は docs/バックエンド.md）
 
 formatters:
+  exclusions:
+    paths:
+      - generated/
   enable:
     - gofumpt # gofmt の厳格版
     - goimports
