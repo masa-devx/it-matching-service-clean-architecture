@@ -7,6 +7,9 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	company "github.com/masahiro96848/it-matching-service-clean-architecture/apps/api-server/generated/api/company"
+	companyhandler "github.com/masahiro96848/it-matching-service-clean-architecture/apps/api-server/internal/company/handler"
 )
 
 // Phase 0 の最小サーバー。ルーティングは Phase 0-2 以降 oapi-codegen の生成コードに任せるため、
@@ -26,6 +29,14 @@ func main() {
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	// company API: 仕様（openapi-company.yaml）から生成されたルーターを /company 配下にマウントする。
+	// パスの一次情報は仕様側にあり、ここでは「どこに載せるか」だけを決める
+	companyStrict := company.NewStrictHandler(companyhandler.New(), nil)
+	company.HandlerWithOptions(companyStrict, company.StdHTTPServerOptions{
+		BaseURL:    "/company",
+		BaseRouter: mux,
 	})
 
 	srv := &http.Server{

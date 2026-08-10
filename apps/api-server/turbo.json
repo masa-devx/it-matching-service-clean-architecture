@@ -2,14 +2,22 @@
   "$schema": "https://turborepo.com/schema.json",
   "extends": ["//"],
   "tasks": {
+    "generate": {
+      "dependsOn": ["@repo/spec#build"],
+      "inputs": ["oapi-company.yaml", "../../packages/spec/openapi-company.yaml"],
+      "outputs": ["generated/**"]
+    },
     "build": {
+      "dependsOn": ["generate"],
       "inputs": ["**/*.go", "go.mod", "go.sum"],
       "outputs": ["bin/**"]
     },
     "test": {
+      "dependsOn": ["generate"],
       "inputs": ["**/*.go", "go.mod", "go.sum"]
     },
     "lint": {
+      "dependsOn": ["generate"],
       "inputs": ["**/*.go", "go.mod", "go.sum", ".golangci.yml"]
     }
   }

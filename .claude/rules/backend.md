@@ -23,8 +23,8 @@ globs:
 - `docs/後継リポジトリ設計プラン.md` §4〜7 を正とする: `internal/{company,talent,shared}` の**視点→層**分割
 - 責務: handler=生成IFの実装・詰め替えのみ／usecase=業務ロジック・**トランザクション境界**／`shared/domain`=遷移表・不変条件（DBにもHTTPにも依存しない）
 - SQL は `queries/*.sql` に書いて sqlc で生成。**repository 層・`Queries` の薄皮ラップを作らない**
-- **生成物（`gen/`）は編集しない**。仕様（`.tsp` / `queries/`）を直して再生成する
-- `internal/company` ⇔ `internal/talent` の相互 import 禁止・`shared/domain` から `infra`/`gen` の import 禁止（depguard で強制）
+- **生成物（`generated/`）は編集しない**。仕様（`.tsp` / `queries/`）を直して再生成する
+- `internal/company` ⇔ `internal/talent` の相互 import 禁止・`shared/domain` から `infra`/`generated` の import 禁止（depguard で強制）
 
 ## Go の作法
 

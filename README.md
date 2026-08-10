@@ -48,8 +48,8 @@ tsunagu-works は機能を出し切ることを優先し、**あえて層を分�
 
 ```
 packages/spec/shared/models.tsp（1箇所で定義）
-   ├──→ openapi-company.yaml ──→ Go: gen/api/company ＋ TS: api-client/company
-   └──→ openapi-talent.yaml  ──→ Go: gen/api/talent  ＋ TS: api-client/talent
+   ├──→ openapi-company.yaml ──→ Go: generated/api/company ＋ TS: api-client/company
+   └──→ openapi-talent.yaml  ──→ Go: generated/api/talent  ＋ TS: api-client/talent
 ```
 
 - **仕様変更 → 生成 → ビルドを Turborepo のタスクグラフで連鎖**させ、「生成し忘れ」を構造的に無くす
