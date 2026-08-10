@@ -1,0 +1,143 @@
+openapi: 3.0.0
+info:
+  title: Tsunagu Works Company API
+  description: |-
+    企業向け API。/company プレフィックスはサーバー側のマウント時に付与する
+    （仕様は「company API の中身」だけを定義し、どこに載せるかは実装の関心事とする）
+  version: 0.0.0
+tags: []
+paths:
+  /projects:
+    post:
+      operationId: Projects_create
+      description: 案件を作成する（draft として作成される）
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.Project'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TsunaguWorks.ProjectCreateInput'
+components:
+  schemas:
+    TsunaguWorks.ApiError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+        request_id:
+          type: string
+      description: エラーレスポンスの共通形
+    TsunaguWorks.Project:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - hourly_rate_min
+        - hourly_rate_max
+        - hours_per_week
+        - remote_ok
+        - required_skills
+        - status
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 5000
+        hourly_rate_min:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 0
+          description: 想定時給の下限（円）。未設定は null
+        hourly_rate_max:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 0
+          description: 想定時給の上限（円）。未設定は null
+        hours_per_week:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 60
+          description: 週の想定稼働時間
+        remote_ok:
+          type: boolean
+        required_skills:
+          type: array
+          items:
+            type: string
+          description: '必須スキル（例: ["Go", "PostgreSQL"]）'
+        status:
+          $ref: '#/components/schemas/TsunaguWorks.ProjectStatus'
+        created_at:
+          type: string
+          format: date-time
+      description: 案件（企業が掲載する仕事）
+    TsunaguWorks.ProjectCreateInput:
+      type: object
+      required:
+        - title
+        - description
+        - hours_per_week
+        - remote_ok
+        - required_skills
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        hourly_rate_min:
+          type: integer
+          format: int32
+          minimum: 0
+        hourly_rate_max:
+          type: integer
+          format: int32
+          minimum: 0
+        hours_per_week:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 60
+        remote_ok:
+          type: boolean
+        required_skills:
+          type: array
+          items:
+            type: string
+      description: 案件の作成入力（status はサーバー側で draft 固定のため含めない）
+    TsunaguWorks.ProjectStatus:
+      type: string
+      enum:
+        - draft
+        - published
+        - closed
+      description: 案件の掲載状態

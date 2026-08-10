@@ -3,9 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "tsp compile ."
+    "build": "tsp compile company/main.tsp"
   },
   "devDependencies": {
-    "@typespec/compiler": "^1.14.0"
+    "@typespec/compiler": "^1.14.0",
+    "@typespec/http": "^1.14.0",
+    "@typespec/openapi3": "^1.14.0"
   }
 }

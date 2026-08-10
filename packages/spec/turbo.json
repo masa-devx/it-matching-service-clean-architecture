@@ -3,7 +3,8 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "inputs": ["**/*.tsp", "tspconfig.yaml"]
+      "inputs": ["**/*.tsp", "tspconfig.yaml"],
+      "outputs": ["openapi-*.yaml"]
     }
   }
 }
