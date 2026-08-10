@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "go run ./cmd/server",
-    "generate": "go tool oapi-codegen -config oapi-codegen-company.yaml ../packages/spec/openapi-company.yaml",
+    "generate": "go tool oapi-codegen -config oapi-codegen-company.yaml ../packages/spec/openapi-company.yaml && go tool sqlc generate",
     "build": "go build -o bin/server ./cmd/server",
     "test": "go test ./...",
     "lint": "golangci-lint run ./..."

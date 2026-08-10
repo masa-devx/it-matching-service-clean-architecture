@@ -4,7 +4,13 @@
   "tasks": {
     "generate": {
       "dependsOn": ["@repo/spec#build"],
-      "inputs": ["oapi-codegen-company.yaml", "../packages/spec/openapi-company.yaml"],
+      "inputs": [
+        "oapi-codegen-company.yaml",
+        "../packages/spec/openapi-company.yaml",
+        "sqlc.yaml",
+        "queries/**",
+        "../migrations/ddl/**"
+      ],
       "outputs": ["generated/**"]
     },
     "build": {
