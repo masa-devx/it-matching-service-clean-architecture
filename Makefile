@@ -1,30 +1,16 @@
-# Tsunagu Works 開発コマンド集約
+# 開発コマンド集約（アプリの起動・ビルドは pnpm / turbo 側: `pnpm dev` / `pnpm turbo build`）
 # `make` または `make help` で一覧表示
 
 .DEFAULT_GOAL := help
 
-.PHONY: help dev-api dev-web docker-up docker-down db-up db-down migrate-up migrate-down migrate-status migrate-new seed seed-large perf perf-load test lint build
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new seed seed-large perf
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-## --- 開発サーバー ---
-
-dev-api: ## Go API を起動（air ホットリロード・:8082）
-	cd api && air
-
-dev-web: ## Next.js を起動（:3001）
-	cd web && npm run dev
-
-docker-up: ## db + api + web を全部Dockerで起動（ローカル直起動と同時使用不可＝ポート衝突）
-	docker compose up
-
-docker-down: ## Dockerのコンテナを停止・削除
-	docker compose down
-
 ## --- DB ---
 
-db-up: ## PostgreSQL コンテナだけを起動（api/webはローカル直起動する従来運用）
+db-up: ## PostgreSQL コンテナを起動（:5435）
 	docker compose up -d db
 
 db-down: ## コンテナを停止
@@ -42,30 +28,13 @@ migrate-status: ## マイグレーションの適用状況を表示
 migrate-new: ## 新規マイグレーション作成（例: make migrate-new NAME=create_projects）
 	$(MAKE) -C migrations new NAME=$(NAME)
 
-seed: ## 開発用シードデータを投入（2回実行しても安全・資格情報はREADME参照）
+seed: ## 開発用シードデータを投入（2回実行しても安全）
 	docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/seed.sql
 
-seed-large: ## 性能計測用に案件5万件を投入（ローカル専用・数十秒かかる）
+seed-large: ## 性能計測用に案件5万件を投入（ローカル専用）
 	time docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/seed_large.sql
 
 ## --- 性能計測 ---
 
 perf: ## DBクエリの実行計画を計測（EXPLAIN ANALYZE・要 make seed-large）
 	docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/perf_queries.sql
-
-perf-load: ## APIの負荷試験（k6・要 make dev-api）
-	docker run --rm -i --add-host=host.docker.internal:host-gateway -v $(PWD)/k6:/scripts grafana/k6 run /scripts/list_projects.js
-
-## --- 品質チェック（CIと同一コマンド） ---
-
-test: ## api / web のテストを実行
-	cd api && go test ./...
-	cd web && npm run test
-
-lint: ## api / web の lint を実行
-	cd api && golangci-lint run ./...
-	cd web && npm run lint && npm run format:check
-
-build: ## api / web をビルド（型チェック込み）
-	cd api && go build ./...
-	cd web && npm run build
