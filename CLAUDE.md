@@ -20,14 +20,14 @@
 [tsunagu-works](https://github.com/masahiro96848/tsunagu-works)（フラット構成・MVP完成済み）と同じドメインを、スキーマ駆動・層分割・モノレポ構成で作り直す。**2つのリポジトリを並べて「どの規模で、どちらの設計を選ぶか」という判断を示す**のがゴール。MVPフェーズは終了しており、以後は通常のIssue駆動開発で進める。
 
 - **設計の正**: `docs/後継リポジトリ設計プラン.md`（技術選定・認可設計・テスト戦略・Phase計画。疑問が出たらまずここ）
-- 現在のコードは tsunagu-works MVP のスナップショット（＝リファクタの出発点）
+- **このリポジトリは After 専用**（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)）。`web/` は tsunagu-works MVP を土台に作り替えていく。Before の参照は tsunagu-works リポジトリ
 
 | 項目 | 内容 |
 | --- | --- |
 | モノレポ | Turborepo + pnpm workspace（Goもタスクグラフに載せ、仕様変更→生成→ビルドを連鎖させる） |
 | API仕様 | TypeSpec → OpenAPI → oapi-codegen（Go・StrictHandler）/ orval（TS: 型+Fetch Client+Zod）。生成物はコミットし、CIで差分チェック |
 | バックエンド | Go。`internal/{company,talent,shared}` の**視点→層**分割（handler / usecase / validator + shared/domain） |
-| フロント | Next.js App Router + TypeScript。**company / talent の2アプリ**に分割 |
+| フロント | Next.js App Router + TypeScript。**web/ 1アプリ**（ロール分岐はルートグループ・ADR-0006） |
 | DB | PostgreSQL（Docker）＋ **sqlc**（repository層は作らない。`Queries` が repository 相当） |
 | サーバー状態 | TanStack Query（prefetch / Hydration）。書き込みは Server Actions |
 | 認証・認可 | 自前JWT（bcrypt・httpOnly Cookie）。**ロール認可はパスプレフィックス（/company/*, /talent/*）×ミドルウェアで一律** |
@@ -40,8 +40,7 @@
 | --- | --- | --- |
 | PostgreSQL | **5435** | 5432=ローカルPostgres、5433=todo-app、5434=tsunagu-works |
 | Go API | **8082** | 8080=todo-app、8081=tsunagu-works |
-| Next.js（company／現行の web） | **3001** | 3000=tsunagu-works web と衝突回避 |
-| Next.js（talent） | **3002** | 2アプリ分割後に使用 |
+| Next.js（web） | **3001** | 3000=tsunagu-works web と衝突回避 |
 
 （経緯の記録: [ADR-0005](docs/adr/0005-separate-ports-containers.md)）
 
@@ -80,7 +79,7 @@
 | ドキュメント | パス | 読むタイミング |
 | --- | --- | --- |
 | **後継リポジトリ設計プラン** | `docs/後継リポジトリ設計プラン.md` | **設計の疑問・Phase着手時（一次情報）** |
-| 出発点の設計記録 | `docs/アーキテクチャ.md`・`api/README.md`・`web/README.md` | 現行コードを読む・触るとき |
+| 出発点の設計記録 | `docs/アーキテクチャ.md`・`web/README.md` | web の既存コードを読む・触るとき |
 | コンセプト・仕様の正 | `~/Desktop/obsidian/20_projects/personal-apps/tsunagu-works/tsunagu-works.md` | 仕様の疑問・決定ログ確認時 |
 | 画面イメージ（仕様デッキ） | 同フォルダ `tsunagu-works-仕様デッキ.html` | 画面実装の着手時 |
 | 参考実装の設計研究 | `~/Desktop/obsidian/02_notes/references/` 配下 | アーキテクチャ判断で外部実装を確認したいとき |
@@ -90,14 +89,15 @@
 ## ディレクトリ構成
 
 ```
-【出発点（現行・リファクタ対象）】          【目標（Turborepo・設計プラン§4）】
-api/            Go フラット構成             apps/api-server/   internal/{company,talent,shared}
-web/src/        Next.js 1アプリ             apps/company/      apps/talent/
-migrations/     sql-migrate                 packages/          spec / api-client / ui
-docs/           設計書・学習ログ            migrations/ddl/    docs/adr/
+api-server/     Go（新構成）。internal/{company,talent,shared} の視点→層分割へ育てる
+  generated/    oapi-codegen の生成物（編集禁止・コミットする）
+web/            Next.js 1アプリ。Stage 1 構成 → features / external 構成へ段階移行
+packages/       spec（TypeSpec・契約の一次情報）/ typescript-config
+migrations/     sql-migrate（DDL・シード）
+docs/           設計書・学習ログ・adr/（設計判断の記録）
 ```
 
-- 移行の対応表（現行コードのどこが目標のどの層になるか）は `api/README.md` / `web/README.md` 末尾のロードマップを参照
+- web の移行対応表（現行コードのどこが目標のどの層になるか）は `web/README.md` 末尾のロードマップを参照
 
 ---
 
@@ -112,9 +112,9 @@ docs/           設計書・学習ログ            migrations/ddl/    docs/adr/
 - **未公開・原文は「取得しない」**（画面で隠さない）
 - 確定した合意は**値でコピーする**（スナップショット）
 
-**出発点コード（api/ web/）を触る場合**: fetch は `web/src/lib/` のみ・ルートグループ境界を崩さない・`main.go` は組み立てだけ（詳細は `.claude/rules/`）
+**web/ の既存コード（Stage 1 構成）を触る場合**: fetch は `web/src/lib/` のみ・ルートグループ境界を崩さない（詳細は `.claude/rules/`）
 
-**新構成（apps/ packages/）**: 設計プラン §4〜7 を正とする。依存方向は仕組みで強制する（golangci-lint の depguard / ESLint の import 制約）
+**新構成（api-server/ packages/・web の作り替え部分）**: 設計プラン §4〜7 と ADR を正とする。依存方向は仕組みで強制する（golangci-lint の depguard / ESLint の import 制約）
 
 詳細ルール:
 @.claude/rules/workflow.md
@@ -166,8 +166,8 @@ docs/           設計書・学習ログ            migrations/ddl/    docs/adr/
 ## 実装を渡す前の検証（Claude 必須）
 
 - api を触ったら: `go vet ./...` && `go build ./...`
-- web を触ったら: `npm run build`（型チェック込み）
-- Turborepo 化後は `turbo build`（生成→ビルドの連鎖込み）に置き換える
+- web / packages を触ったら: `pnpm turbo build`（生成→ビルドの連鎖・型チェック込み）
+- CI と同一の全チェック: `pnpm turbo lint format:check test build`
 - 上記が通った状態で解説し、ユーザーに引き渡す（コミット可能な状態にしておく）
 
 ## ブランチ・コミット・PR（ユーザーが実施）
@@ -215,4 +215,4 @@ docs/           設計書・学習ログ            migrations/ddl/    docs/adr/
 - 実値は `.env`（gitignore）、キー名の見本は `.env.example` をコミット
 - **必須**（未設定なら起動失敗）: `DATABASE_URL` / `JWT_SECRET`
 - **任意**（安全なデフォルトあり）: `PORT`（既定8082） / `WEB_ORIGIN`（既定 http://localhost:3001） / `NEXT_PUBLIC_API_URL`
-- 環境変数の読み取りは1か所に集約（出発点では `api/config.go`。新構成では `apps/api-server` 側の config に集約）・ハードコード禁止
+- 環境変数の読み取りは `api-server/` の config に集約（ハードコード禁止）

@@ -3,10 +3,6 @@ description: Next.js フロントエンドを実装・修正するときのル�
 globs:
   - "web/src/**/*.tsx"
   - "web/src/**/*.ts"
-  - "apps/company/**/*.tsx"
-  - "apps/company/**/*.ts"
-  - "apps/talent/**/*.tsx"
-  - "apps/talent/**/*.ts"
   - "packages/**/*.ts"
 ---
 
@@ -20,12 +16,13 @@ globs:
 - 部品は `components/`、ロジックは `hooks/`、**API呼び出しは必ず `lib/`**（コンポーネント・フックに fetch を直接書かない）
 - `lib/` は server用（`next/headers` を使うもの）と client用（BFF/Server Action経由）を**ファイルで分離**（todo-app の型）
 
-**新構成（`apps/company`・`apps/talent`）を作る・触る場合**
+**新構成へ作り替える部分（web/ 内・ADR-0006 で1アプリに統合）**
 
 - `docs/後継リポジトリ設計プラン.md` §4〜5 を正とする: `features/{domain}/` ＋ `external/`（handler → client・server-only）
-- 型・Fetch Client・Zod は **`packages/api-client`（orval 生成）から供給**する（手書きの型二重管理をしない。生成物は編集しない）
-- 依存の禁止（ESLint で強制）: `features/` → `external/client` の直接 import（必ず handler 経由）／`features/{A}` → `features/{B}`／`apps/company` ⇔ `apps/talent`（共有は `packages/` 経由のみ）
+- 型・Fetch Client・Zod は **orval の生成物から供給**する（手書きの型二重管理をしない。生成物は編集しない。置き場は #8 で確定）
+- 依存の禁止（ESLint で強制）: `features/` → `external/client` の直接 import（必ず handler 経由）／`features/{A}` → `features/{B}` の直接依存
 - 書き込みは Server Actions（`features/{domain}/actions/` の薄いラッパー）、サーバー状態は TanStack Query（prefetch / Hydration）
+- ロール分岐はルートグループ（(company)/(talent) 等）＝アクセス制御の境界として維持する
 
 ## Server / Client の境界（todo-app・react-basics の型）
 

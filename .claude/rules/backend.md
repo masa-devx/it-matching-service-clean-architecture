@@ -1,26 +1,16 @@
 ---
-description: Go API / DB を実装・修正するときのルール（出発点=フラット構成／新構成=設計プラン）
+description: Go API / DB を実装・修正するときのルール（api-server/・設計プラン準拠）
 globs:
-  - "api/**/*.go"
-  - "api/**/*.sql"
-  - "apps/api-server/**/*.go"
-  - "apps/api-server/**/*.sql"
+  - "api-server/**/*.go"
+  - "api-server/**/*.sql"
 ---
 
 # バックエンド開発ルール（Go / PostgreSQL）
 
-## 構成
+## 構成（`api-server/`）
 
-**出発点コード（`api/`）を触る場合**
-
-- `main.go` は「DSN決定 → DB接続 → ルート登録 → 起動」の**組み立てだけ**
-- 機能はドメイン語彙のファイルに分ける（`auth.go` / `projects.go` / `applications.go` …）
-- 共通ヘルパー（writeJSON / writeError 等）は `response.go` に集約（todo-app の型）
-- package main の同一パッケージ分割のまま維持する（層分けは新構成側で行う。出発点は Before として保つ）
-
-**新構成（`apps/api-server/`）を作る・触る場合**
-
-- `docs/後継リポジトリ設計プラン.md` §4〜7 を正とする: `internal/{company,talent,shared}` の**視点→層**分割
+- `docs/後継リポジトリ設計プラン.md` §4〜7 と ADR を正とする: `internal/{company,talent,shared}` の**視点→層**分割
+- `cmd/server/main.go` は組み立て（DI・生成ルーターのマウント）だけ。手書きのルート登録をしない（health 等の運用エンドポイントのみ例外）
 - 責務: handler=生成IFの実装・詰め替えのみ／usecase=業務ロジック・**トランザクション境界**／`shared/domain`=遷移表・不変条件（DBにもHTTPにも依存しない）
 - SQL は `queries/*.sql` に書いて sqlc で生成。**repository 層・`Queries` の薄皮ラップを作らない**
 - **生成物（`generated/`）は編集しない**。仕様（`.tsp` / `queries/`）を直して再生成する
