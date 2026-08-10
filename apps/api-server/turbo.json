@@ -10,7 +10,7 @@
       "inputs": ["**/*.go", "go.mod", "go.sum"]
     },
     "lint": {
-      "inputs": ["**/*.go", "go.mod", "go.sum"]
+      "inputs": ["**/*.go", "go.mod", "go.sum", ".golangci.yml"]
     }
   }
 }
