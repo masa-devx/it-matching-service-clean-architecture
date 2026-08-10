@@ -34,7 +34,10 @@ describe('projectFormSchema（生成Zodの加工）', () => {
   })
 
   it('status を持たない（parse 結果に現れない＝公開状態を指定できる形が存在しない）', () => {
-    const result = projectFormSchema.parse({ ...validInput, status: 'published' })
+    const result = projectFormSchema.parse({
+      ...validInput,
+      status: 'published',
+    })
     expect('status' in result).toBe(false)
   })
 })

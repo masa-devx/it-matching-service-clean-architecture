@@ -12,6 +12,7 @@ import type {
   TsunaguWorksProjectCreateInput
 } from './models';
 
+import { customFetch } from '../../custom-fetch';
 
 export type HTTPStatusCode1xx = 100 | 101 | 102 | 103;
 export type HTTPStatusCode2xx = 200 | 201 | 202 | 203 | 204 | 205 | 206 | 207;
@@ -50,23 +51,16 @@ export const getProjectsCreateUrl = () => {
 /**
  * 案件を作成する（draft として作成される）
  */
-export const projectsCreate = async (tsunaguWorksProjectCreateInput: TsunaguWorksProjectCreateInput, options?: RequestInit): Promise<projectsCreateResponse> => {
+export const projectsCreate = async (tsunaguWorksProjectCreateInput: TsunaguWorksProjectCreateInput, options?: Parameters<typeof customFetch>[1]): Promise<projectsCreateResponse> => {
 
-  const res = await fetch(getProjectsCreateUrl(),
+  return customFetch<projectsCreateResponse>(getProjectsCreateUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(tsunaguWorksProjectCreateInput)
   }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: projectsCreateResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as projectsCreateResponse
-}
+);}
 
 
 
