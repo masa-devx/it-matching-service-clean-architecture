@@ -1,5 +1,5 @@
 # oapi-codegen の設定（OpenAPI → Go）
-# 実行: go tool oapi-codegen -config oapi-company.yaml ../../packages/spec/openapi-company.yaml
+# 実行: go tool oapi-codegen -config oapi-codegen-company.yaml ../packages/spec/openapi-company.yaml
 package: company
 output: generated/api/company/api.gen.go
 generate:

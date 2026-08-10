@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	company "github.com/masahiro96848/it-matching-service-clean-architecture/apps/api-server/generated/api/company"
-	companyhandler "github.com/masahiro96848/it-matching-service-clean-architecture/apps/api-server/internal/company/handler"
+	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
+	companyhandler "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/handler"
 )
 
 // Phase 0 の最小サーバー。ルーティングは Phase 0-2 以降 oapi-codegen の生成コードに任せるため、

@@ -11,7 +11,7 @@ out/
 
 # Go
 api/bin/
-apps/api-server/bin/
+api-server/bin/
 *.exe
 
 # Turborepo

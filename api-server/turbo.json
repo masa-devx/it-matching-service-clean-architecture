@@ -4,7 +4,7 @@
   "tasks": {
     "generate": {
       "dependsOn": ["@repo/spec#build"],
-      "inputs": ["oapi-company.yaml", "../../packages/spec/openapi-company.yaml"],
+      "inputs": ["oapi-codegen-company.yaml", "../packages/spec/openapi-company.yaml"],
       "outputs": ["generated/**"]
     },
     "build": {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	company "github.com/masahiro96848/it-matching-service-clean-architecture/apps/api-server/generated/api/company"
+	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
 )
 
 // Handler は company API のハンドラ実装。Phase 0 は仮実装（永続化しない・DB接続は #7）

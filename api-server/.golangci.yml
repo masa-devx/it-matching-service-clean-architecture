@@ -49,7 +49,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/masahiro96848/it-matching-service-clean-architecture/apps/api-server
+        - github.com/masahiro96848/it-matching-service-clean-architecture/api-server
 
 run:
   timeout: 5m
