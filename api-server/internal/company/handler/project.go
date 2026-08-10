@@ -3,17 +3,20 @@ package handler
 
 import (
 	"context"
+	"log"
 	"net/http"
-	"time"
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 )
 
-// Handler は company API のハンドラ実装。Phase 0 は仮実装（永続化しない・DB接続は #7）
-type Handler struct{}
+// Handler は company API のハンドラ実装。依存（Queries）は main から手渡しされる
+type Handler struct {
+	queries *db.Queries
+}
 
-func New() *Handler {
-	return &Handler{}
+func New(queries *db.Queries) *Handler {
+	return &Handler{queries: queries}
 }
 
 // 実装漏れをコンパイルエラーにする（仕様にエンドポイントが増えると、ここで検出される）
@@ -29,8 +32,7 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 	}
 
 	input := req.Body
-	return company.ProjectsCreate201JSONResponse{
-		Id:             1, // 仮実装の固定値。#7 で DB の採番に置き換える
+	row, err := h.queries.CreateProject(ctx, db.CreateProjectParams{
 		Title:          input.Title,
 		Description:    input.Description,
 		HourlyRateMin:  input.HourlyRateMin,
@@ -38,7 +40,26 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 		HoursPerWeek:   input.HoursPerWeek,
 		RemoteOk:       input.RemoteOk,
 		RequiredSkills: input.RequiredSkills,
-		Status:         company.Draft,
-		CreatedAt:      time.Now().UTC(),
+	})
+	if err != nil {
+		// 内部エラーの詳細はログのみに残し、クライアントには安全な文言だけを返す
+		log.Printf("CreateProject failed: %v", err)
+		return company.ProjectsCreatedefaultJSONResponse{
+			Body:       company.TsunaguWorksApiError{Error: "案件の作成に失敗しました"},
+			StatusCode: http.StatusInternalServerError,
+		}, nil
+	}
+
+	return company.ProjectsCreate201JSONResponse{
+		Id:             row.ID,
+		Title:          row.Title,
+		Description:    row.Description,
+		HourlyRateMin:  row.HourlyRateMin,
+		HourlyRateMax:  row.HourlyRateMax,
+		HoursPerWeek:   row.HoursPerWeek,
+		RemoteOk:       row.RemoteOk,
+		RequiredSkills: row.RequiredSkills,
+		Status:         company.TsunaguWorksProjectStatus(row.Status),
+		CreatedAt:      row.CreatedAt,
 	}, nil
 }
