@@ -1,0 +1,20 @@
+# sqlc の設定（手書きSQL → 型付きGoコード）
+# schema は sql-migrate のマイグレーションをそのまま読む（-- +migrate Down 以降は無視される）
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "../migrations/ddl"
+    queries: "queries"
+    gen:
+      go:
+        package: "db"
+        out: "generated/db"
+        sql_package: "pgx/v5"
+        # NULL許容カラムを pgtype ではなくポインタ（*int32 等）で受ける（handler での詰め替えを素直にする）
+        emit_pointers_for_null_types: true
+        overrides:
+          # timestamptz は pgtype.Timestamptz ではなく time.Time で受ける（API層の型と揃える）
+          - db_type: "pg_catalog.timestamptz"
+            go_type: "time.Time"
+          - db_type: "timestamptz"
+            go_type: "time.Time"

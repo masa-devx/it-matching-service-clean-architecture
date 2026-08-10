@@ -103,9 +103,9 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest  # lint
 # 1. 環境変数（初回のみ）
 cp web/.env.example web/.env.local   # NEXT_PUBLIC_API_URL
 
-# 2. 依存の取得と DB 起動・スキーマ適用・シード投入
+# 2. 依存の取得と DB 起動・スキーマ適用
 pnpm install
-make db-up && make migrate-up && make seed
+make db-up && make migrate-up
 
 # 3. 開発サーバー（Go と Next.js が並列起動・Ctrl+C で両方停止）
 pnpm dev
@@ -113,15 +113,6 @@ pnpm dev
 
 - ビルド・検証は turbo に集約: `pnpm turbo build` ／ CI と同一の全チェックは `pnpm turbo lint format:check test build`
 - `make` は DB 専用の道具箱（`make help` で一覧）。マイグレーションは sql-migrate で管理（psql で DDL を直接流さない）
-
-### テストユーザー（`make seed` で投入・ローカル専用）
-
-| メールアドレス                              | パスワード  | ロール |
-| ------------------------------------------- | ----------- | ------ |
-| company1@example.com / company2@example.com | password123 | 企業   |
-| talent1@example.com / talent2@example.com   | password123 | 人材   |
-
-性能計測用の大量データは `make seed-large`（案件5万件・決定的な連番データ。計測記録は [docs/性能.md](docs/性能.md)）。
 
 ## ドキュメント
 
