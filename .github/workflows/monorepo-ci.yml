@@ -1,11 +1,12 @@
-# 新構成（apps/ packages/）の CI: turbo で lint → build（ローカルと同一コマンド）
+# 新構成（api-server/ packages/ ほか）の CI: turbo で lint → build（ローカルと同一コマンド）
 # 旧構成の CI は api-ci.yml / web-ci.yml が担当（パスで棲み分け）
 name: monorepo-ci
 
 on:
   pull_request:
     paths:
-      - 'apps/**'
+      - 'api-server/**'
+      - 'web/**'
       - 'packages/**'
       - 'turbo.json'
       - 'pnpm-workspace.yaml'
@@ -16,7 +17,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/**'
+      - 'api-server/**'
+      - 'web/**'
       - 'packages/**'
       - 'turbo.json'
       - 'pnpm-workspace.yaml'
@@ -45,7 +47,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: apps/api-server/go.mod
+          go-version-file: api-server/go.mod
           # go.sum がまだ無い（依存ゼロ）ためキャッシュは無効。依存追加時に有効化する
           cache: false
 
@@ -68,4 +70,4 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
 
       - name: Lint & Build
-        run: pnpm turbo lint build
+        run: pnpm turbo lint format:check test build

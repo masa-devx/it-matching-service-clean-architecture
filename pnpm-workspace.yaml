@@ -1,5 +1,6 @@
 packages:
-  - 'apps/*'
+  - 'api-server'
+  - 'web'
   - 'packages/*'
 
 # 依存パッケージのビルドスクリプトを実行しない（pnpm 10 の承認制に対する明示的な回答。

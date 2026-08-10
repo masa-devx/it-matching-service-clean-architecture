@@ -5,8 +5,8 @@
 [tsunagu-works](https://github.com/masahiro96848/tsunagu-works)（フラット構成で MVP 完成済み）と**同じドメインを、スキーマ駆動・層分割・モノレポ構成で作り直す**。
 2つのリポジトリを並べて「**どの規模で、どちらの設計を選ぶか**」という判断そのものを示すことがゴール。
 
-> 設計の全体像と判断の記録: [docs/後継リポジトリ設計プラン.md](docs/後継リポジトリ設計プラン.md)
-> 現在のコードは tsunagu-works MVP のスナップショット（＝リファクタの出発点）。ここから段階的に作り替えていく。
+> 設計の全体像: [docs/後継リポジトリ設計プラン.md](docs/後継リポジトリ設計プラン.md) ／ 個々の決定: [docs/adr/](docs/adr/README.md)
+> `web/` は tsunagu-works MVP を土台に段階的に作り替えていく（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)）。Before の姿は tsunagu-works リポジトリを参照。
 
 ## なぜ作り直すか
 
@@ -25,7 +25,7 @@ tsunagu-works は機能を出し切ることを優先し、**あえて層を分�
 | 認可のロール判定 | 各ハンドラで `if user.Role`  | **パスプレフィックス × ミドルウェア**       | 書き忘れが構造的に起きない                           |
 | 一覧の取得       | 全件取得                     | **seek 法ページネーション**                 | OFFSET は深いページで遅く、挿入でズレる              |
 | テスト           | 純粋関数のみ（実装の25%）    | **go-txdb ＋ factories（実DB）**            | モックが多いと「テストは通るが動かない」が起きる     |
-| フロントの分割   | 1アプリ内でロール分岐        | **company / talent の2アプリ ＋ Turborepo** | ロール分岐がアプリ境界になる                         |
+| フロントの分割   | 単体リポジトリ・手書き型     | **モノレポ（Turborepo）＋ 生成型**          | 1アプリ維持は規模判断（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)） |
 | API仕様          | 手書きの型（Go / TS で別々） | **TypeSpec → OpenAPI → Go/TS 生成**         | 1つの仕様から両方に同じ型が届く                      |
 | 公開             | ローカルのみ                 | **Cloud Run ＋ Cloud Run Job**              | マイグレーションは1回だけ実行される必要がある        |
 
@@ -34,22 +34,22 @@ tsunagu-works は機能を出し切ることを優先し、**あえて層を分�
 ## 目標アーキテクチャ
 
 ```
-<repo>/                        ★ Turborepo モノレポ（目標構成）
-├─ apps/
-│  ├─ api-server/              # Go — internal/{company,talent,shared} の視点→層分割
-│  ├─ company/                 # Next.js — 企業向け
-│  └─ talent/                  # Next.js — 人材向け
+<repo>/                        ★ Turborepo モノレポ
+├─ api-server/                 # Go — internal/{company,talent,shared} の視点→層分割
+│  ├─ generated/               #   oapi-codegen の生成物（編集禁止・コミットする）
+│  └─ internal/company/handler #   StrictServerInterface の実装
+├─ web/                        # Next.js 1アプリ（ロール分岐はルートグループ）
+│                              #   Stage 1 構成 → features / external 構成へ段階移行
 ├─ packages/
-│  ├─ spec/                    # TypeSpec（API契約の一次情報）
-│  ├─ api-client/              # orval 生成物（型 + Fetch Client + Zod）
-│  └─ ui/                      # 2アプリで共有するデザインシステム
+│  ├─ spec/                    # TypeSpec（API契約の一次情報・apps のどちらの持ち物でもない）
+│  └─ typescript-config/       # tsconfig の共有ベース
 └─ migrations/ddl/             # sql-migrate
 ```
 
 ```
 packages/spec/shared/models.tsp（1箇所で定義）
-   ├──→ openapi-company.yaml ──→ Go: generated/api/company ＋ TS: api-client/company
-   └──→ openapi-talent.yaml  ──→ Go: generated/api/talent  ＋ TS: api-client/talent
+   ├──→ openapi-company.yaml ──→ Go: generated/api/company ＋ TS（orval・#8 で導入）
+   └──→ openapi-talent.yaml  ──→ Go: generated/api/talent（Phase 2 で追加）
 ```
 
 - **仕様変更 → 生成 → ビルドを Turborepo のタスクグラフで連鎖**させ、「生成し忘れ」を構造的に無くす
@@ -62,7 +62,7 @@ packages/spec/shared/models.tsp（1箇所で定義）
 
 | Phase | 内容                                                                        | ここで示すこと                           | 状態        |
 | ----- | --------------------------------------------------------------------------- | ---------------------------------------- | ----------- |
-| **0** | 1エンドポイント貫通（TypeSpec → oapi-codegen / sqlc / orval → フォーム1つ） | 生成の質・Turborepo に Go を載せる現実性 | 🔜 次はここ |
+| **0** | 1エンドポイント貫通（TypeSpec → oapi-codegen / sqlc / orval → フォーム1つ） | 生成の質・Turborepo に Go を載せる現実性 | 🚧 進行中   |
 | 1     | 土台（層構成・DI・go-txdb・CI・依存方向の強制）                             | 設計を仕組みで守る                       | —           |
 | 2     | 認証 ＋ プロフィール（company / talent の2系統）                            | 認可がパスで一律になる                   | —           |
 | 3     | 案件（seek ページネーション・検索）                                         | 層分けした CRUD                          | —           |
@@ -89,35 +89,30 @@ packages/spec/shared/models.tsp（1箇所で定義）
 
 **出発点の規模**（tsunagu-works MVP・2026-08-07 時点）: テーブル9・APIエンドポイント28・画面23・Go実装3,948行（テスト1,309行）・状態遷移表5本。
 
-## 現在のコードを動かす（出発点＝MVP構成）
-
-> ⚠️ 以下は**リファクタ前の現行構成**（Go フラット構成 + Next.js 1アプリ）の手順。Phase 0 以降、Turborepo 構成へ段階的に置き換わる。
+## 動かす
 
 ```
-ブラウザ ── Next.js (App Router / :3001) ── Go API (:8082) ── PostgreSQL (:5435)
+ブラウザ ── Next.js web (:3001) ── Go api-server (:8082) ── PostgreSQL (:5435)
 ```
 
 ```bash
-# 0. 開発ツール（初回のみ・~/go/bin に PATH を通す）
-go install github.com/rubenv/sql-migrate/...@latest
-go install github.com/air-verse/air@latest
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+# 0. 前提ツール（初回のみ）: Node 24（.nvmrc）・pnpm（corepack）・Go 1.26
+go install github.com/rubenv/sql-migrate/...@latest                       # マイグレーション
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest  # linter（~/go/bin にPATHを通す）
 
 # 1. 環境変数（初回のみ）
-cp api/.env.example api/.env         # 必須: DATABASE_URL / JWT_SECRET
 cp web/.env.example web/.env.local   # NEXT_PUBLIC_API_URL
 
-# 2. DB 起動・スキーマ適用・シード投入
+# 2. 依存の取得と DB 起動・スキーマ適用・シード投入
+pnpm install
 make db-up && make migrate-up && make seed
 
-# 3. 開発サーバー（別ターミナルで各々）
-make dev-api   # Go API（air ホットリロード・:8082）
-make dev-web   # Next.js（:3001）
+# 3. 開発サーバー（Go と Next.js が並列起動・Ctrl+C で両方停止）
+pnpm dev
 ```
 
-- その他のコマンドは `make help`（テスト: `make test` / lint: `make lint` / ビルド: `make build`）
-- ローカルに Go / Node が無い場合は `make docker-up` で一括起動（`make docker-down` で停止）
-- マイグレーションは sql-migrate で管理（`make migrate-up` / `migrate-status` / `migrate-down`。psql で DDL を直接流さない）
+- ビルド・検証は turbo に集約: `pnpm turbo build` ／ CI と同一の全チェックは `pnpm turbo lint format:check test build`
+- `make` は DB 専用の道具箱（`make help` で一覧）。マイグレーションは sql-migrate で管理（psql で DDL を直接流さない）
 
 ### テストユーザー（`make seed` で投入・ローカル専用）
 
@@ -130,9 +125,9 @@ make dev-web   # Next.js（:3001）
 
 ## ドキュメント
 
-- **[後継リポジトリ設計プラン](docs/後継リポジトリ設計プラン.md)** — このリポジトリの設計の全体像（技術選定・認可設計・テスト戦略・Phase 計画）
-- [アーキテクチャ設計書](docs/アーキテクチャ.md) — 出発点（現行コード）の構成と「層を分けなかった判断」の記録
-- [api/README.md](api/README.md) / [web/README.md](web/README.md) — 出発点の各実装の設計
+- **[後継リポジトリ設計プラン](docs/後継リポジトリ設計プラン.md)** — 設計の全体像（技術選定・認可設計・テスト戦略・Phase 計画）
+- **[ADR](docs/adr/README.md)** — 個々の設計判断の記録（経緯・却下した代替案）
+- [アーキテクチャ設計書](docs/アーキテクチャ.md) / [web/README.md](web/README.md) — 出発点（tsunagu-works MVP）の設計記録
 - [サービス概要](docs/サービス概要.md) — 何を作っているか（課題・信頼の設計・機能一覧）
 - [データ設計（ER図・リレーション）](docs/データ設計.md)
 - [学習ログ](docs/学習ログ.md) — バックエンド / DB / フロントエンド / 開発環境

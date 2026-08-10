@@ -1,0 +1,15 @@
+{
+  "name": "api-server",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "go run ./cmd/server",
+    "generate": "go tool oapi-codegen -config oapi-codegen-company.yaml ../packages/spec/openapi-company.yaml",
+    "build": "go build -o bin/server ./cmd/server",
+    "test": "go test ./...",
+    "lint": "golangci-lint run ./..."
+  },
+  "devDependencies": {
+    "@repo/spec": "workspace:*"
+  }
+}

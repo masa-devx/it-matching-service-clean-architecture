@@ -1,8 +1,0 @@
-# oapi-codegen の設定（OpenAPI → Go）
-# 実行: go tool oapi-codegen -config oapi-company.yaml ../../packages/spec/openapi-company.yaml
-package: company
-output: generated/api/company/api.gen.go
-generate:
-  models: true # スキーマ → Go の型
-  std-http-server: true # net/http 標準のルーター登録コード
-  strict-server: true # 型付き req/res のインターフェース（実装対象）

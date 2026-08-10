@@ -1,7 +1,7 @@
-# ローカル開発環境
-# DBだけ起動:   docker compose up -d db  （従来運用: api/web はローカル直起動）
-# 全部Docker:   docker compose up        （db + api + web）
-# DBに入る:     docker compose exec db psql -U tsunagu -d tsunagu
+# ローカル開発環境: PostgreSQL のみ
+# アプリ（Go / Next.js）の起動は `pnpm dev`（Turborepo）に一本化している
+# 起動:   docker compose up -d db  （または make db-up）
+# DBに入る: docker compose exec db psql -U tsunagu -d tsunagu
 # ★DBのホストポートは 5435（5432=ローカルPostgres・5433=todo-app・5434=tsunagu-works と衝突回避）
 # ★コンテナ名・ボリューム名は tsunagu-arch- 接頭辞（tsunagu-works 側と同時起動できるように分離）
 
@@ -18,52 +18,11 @@ services:
     volumes:
       - tsunagu-arch-db-data:/var/lib/postgresql/data
     healthcheck:
-      # 「コンテナ起動」ではなく「接続受付開始」を判定する（apiの起動順制御に使う）
+      # 「コンテナ起動」ではなく「接続受付開始」を判定する
       test: ['CMD-SHELL', 'pg_isready -U tsunagu -d tsunagu']
       interval: 3s
       timeout: 3s
       retries: 10
 
-  api:
-    build:
-      context: api
-      dockerfile: Dockerfile.dev
-    container_name: tsunagu-arch-api
-    ports:
-      - '8082:8082'
-    volumes:
-      # ソースはマウントで注入（ホストの編集がそのまま反映され air が再起動する）
-      - ./api:/app
-      # 依存キャッシュはコンテナ専用ボリュームに（起動のたびのDLを防ぐ）
-      - tsunagu-arch-go-mod:/go/pkg/mod
-    environment:
-      # コンテナ間はサービス名で名前解決する（localhost:5435 はホストから見たアドレス）
-      DATABASE_URL: postgres://tsunagu:tsunagu@db:5432/tsunagu?sslmode=disable
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me} # ローカル学習用の既定値
-      WEB_ORIGIN: http://localhost:3001
-    depends_on:
-      db:
-        condition: service_healthy
-
-  web:
-    build:
-      context: web
-      dockerfile: Dockerfile.dev
-    container_name: tsunagu-arch-web
-    ports:
-      - '3001:3001'
-    volumes:
-      - ./web:/app
-      # ホストの node_modules（macOS用バイナリ）を持ち込まないよう専用ボリュームで遮蔽する
-      - tsunagu-arch-node-modules:/app/node_modules
-    environment:
-      # BFF（Next.jsサーバー）からGoへのアクセス先。コンテナ間はサービス名で解決する
-      # （実環境変数は .env.local より優先されるため、compose 側の値が勝つ）
-      NEXT_PUBLIC_API_URL: http://api:8082
-    depends_on:
-      - api
-
 volumes:
   tsunagu-arch-db-data:
-  tsunagu-arch-go-mod:
-  tsunagu-arch-node-modules:
