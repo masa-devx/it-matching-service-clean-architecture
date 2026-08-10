@@ -31,3 +31,4 @@
 | [0004](0004-no-runtime-validation.md) | フロントエンドでランタイム検証をしない | Accepted |
 | [0005](0005-separate-ports-containers.md) | ポート・コンテナ名を tsunagu-works と分離する | Accepted |
 | [0006](0006-single-frontend-after-only.md) | このリポジトリを After 専用にする（フロント1アプリ・スナップショット撤去） | Accepted |
+| [0007](0007-form-zod-from-generated.md) | フォーム検証は生成Zodの加工で行う（案1＋案4） | Accepted |
