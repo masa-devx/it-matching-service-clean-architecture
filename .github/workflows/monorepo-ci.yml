@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'api-server/**'
+      - 'web/**'
       - 'packages/**'
       - 'turbo.json'
       - 'pnpm-workspace.yaml'
@@ -17,6 +18,7 @@ on:
     branches: [main]
     paths:
       - 'api-server/**'
+      - 'web/**'
       - 'packages/**'
       - 'turbo.json'
       - 'pnpm-workspace.yaml'
@@ -68,4 +70,4 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
 
       - name: Lint & Build
-        run: pnpm turbo lint build
+        run: pnpm turbo lint format:check test build
