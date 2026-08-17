@@ -14,4 +14,6 @@ export * from './tsunaguWorksCompanySignupInput';
 export * from './tsunaguWorksLoginInput';
 export * from './tsunaguWorksProject';
 export * from './tsunaguWorksProjectCreateInput';
+export * from './tsunaguWorksProjectList';
 export * from './tsunaguWorksProjectStatus';
+export * from './tsunaguWorksProjectUpdateInput';

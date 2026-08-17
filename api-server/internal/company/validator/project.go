@@ -14,12 +14,21 @@ import (
 // ErrHourlyRateRange は時給の下限が上限を超えているときの検証エラー
 var ErrHourlyRateRange = errors.New("hourly_rate_min は hourly_rate_max 以下にしてください")
 
-// CreateProject は案件作成入力の相関ルールを検証する。
+// HourlyRateRange は時給レンジの相関を検証する（作成・編集で共用）。
 // どちらか一方のみ・両方未設定は許可（optional のため）
-func CreateProject(input company.TsunaguWorksProjectCreateInput) error {
-	if input.HourlyRateMin != nil && input.HourlyRateMax != nil &&
-		*input.HourlyRateMin > *input.HourlyRateMax {
+func HourlyRateRange(minRate, maxRate *int32) error {
+	if minRate != nil && maxRate != nil && *minRate > *maxRate {
 		return ErrHourlyRateRange
 	}
 	return nil
+}
+
+// CreateProject は案件作成入力の相関ルールを検証する
+func CreateProject(input company.TsunaguWorksProjectCreateInput) error {
+	return HourlyRateRange(input.HourlyRateMin, input.HourlyRateMax)
+}
+
+// UpdateProject は案件編集入力の相関ルールを検証する（作成と同じ規則）
+func UpdateProject(input company.TsunaguWorksProjectUpdateInput) error {
+	return HourlyRateRange(input.HourlyRateMin, input.HourlyRateMax)
 }
