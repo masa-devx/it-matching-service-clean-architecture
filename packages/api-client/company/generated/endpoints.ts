@@ -13,7 +13,9 @@ import type {
   TsunaguWorksCompanySignupInput,
   TsunaguWorksLoginInput,
   TsunaguWorksProject,
-  TsunaguWorksProjectCreateInput
+  TsunaguWorksProjectCreateInput,
+  TsunaguWorksProjectList,
+  TsunaguWorksProjectUpdateInput
 } from './models';
 
 import { customFetch } from '../../custom-fetch';
@@ -192,6 +194,136 @@ export const projectsCreate = async (tsunaguWorksProjectCreateInput: TsunaguWork
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(tsunaguWorksProjectCreateInput)
+  }
+);}
+
+
+
+export type projectsListResponse200 = {
+  data: TsunaguWorksProjectList
+  status: 200
+}
+
+export type projectsListResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsListResponseSuccess = (projectsListResponse200) & {
+  headers: Headers;
+};
+export type projectsListResponseError = (projectsListResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsListResponse = (projectsListResponseSuccess | projectsListResponseError)
+
+export const getProjectsListUrl = () => {
+
+
+
+
+  return `/projects`
+}
+
+/**
+ * 自社の案件一覧（下書き含む・新しい順）
+ */
+export const projectsList = async ( options?: RequestInit): Promise<projectsListResponse> => {
+
+  return customFetch<projectsListResponse>(getProjectsListUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+export type projectsGetResponse200 = {
+  data: TsunaguWorksProject
+  status: 200
+}
+
+export type projectsGetResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsGetResponseSuccess = (projectsGetResponse200) & {
+  headers: Headers;
+};
+export type projectsGetResponseError = (projectsGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsGetResponse = (projectsGetResponseSuccess | projectsGetResponseError)
+
+export const getProjectsGetUrl = (id: number,) => {
+
+
+
+
+  return `/projects/${id}`
+}
+
+/**
+ * 自社の案件詳細
+ */
+export const projectsGet = async (id: number, options?: RequestInit): Promise<projectsGetResponse> => {
+
+  return customFetch<projectsGetResponse>(getProjectsGetUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+export type projectsUpdateResponse200 = {
+  data: TsunaguWorksProject
+  status: 200
+}
+
+export type projectsUpdateResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsUpdateResponseSuccess = (projectsUpdateResponse200) & {
+  headers: Headers;
+};
+export type projectsUpdateResponseError = (projectsUpdateResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsUpdateResponse = (projectsUpdateResponseSuccess | projectsUpdateResponseError)
+
+export const getProjectsUpdateUrl = (id: number,) => {
+
+
+
+
+  return `/projects/${id}`
+}
+
+/**
+ * 編集（公開状態は変わらない。状態の変更は publish / unpublish / close で行う）
+ */
+export const projectsUpdate = async (id: number,
+    tsunaguWorksProjectUpdateInput: TsunaguWorksProjectUpdateInput, options?: RequestInit): Promise<projectsUpdateResponse> => {
+
+  return customFetch<projectsUpdateResponse>(getProjectsUpdateUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(tsunaguWorksProjectUpdateInput)
   }
 );}
 

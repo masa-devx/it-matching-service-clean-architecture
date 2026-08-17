@@ -49,6 +49,32 @@ interface Projects {
     @body project: Project;
   } | ApiError;
 
+  /** 自社の案件一覧（下書き含む・新しい順） */
+  @useAuth(BearerAuth)
+  @get
+  list(): {
+    @statusCode statusCode: 200;
+    @body list: ProjectList;
+  } | ApiError;
+
+  /** 自社の案件詳細 */
+  @useAuth(BearerAuth)
+  @route("/{id}")
+  @get
+  get(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body project: Project;
+  } | ApiError;
+
+  /** 編集（公開状態は変わらない。状態の変更は publish / unpublish / close で行う） */
+  @useAuth(BearerAuth)
+  @route("/{id}")
+  @patch(#{ implicitOptionality: false })
+  update(@path id: int64, @body input: ProjectUpdateInput): {
+    @statusCode statusCode: 200;
+    @body project: Project;
+  } | ApiError;
+
   /** 公開する（draft / closed → published。遷移の可否は掲載状態の遷移表が決める） */
   @useAuth(BearerAuth)
   @route("/{id}/publish")

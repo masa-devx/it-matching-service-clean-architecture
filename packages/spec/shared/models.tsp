@@ -69,6 +69,16 @@ model ProjectCreateInput {
   required_skills: string[];
 }
 
+/** 案件の編集入力（作成と同じ形を spread で再利用。status を含めない＝編集で公開状態は変わらない） */
+model ProjectUpdateInput {
+  ...ProjectCreateInput;
+}
+
+/** 案件一覧のレスポンス */
+model ProjectList {
+  projects: Project[];
+}
+
 /** エラーレスポンスの共通形 */
 @error
 model ApiError {

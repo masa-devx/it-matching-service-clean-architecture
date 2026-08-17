@@ -112,6 +112,125 @@ export const ProjectsCreateResponse = zod.object({
 
 
 /**
+ * 自社の案件一覧（下書き含む・新しい順）
+ */
+export const projectsListResponseProjectsItemTitleMax = 100;
+
+export const projectsListResponseProjectsItemDescriptionMax = 5000;
+
+export const projectsListResponseProjectsItemHourlyRateMinMin = 0;
+
+export const projectsListResponseProjectsItemHourlyRateMaxMin = 0;
+
+export const projectsListResponseProjectsItemHoursPerWeekMax = 60;
+
+
+
+export const ProjectsListResponse = zod.object({
+  "projects": zod.array(zod.object({
+  "id": zod.int(),
+  "title": zod.string().max(projectsListResponseProjectsItemTitleMax),
+  "description": zod.string().max(projectsListResponseProjectsItemDescriptionMax),
+  "hourly_rate_min": zod.int().min(projectsListResponseProjectsItemHourlyRateMinMin).nullable().describe('想定時給の下限（円）。未設定は null'),
+  "hourly_rate_max": zod.int().min(projectsListResponseProjectsItemHourlyRateMaxMin).nullable().describe('想定時給の上限（円）。未設定は null'),
+  "hours_per_week": zod.int().min(1).max(projectsListResponseProjectsItemHoursPerWeekMax).describe('週の想定稼働時間'),
+  "remote_ok": zod.boolean(),
+  "required_skills": zod.array(zod.string()).describe('必須スキル（例: [\"Go\", \"PostgreSQL\"]）'),
+  "status": zod.enum(['draft', 'published', 'closed']).describe('案件の掲載状態'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('案件（企業が掲載する仕事）'))
+}).describe('案件一覧のレスポンス')
+
+
+/**
+ * 自社の案件詳細
+ */
+export const ProjectsGetParams = zod.object({
+  "id": zod.int()
+})
+
+export const projectsGetResponseTitleMax = 100;
+
+export const projectsGetResponseDescriptionMax = 5000;
+
+export const projectsGetResponseHourlyRateMinMin = 0;
+
+export const projectsGetResponseHourlyRateMaxMin = 0;
+
+export const projectsGetResponseHoursPerWeekMax = 60;
+
+
+
+export const ProjectsGetResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string().max(projectsGetResponseTitleMax),
+  "description": zod.string().max(projectsGetResponseDescriptionMax),
+  "hourly_rate_min": zod.int().min(projectsGetResponseHourlyRateMinMin).nullable().describe('想定時給の下限（円）。未設定は null'),
+  "hourly_rate_max": zod.int().min(projectsGetResponseHourlyRateMaxMin).nullable().describe('想定時給の上限（円）。未設定は null'),
+  "hours_per_week": zod.int().min(1).max(projectsGetResponseHoursPerWeekMax).describe('週の想定稼働時間'),
+  "remote_ok": zod.boolean(),
+  "required_skills": zod.array(zod.string()).describe('必須スキル（例: [\"Go\", \"PostgreSQL\"]）'),
+  "status": zod.enum(['draft', 'published', 'closed']).describe('案件の掲載状態'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('案件（企業が掲載する仕事）')
+
+
+/**
+ * 編集（公開状態は変わらない。状態の変更は publish / unpublish / close で行う）
+ */
+export const ProjectsUpdateParams = zod.object({
+  "id": zod.int()
+})
+
+export const projectsUpdateBodyTitleMax = 100;
+
+export const projectsUpdateBodyDescriptionMax = 5000;
+
+export const projectsUpdateBodyHourlyRateMinMin = 0;
+
+export const projectsUpdateBodyHourlyRateMaxMin = 0;
+
+export const projectsUpdateBodyHoursPerWeekMax = 60;
+
+
+
+export const ProjectsUpdateBody = zod.object({
+  "title": zod.string().min(1).max(projectsUpdateBodyTitleMax),
+  "description": zod.string().min(1).max(projectsUpdateBodyDescriptionMax),
+  "hourly_rate_min": zod.int().min(projectsUpdateBodyHourlyRateMinMin).optional(),
+  "hourly_rate_max": zod.int().min(projectsUpdateBodyHourlyRateMaxMin).optional(),
+  "hours_per_week": zod.int().min(1).max(projectsUpdateBodyHoursPerWeekMax),
+  "remote_ok": zod.boolean(),
+  "required_skills": zod.array(zod.string())
+}).describe('案件の編集入力（作成と同じ形を spread で再利用。status を含めない＝編集で公開状態は変わらない）')
+
+export const projectsUpdateResponseTitleMax = 100;
+
+export const projectsUpdateResponseDescriptionMax = 5000;
+
+export const projectsUpdateResponseHourlyRateMinMin = 0;
+
+export const projectsUpdateResponseHourlyRateMaxMin = 0;
+
+export const projectsUpdateResponseHoursPerWeekMax = 60;
+
+
+
+export const ProjectsUpdateResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string().max(projectsUpdateResponseTitleMax),
+  "description": zod.string().max(projectsUpdateResponseDescriptionMax),
+  "hourly_rate_min": zod.int().min(projectsUpdateResponseHourlyRateMinMin).nullable().describe('想定時給の下限（円）。未設定は null'),
+  "hourly_rate_max": zod.int().min(projectsUpdateResponseHourlyRateMaxMin).nullable().describe('想定時給の上限（円）。未設定は null'),
+  "hours_per_week": zod.int().min(1).max(projectsUpdateResponseHoursPerWeekMax).describe('週の想定稼働時間'),
+  "remote_ok": zod.boolean(),
+  "required_skills": zod.array(zod.string()).describe('必須スキル（例: [\"Go\", \"PostgreSQL\"]）'),
+  "status": zod.enum(['draft', 'published', 'closed']).describe('案件の掲載状態'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('案件（企業が掲載する仕事）')
+
+
+/**
  * 募集を終了する（published → closed。再募集は publish）
  */
 export const ProjectsCloseParams = zod.object({

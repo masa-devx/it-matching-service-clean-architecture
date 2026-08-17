@@ -119,6 +119,125 @@ func (q *Queries) GetProjectForCompany(ctx context.Context, arg GetProjectForCom
 	return i, err
 }
 
+const listProjectsForCompany = `-- name: ListProjectsForCompany :many
+SELECT
+    id,
+    title,
+    description,
+    hourly_rate_min,
+    hourly_rate_max,
+    hours_per_week,
+    remote_ok,
+    required_skills,
+    status,
+    created_at,
+    company_id
+FROM projects
+WHERE company_id = $1
+ORDER BY id DESC
+`
+
+// 自社の案件のみ（下書き含む・新しい順）。WHERE company_id ＝ 他社の案件は一覧に存在しない
+func (q *Queries) ListProjectsForCompany(ctx context.Context, companyID int64) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listProjectsForCompany, companyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.HourlyRateMin,
+			&i.HourlyRateMax,
+			&i.HoursPerWeek,
+			&i.RemoteOk,
+			&i.RequiredSkills,
+			&i.Status,
+			&i.CreatedAt,
+			&i.CompanyID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateProject = `-- name: UpdateProject :one
+UPDATE projects
+SET
+    title = $3,
+    description = $4,
+    hourly_rate_min = $5,
+    hourly_rate_max = $6,
+    hours_per_week = $7,
+    remote_ok = $8,
+    required_skills = $9
+WHERE id = $1 AND company_id = $2
+RETURNING
+    id,
+    title,
+    description,
+    hourly_rate_min,
+    hourly_rate_max,
+    hours_per_week,
+    remote_ok,
+    required_skills,
+    status,
+    created_at,
+    company_id
+`
+
+type UpdateProjectParams struct {
+	ID             int64
+	CompanyID      int64
+	Title          string
+	Description    string
+	HourlyRateMin  *int32
+	HourlyRateMax  *int32
+	HoursPerWeek   int32
+	RemoteOk       bool
+	RequiredSkills []string
+}
+
+// 編集可能な列だけを SET する。status / company_id は SQL 文に存在しない
+// ＝どんな入力が来ても「編集で公開状態が変わる」「所有者が変わる」形が無い（1クエリ1意図）
+func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error) {
+	row := q.db.QueryRow(ctx, updateProject,
+		arg.ID,
+		arg.CompanyID,
+		arg.Title,
+		arg.Description,
+		arg.HourlyRateMin,
+		arg.HourlyRateMax,
+		arg.HoursPerWeek,
+		arg.RemoteOk,
+		arg.RequiredSkills,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.HourlyRateMin,
+		&i.HourlyRateMax,
+		&i.HoursPerWeek,
+		&i.RemoteOk,
+		&i.RequiredSkills,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CompanyID,
+	)
+	return i, err
+}
+
 const updateProjectStatus = `-- name: UpdateProjectStatus :one
 UPDATE projects
 SET status = $1
