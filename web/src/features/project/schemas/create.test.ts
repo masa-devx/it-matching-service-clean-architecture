@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { projectFormSchema } from './schema'
+import { projectFormSchema } from './create'
 
-// 目的: 「生成Zodを .omit().extend() で加工する」方針（設計プラン§9 案1）が成立することを実行で保証する。
+// 目的: 「生成Zodを .omit().extend() で加工する」方針（ADR-0007 案1）が成立することを実行で保証する。
 //       このテストが通る＝案1採用の根拠（壊れたら方針の見直しシグナル）
 // 観点: omit+extend の合成 / transform（カンマ区切り→配列）/ 生成側の制約（maxLength）の引き継ぎ /
 //       API に存在しないフィールドを送る形が無いこと

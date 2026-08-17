@@ -20,7 +20,7 @@ import { getSessionToken } from './session'
 
 // 要認証エンドポイント用に Bearer を付ける。
 // トークンが無ければ付けずに送り、判定は Go 側の 401 に任せる（真実は常にサーバー）
-const authHeaders = async (): Promise<HeadersInit> => {
+export const authHeaders = async (): Promise<HeadersInit> => {
   const token = await getSessionToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }

@@ -4,12 +4,12 @@ import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
-import { createProjectAction } from './actions'
+import { createProjectAction } from '../../actions/create'
 import {
   projectFormSchema,
   type ProjectFormInput,
   type ProjectFormOutput,
-} from './schema'
+} from '../../schemas/create'
 
 // 数値入力の共通変換: HTML の input は常に文字列を返すため、空は undefined・それ以外は数値へ
 const asNumber = {
