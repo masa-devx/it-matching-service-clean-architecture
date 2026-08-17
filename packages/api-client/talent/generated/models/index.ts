@@ -7,8 +7,12 @@
  * OpenAPI spec version: 0.0.0
  */
 
+export * from './projectsListParams';
 export * from './tsunaguWorksApiError';
 export * from './tsunaguWorksAuthToken';
 export * from './tsunaguWorksLoginInput';
+export * from './tsunaguWorksProject';
+export * from './tsunaguWorksProjectPage';
+export * from './tsunaguWorksProjectStatus';
 export * from './tsunaguWorksTalentMe';
 export * from './tsunaguWorksTalentSignupInput';

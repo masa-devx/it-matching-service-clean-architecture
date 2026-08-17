@@ -119,6 +119,43 @@ func (q *Queries) GetProjectForCompany(ctx context.Context, arg GetProjectForCom
 	return i, err
 }
 
+const getPublishedProject = `-- name: GetPublishedProject :one
+SELECT
+    id,
+    title,
+    description,
+    hourly_rate_min,
+    hourly_rate_max,
+    hours_per_week,
+    remote_ok,
+    required_skills,
+    status,
+    created_at,
+    company_id
+FROM projects
+WHERE id = $1 AND status = 'published'
+`
+
+// 公開中のみ取得。draft / closed は「存在しない」扱い（未公開のものは取得しない原則）
+func (q *Queries) GetPublishedProject(ctx context.Context, id int64) (Project, error) {
+	row := q.db.QueryRow(ctx, getPublishedProject, id)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.HourlyRateMin,
+		&i.HourlyRateMax,
+		&i.HoursPerWeek,
+		&i.RemoteOk,
+		&i.RequiredSkills,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CompanyID,
+	)
+	return i, err
+}
+
 const listProjectsForCompany = `-- name: ListProjectsForCompany :many
 SELECT
     id,
@@ -140,6 +177,79 @@ ORDER BY id DESC
 // 自社の案件のみ（下書き含む・新しい順）。WHERE company_id ＝ 他社の案件は一覧に存在しない
 func (q *Queries) ListProjectsForCompany(ctx context.Context, companyID int64) ([]Project, error) {
 	rows, err := q.db.Query(ctx, listProjectsForCompany, companyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.HourlyRateMin,
+			&i.HourlyRateMax,
+			&i.HoursPerWeek,
+			&i.RemoteOk,
+			&i.RequiredSkills,
+			&i.Status,
+			&i.CreatedAt,
+			&i.CompanyID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedProjects = `-- name: ListPublishedProjects :many
+SELECT
+    id,
+    title,
+    description,
+    hourly_rate_min,
+    hourly_rate_max,
+    hours_per_week,
+    remote_ok,
+    required_skills,
+    status,
+    created_at,
+    company_id
+FROM projects
+WHERE status = 'published'
+    AND ($1::bigint IS NULL OR id <= $1)
+    AND ($2::text[] IS NULL OR required_skills @> $2)
+    AND ($3::boolean IS NULL OR remote_ok = $3)
+    AND ($4::int IS NULL OR hourly_rate_min >= $4)
+ORDER BY id DESC
+LIMIT $5
+`
+
+type ListPublishedProjectsParams struct {
+	Cursor        *int64
+	Skills        []string
+	RemoteOk      *bool
+	MinHourlyRate *int32
+	LimitPlusOne  int32
+}
+
+// talent 向けの公開案件一覧。seek 法: OFFSET を使わず「id という不動の座標」から続きを読む
+// （挿入があってもページがズレず、深いページでも速い）。limit+1 件の取得は
+// 呼び出し側の「次ページ有無」判定用（n+1 テクニック）。
+// 検索条件は narg（NULL＝条件を無効化）で SQL 1本のまま動的にする
+func (q *Queries) ListPublishedProjects(ctx context.Context, arg ListPublishedProjectsParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listPublishedProjects,
+		arg.Cursor,
+		arg.Skills,
+		arg.RemoteOk,
+		arg.MinHourlyRate,
+		arg.LimitPlusOne,
+	)
 	if err != nil {
 		return nil, err
 	}

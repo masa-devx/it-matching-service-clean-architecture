@@ -7,9 +7,12 @@
  * OpenAPI spec version: 0.0.0
  */
 import type {
+  ProjectsListParams,
   TsunaguWorksApiError,
   TsunaguWorksAuthToken,
   TsunaguWorksLoginInput,
+  TsunaguWorksProject,
+  TsunaguWorksProjectPage,
   TsunaguWorksTalentMe,
   TsunaguWorksTalentSignupInput
 } from './models';
@@ -147,6 +150,99 @@ export const authSignup = async (tsunaguWorksTalentSignupInput: TsunaguWorksTale
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(tsunaguWorksTalentSignupInput)
+  }
+);}
+
+
+
+export type projectsListResponse200 = {
+  data: TsunaguWorksProjectPage
+  status: 200
+}
+
+export type projectsListResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsListResponseSuccess = (projectsListResponse200) & {
+  headers: Headers;
+};
+export type projectsListResponseError = (projectsListResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsListResponse = (projectsListResponseSuccess | projectsListResponseError)
+
+export const getProjectsListUrl = (params?: ProjectsListParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/projects?${stringifiedParams}` : `/projects`
+}
+
+/**
+ * 公開中の案件一覧（seek ページネーション・検索。未公開は含まれない）
+ */
+export const projectsList = async (params?: ProjectsListParams, options?: RequestInit): Promise<projectsListResponse> => {
+
+  return customFetchTalent<projectsListResponse>(getProjectsListUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+export type projectsGetResponse200 = {
+  data: TsunaguWorksProject
+  status: 200
+}
+
+export type projectsGetResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsGetResponseSuccess = (projectsGetResponse200) & {
+  headers: Headers;
+};
+export type projectsGetResponseError = (projectsGetResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsGetResponse = (projectsGetResponseSuccess | projectsGetResponseError)
+
+export const getProjectsGetUrl = (id: number,) => {
+
+
+
+
+  return `/projects/${id}`
+}
+
+/**
+ * 公開中の案件詳細（未公開は404）
+ */
+export const projectsGet = async (id: number, options?: RequestInit): Promise<projectsGetResponse> => {
+
+  return customFetchTalent<projectsGetResponse>(getProjectsGetUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
   }
 );}
 
