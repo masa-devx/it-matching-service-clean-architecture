@@ -32,7 +32,8 @@ RETURNING
     remote_ok,
     required_skills,
     status,
-    created_at
+    created_at,
+    company_id
 `
 
 type CreateProjectParams struct {
@@ -68,6 +69,7 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.RequiredSkills,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CompanyID,
 	)
 	return i, err
 }

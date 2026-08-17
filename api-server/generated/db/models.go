@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+type Company struct {
+	ID          int64
+	UserID      int64
+	Name        string
+	Location    string
+	Description string
+	CreatedAt   time.Time
+}
+
 type Project struct {
 	ID             int64
 	Title          string
@@ -19,4 +28,22 @@ type Project struct {
 	RequiredSkills []string
 	Status         string
 	CreatedAt      time.Time
+	CompanyID      *int64
+}
+
+type Talent struct {
+	ID          int64
+	UserID      int64
+	DisplayName string
+	Skills      []string
+	Bio         string
+	CreatedAt   time.Time
+}
+
+type User struct {
+	ID           int64
+	Email        string
+	PasswordHash string
+	Role         string
+	CreatedAt    time.Time
 }
