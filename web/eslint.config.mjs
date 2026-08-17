@@ -30,6 +30,26 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // app/ は「合成の層」: ページ・レイアウトが feature を並べて画面にする場所なので、
+  // feature への import を許可する（external/client の直接参照は引き続き禁止）。
+  // features 同士の直接依存の禁止は上の全体ルールが担う
+  {
+    files: ['src/app/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/external/client', '@/external/client/*'],
+              message:
+                'external/client（Go API 通信）は直接 import せず、external/handler 経由で使う（隣接する handler からは相対パスで import する）',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // 整形はPrettierに任せるため、ESLint側の整形系ルールを無効化（必ず最後に置く）
   prettier,
   // Override default ignores of eslint-config-next.
