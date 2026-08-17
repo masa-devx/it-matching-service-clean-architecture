@@ -10,6 +10,7 @@ import (
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 	companyhandler "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/handler"
+	companyusecase "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/usecase"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/config"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/infra"
 )
@@ -36,6 +37,7 @@ func run() error {
 	defer pool.Close()
 
 	queries := db.New(pool)
+	projectUsecase := companyusecase.NewProject(queries)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +47,7 @@ func run() error {
 
 	// company API: 仕様（openapi-company.yaml）から生成されたルーターを /company 配下にマウントする。
 	// パスの一次情報は仕様側にあり、ここでは「どこに載せるか」だけを決める
-	companyStrict := company.NewStrictHandler(companyhandler.New(queries), nil)
+	companyStrict := company.NewStrictHandler(companyhandler.New(projectUsecase), nil)
 	company.HandlerWithOptions(companyStrict, company.StdHTTPServerOptions{
 		BaseURL:    "/company",
 		BaseRouter: mux,
