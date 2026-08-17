@@ -1,26 +1,21 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth'
-import { dashboardPath } from '@/lib/roleRedirect'
 
-// (guest) 配下（login / signup）は未ログイン専用。
-// ログイン済みで認証画面を開いても意味がないため、ロール別のダッシュボードへ送る
+import { currentRole } from '@/external/handler/auth'
+
+// (guest) は未ログイン専用。ログイン済みならロール別ホームへ送り返す。
+// 判定は Cookie の有無ではなく Go の me（currentRole 内）を単一の真実として使う
 export default async function GuestLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
-  const user = await getCurrentUser()
-  if (user) {
-    redirect(dashboardPath(user.role))
+}) {
+  const role = await currentRole()
+  if (role === 'company') {
+    redirect('/company/dashboard')
+  }
+  if (role === 'talent') {
+    redirect('/talent/dashboard')
   }
 
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 py-10">
-      <Link href="/" className="text-2xl font-bold tracking-tight text-primary">
-        Tsunagu Works
-      </Link>
-      {children}
-    </div>
-  )
+  return <main className="mx-auto max-w-2xl p-8">{children}</main>
 }

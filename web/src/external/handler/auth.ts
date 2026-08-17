@@ -11,7 +11,11 @@ import type {
 } from '@repo/api-client/talent/generated/models'
 
 import { companyClient, talentClient } from '../client/auth'
-import { clearSessionToken, setSessionToken } from '../client/session'
+import {
+  clearSessionToken,
+  getSessionToken,
+  setSessionToken,
+} from '../client/session'
 
 // external/handler は「入口」: features の actions から呼ばれ、
 // 通信（client）と Cookie の操作をまとめてエラーを画面向けの形に整える
@@ -108,4 +112,20 @@ export async function meTalent(): Promise<TsunaguWorksTalentMe | null> {
   } catch {
     return null
   }
+}
+
+// currentRole は (guest) ガード用: ログイン済みならどちらのロールかを返す。
+// トークンが無ければ API を呼ばずに即 null（ゲストページの表示を遅くしない）
+export async function currentRole(): Promise<'company' | 'talent' | null> {
+  const token = await getSessionToken()
+  if (!token) {
+    return null
+  }
+  if (await meCompany()) {
+    return 'company'
+  }
+  if (await meTalent()) {
+    return 'talent'
+  }
+  return null
 }
