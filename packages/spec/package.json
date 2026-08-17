@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "tsp compile company/main.tsp"
+    "build": "tsp compile company/main.tsp --option @typespec/openapi3.output-file=openapi-company.yaml && tsp compile talent/main.tsp --option @typespec/openapi3.output-file=openapi-talent.yaml"
   },
   "devDependencies": {
     "@typespec/compiler": "^1.14.0",

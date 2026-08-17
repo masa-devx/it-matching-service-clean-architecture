@@ -121,3 +121,35 @@ model CompanyMe {
   location: string;
   description: string;
 }
+
+/** 人材のサインアップ入力（アカウントとプロフィールを同時に作る） */
+model TalentSignupInput {
+  @format("email")
+  email: string;
+
+  /** パスワード（上限は bcrypt の入力上限 72 バイトに合わせる） */
+  @secret
+  @minLength(8)
+  @maxLength(72)
+  password: string;
+
+  /** 表示名 */
+  @minLength(1)
+  @maxLength(50)
+  display_name: string;
+
+  /** スキル（例: ["Go", "PostgreSQL"]） */
+  skills: string[];
+
+  @maxLength(1000)
+  bio?: string;
+}
+
+/** ログイン中の人材ユーザー情報 */
+model TalentMe {
+  user_id: int64;
+  email: string;
+  display_name: string;
+  skills: string[];
+  bio: string;
+}

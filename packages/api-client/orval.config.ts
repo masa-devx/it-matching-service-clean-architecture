@@ -28,4 +28,27 @@ export default defineConfig({
       client: "zod",
     },
   },
+  // talent 系統（company と対称・mutator だけ /talent マウント用に切替）
+  talent: {
+    input: "../spec/openapi-talent.yaml",
+    output: {
+      target: "talent/generated/endpoints.ts",
+      schemas: "talent/generated/models",
+      client: "fetch",
+      mode: "split",
+      override: {
+        mutator: {
+          path: "custom-fetch.ts",
+          name: "customFetchTalent",
+        },
+      },
+    },
+  },
+  talentZod: {
+    input: "../spec/openapi-talent.yaml",
+    output: {
+      target: "talent/generated/zod.ts",
+      client: "zod",
+    },
+  },
 });

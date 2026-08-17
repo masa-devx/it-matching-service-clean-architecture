@@ -1,9 +1,9 @@
 # TypeSpec → OpenAPI 3 の変換設定
-# 出力はパッケージ直下の openapi-company.yaml（生成物だがコミットする＝差分でAPI変更が見える）
+# 出力はパッケージ直下の openapi-*.yaml（生成物だがコミットする＝差分でAPI変更が見える）
+# output-file はエントリ（company / talent）ごとに CLI の --option で指定する
 emit:
   - "@typespec/openapi3"
 options:
   "@typespec/openapi3":
     emitter-output-dir: "{project-root}"
-    output-file: "openapi-company.yaml"
     file-type: "yaml"

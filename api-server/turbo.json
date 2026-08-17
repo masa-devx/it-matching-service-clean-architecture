@@ -6,7 +6,9 @@
       "dependsOn": ["@repo/spec#build"],
       "inputs": [
         "oapi-codegen-company.yaml",
+        "oapi-codegen-talent.yaml",
         "../packages/spec/openapi-company.yaml",
+        "../packages/spec/openapi-talent.yaml",
         "sqlc.yaml",
         "queries/**",
         "../migrations/ddl/**"

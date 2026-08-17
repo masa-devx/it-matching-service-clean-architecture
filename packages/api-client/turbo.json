@@ -4,8 +4,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["@repo/spec#build"],
-      "inputs": ["orval.config.ts", "../spec/openapi-company.yaml"],
-      "outputs": ["company/generated/**"]
+      "inputs": [
+        "orval.config.ts",
+        "custom-fetch.ts",
+        "../spec/openapi-company.yaml",
+        "../spec/openapi-talent.yaml"
+      ],
+      "outputs": ["company/generated/**", "talent/generated/**"]
     }
   }
 }

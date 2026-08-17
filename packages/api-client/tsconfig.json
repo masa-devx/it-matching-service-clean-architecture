@@ -1,0 +1,8 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    // custom-fetch.ts が process.env を参照するため（実行環境は Node = Server Action）
+    "types": ["node"]
+  },
+  "include": ["orval.config.ts", "custom-fetch.ts", "company", "talent"]
+}
