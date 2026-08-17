@@ -22,4 +22,5 @@ RETURNING
     remote_ok,
     required_skills,
     status,
-    created_at;
+    created_at,
+    company_id;
