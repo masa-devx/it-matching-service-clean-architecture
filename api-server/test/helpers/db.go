@@ -16,6 +16,15 @@ import (
 // ＝テスト間の独立性を「後片付けコード」ではなくトランザクションで保証する（ADR-0008）。
 func NewTestQueries(t *testing.T) *db.Queries {
 	t.Helper()
+	_, queries := NewTestTx(t)
+	return queries
+}
+
+// NewTestTx はテスト用のトランザクションと、その上の Queries を返す。
+// usecase がさらに Begin する場合（SAVEPOINT による入れ子）に、トランザクション自体を
+// TxBeginner として渡すために使う（ADR-0008 の入れ子ケース）
+func NewTestTx(t *testing.T) (pgx.Tx, *db.Queries) {
+	t.Helper()
 
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {
@@ -39,5 +48,5 @@ func NewTestQueries(t *testing.T) *db.Queries {
 	t.Cleanup(func() { _ = tx.Rollback(context.Background()) })
 
 	// pgx.Tx は sqlc の DBTX インターフェースを満たすため、そのまま Queries の土台にできる
-	return db.New(tx)
+	return tx, db.New(tx)
 }

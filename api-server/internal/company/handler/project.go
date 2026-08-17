@@ -15,13 +15,15 @@ import (
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/validator"
 )
 
-// Handler は company API のハンドラ実装。依存（usecase）は main から手渡しされる
+// Handler は company API のハンドラ実装。依存（usecase・JWT秘密鍵）は main から手渡しされる
 type Handler struct {
-	project *usecase.Project
+	project   *usecase.Project
+	auth      *usecase.Auth
+	jwtSecret []byte
 }
 
-func New(project *usecase.Project) *Handler {
-	return &Handler{project: project}
+func New(project *usecase.Project, authUsecase *usecase.Auth, jwtSecret []byte) *Handler {
+	return &Handler{project: project, auth: authUsecase, jwtSecret: jwtSecret}
 }
 
 // 実装漏れをコンパイルエラーにする（仕様にエンドポイントが増えると、ここで検出される）

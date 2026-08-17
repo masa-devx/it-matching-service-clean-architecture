@@ -7,6 +7,74 @@ info:
   version: 0.0.0
 tags: []
 paths:
+  /auth/login:
+    post:
+      operationId: Auth_login
+      description: ログイン
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.AuthToken'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TsunaguWorks.LoginInput'
+  /auth/me:
+    get:
+      operationId: Auth_me
+      description: ログイン中ユーザーの情報（要認証）
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.CompanyMe'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
+  /auth/signup:
+    post:
+      operationId: Auth_signup
+      description: サインアップ（アカウントとプロフィールを同時作成し、トークンを発行する）
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.AuthToken'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TsunaguWorks.CompanySignupInput'
   /projects:
     post:
       operationId: Projects_create
@@ -43,6 +111,76 @@ components:
         request_id:
           type: string
       description: エラーレスポンスの共通形
+    TsunaguWorks.AuthToken:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+      description: 認証トークン（web は httpOnly Cookie に変換して保持し、ブラウザ JS には渡さない）
+    TsunaguWorks.CompanyMe:
+      type: object
+      required:
+        - user_id
+        - email
+        - name
+        - location
+        - description
+      properties:
+        user_id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+        description:
+          type: string
+      description: ログイン中の企業ユーザー情報
+    TsunaguWorks.CompanySignupInput:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          format: password
+          description: パスワード（上限は bcrypt の入力上限 72 バイトに合わせる）
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 会社名
+        location:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+      description: 企業のサインアップ入力（アカウントとプロフィールを同時に作る）
+    TsunaguWorks.LoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      description: ログイン入力
     TsunaguWorks.Project:
       type: object
       required:
@@ -141,3 +279,7 @@ components:
         - published
         - closed
       description: 案件の掲載状態
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: Bearer

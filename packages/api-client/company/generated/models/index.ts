@@ -8,6 +8,10 @@
  */
 
 export * from './tsunaguWorksApiError';
+export * from './tsunaguWorksAuthToken';
+export * from './tsunaguWorksCompanyMe';
+export * from './tsunaguWorksCompanySignupInput';
+export * from './tsunaguWorksLoginInput';
 export * from './tsunaguWorksProject';
 export * from './tsunaguWorksProjectCreateInput';
 export * from './tsunaguWorksProjectStatus';

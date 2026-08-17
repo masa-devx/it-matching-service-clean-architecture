@@ -8,6 +8,10 @@
  */
 import type {
   TsunaguWorksApiError,
+  TsunaguWorksAuthToken,
+  TsunaguWorksCompanyMe,
+  TsunaguWorksCompanySignupInput,
+  TsunaguWorksLoginInput,
   TsunaguWorksProject,
   TsunaguWorksProjectCreateInput
 } from './models';
@@ -20,6 +24,135 @@ export type HTTPStatusCode3xx = 300 | 301 | 302 | 303 | 304 | 305 | 307 | 308;
 export type HTTPStatusCode4xx = 400 | 401 | 402 | 403 | 404 | 405 | 406 | 407 | 408 | 409 | 410 | 411 | 412 | 413 | 414 | 415 | 416 | 417 | 418 | 419 | 420 | 421 | 422 | 423 | 424 | 426 | 428 | 429 | 431 | 451;
 export type HTTPStatusCode5xx = 500 | 501 | 502 | 503 | 504 | 505 | 507 | 511;
 export type HTTPStatusCodes = HTTPStatusCode1xx | HTTPStatusCode2xx | HTTPStatusCode3xx | HTTPStatusCode4xx | HTTPStatusCode5xx;
+
+export type authLoginResponse200 = {
+  data: TsunaguWorksAuthToken
+  status: 200
+}
+
+export type authLoginResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type authLoginResponseSuccess = (authLoginResponse200) & {
+  headers: Headers;
+};
+export type authLoginResponseError = (authLoginResponseDefault) & {
+  headers: Headers;
+};
+
+export type authLoginResponse = (authLoginResponseSuccess | authLoginResponseError)
+
+export const getAuthLoginUrl = () => {
+
+
+
+
+  return `/auth/login`
+}
+
+/**
+ * ログイン
+ */
+export const authLogin = async (tsunaguWorksLoginInput: TsunaguWorksLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<authLoginResponse> => {
+
+  return customFetch<authLoginResponse>(getAuthLoginUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(tsunaguWorksLoginInput)
+  }
+);}
+
+
+
+export type authMeResponse200 = {
+  data: TsunaguWorksCompanyMe
+  status: 200
+}
+
+export type authMeResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type authMeResponseSuccess = (authMeResponse200) & {
+  headers: Headers;
+};
+export type authMeResponseError = (authMeResponseDefault) & {
+  headers: Headers;
+};
+
+export type authMeResponse = (authMeResponseSuccess | authMeResponseError)
+
+export const getAuthMeUrl = () => {
+
+
+
+
+  return `/auth/me`
+}
+
+/**
+ * ログイン中ユーザーの情報（要認証）
+ */
+export const authMe = async ( options?: Parameters<typeof customFetch>[1]): Promise<authMeResponse> => {
+
+  return customFetch<authMeResponse>(getAuthMeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+export type authSignupResponse201 = {
+  data: TsunaguWorksAuthToken
+  status: 201
+}
+
+export type authSignupResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 201>
+}
+
+export type authSignupResponseSuccess = (authSignupResponse201) & {
+  headers: Headers;
+};
+export type authSignupResponseError = (authSignupResponseDefault) & {
+  headers: Headers;
+};
+
+export type authSignupResponse = (authSignupResponseSuccess | authSignupResponseError)
+
+export const getAuthSignupUrl = () => {
+
+
+
+
+  return `/auth/signup`
+}
+
+/**
+ * サインアップ（アカウントとプロフィールを同時作成し、トークンを発行する）
+ */
+export const authSignup = async (tsunaguWorksCompanySignupInput: TsunaguWorksCompanySignupInput, options?: Parameters<typeof customFetch>[1]): Promise<authSignupResponse> => {
+
+  return customFetch<authSignupResponse>(getAuthSignupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(tsunaguWorksCompanySignupInput)
+  }
+);}
+
+
 
 export type projectsCreateResponse201 = {
   data: TsunaguWorksProject

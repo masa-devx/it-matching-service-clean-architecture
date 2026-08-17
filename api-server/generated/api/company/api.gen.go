@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Defines values for TsunaguWorksProjectStatus.
@@ -39,6 +41,39 @@ func (e TsunaguWorksProjectStatus) Valid() bool {
 type TsunaguWorksApiError struct {
 	Error     string  `json:"error"`
 	RequestId *string `json:"request_id,omitempty"`
+}
+
+// TsunaguWorksAuthToken 認証トークン（web は httpOnly Cookie に変換して保持し、ブラウザ JS には渡さない）
+type TsunaguWorksAuthToken struct {
+	Token string `json:"token"`
+}
+
+// TsunaguWorksCompanyMe ログイン中の企業ユーザー情報
+type TsunaguWorksCompanyMe struct {
+	Description string `json:"description"`
+	Email       string `json:"email"`
+	Location    string `json:"location"`
+	Name        string `json:"name"`
+	UserId      int64  `json:"user_id"`
+}
+
+// TsunaguWorksCompanySignupInput 企業のサインアップ入力（アカウントとプロフィールを同時に作る）
+type TsunaguWorksCompanySignupInput struct {
+	Description *string             `json:"description,omitempty"`
+	Email       openapi_types.Email `json:"email"`
+	Location    *string             `json:"location,omitempty"`
+
+	// Name 会社名
+	Name string `json:"name"`
+
+	// Password パスワード（上限は bcrypt の入力上限 72 バイトに合わせる）
+	Password string `json:"password"`
+}
+
+// TsunaguWorksLoginInput ログイン入力
+type TsunaguWorksLoginInput struct {
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
 }
 
 // TsunaguWorksProject 案件（企業が掲載する仕事）
@@ -79,11 +114,26 @@ type TsunaguWorksProjectCreateInput struct {
 // TsunaguWorksProjectStatus 案件の掲載状態
 type TsunaguWorksProjectStatus string
 
+// AuthLoginJSONRequestBody defines body for AuthLogin for application/json ContentType.
+type AuthLoginJSONRequestBody = TsunaguWorksLoginInput
+
+// AuthSignupJSONRequestBody defines body for AuthSignup for application/json ContentType.
+type AuthSignupJSONRequestBody = TsunaguWorksCompanySignupInput
+
 // ProjectsCreateJSONRequestBody defines body for ProjectsCreate for application/json ContentType.
 type ProjectsCreateJSONRequestBody = TsunaguWorksProjectCreateInput
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (POST /auth/login)
+	AuthLogin(w http.ResponseWriter, r *http.Request)
+
+	// (GET /auth/me)
+	AuthMe(w http.ResponseWriter, r *http.Request)
+
+	// (POST /auth/signup)
+	AuthSignup(w http.ResponseWriter, r *http.Request)
 
 	// (POST /projects)
 	ProjectsCreate(w http.ResponseWriter, r *http.Request)
@@ -97,6 +147,48 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// AuthLogin operation middleware
+func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthMe operation middleware
+func (siw *ServerInterfaceWrapper) AuthMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthSignup operation middleware
+func (siw *ServerInterfaceWrapper) AuthSignup(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthSignup(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ProjectsCreate operation middleware
 func (siw *ServerInterfaceWrapper) ProjectsCreate(w http.ResponseWriter, r *http.Request) {
@@ -232,9 +324,128 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/login", wrapper.AuthLogin)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/me", wrapper.AuthMe)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/signup", wrapper.AuthSignup)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects", wrapper.ProjectsCreate)
 
 	return m
+}
+
+type AuthLoginRequestObject struct {
+	Body *AuthLoginJSONRequestBody
+}
+
+type AuthLoginResponseObject interface {
+	VisitAuthLoginResponse(w http.ResponseWriter) error
+}
+
+type AuthLogin200JSONResponse TsunaguWorksAuthToken
+
+func (response AuthLogin200JSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthLogindefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response AuthLogindefaultJSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthMeRequestObject struct {
+}
+
+type AuthMeResponseObject interface {
+	VisitAuthMeResponse(w http.ResponseWriter) error
+}
+
+type AuthMe200JSONResponse TsunaguWorksCompanyMe
+
+func (response AuthMe200JSONResponse) VisitAuthMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthMedefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response AuthMedefaultJSONResponse) VisitAuthMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthSignupRequestObject struct {
+	Body *AuthSignupJSONRequestBody
+}
+
+type AuthSignupResponseObject interface {
+	VisitAuthSignupResponse(w http.ResponseWriter) error
+}
+
+type AuthSignup201JSONResponse TsunaguWorksAuthToken
+
+func (response AuthSignup201JSONResponse) VisitAuthSignupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthSignupdefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response AuthSignupdefaultJSONResponse) VisitAuthSignupResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type ProjectsCreateRequestObject struct {
@@ -279,6 +490,15 @@ func (response ProjectsCreatedefaultJSONResponse) VisitProjectsCreateResponse(w 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (POST /auth/login)
+	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
+
+	// (GET /auth/me)
+	AuthMe(ctx context.Context, request AuthMeRequestObject) (AuthMeResponseObject, error)
+
+	// (POST /auth/signup)
+	AuthSignup(ctx context.Context, request AuthSignupRequestObject) (AuthSignupResponseObject, error)
+
 	// (POST /projects)
 	ProjectsCreate(ctx context.Context, request ProjectsCreateRequestObject) (ProjectsCreateResponseObject, error)
 }
@@ -320,6 +540,92 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// AuthLogin operation middleware
+func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request) {
+	var request AuthLoginRequestObject
+
+	var body AuthLoginJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthLogin(ctx, request.(AuthLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthLoginResponseObject); ok {
+		if err := validResponse.VisitAuthLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthMe operation middleware
+func (sh *strictHandler) AuthMe(w http.ResponseWriter, r *http.Request) {
+	var request AuthMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthMe(ctx, request.(AuthMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthMeResponseObject); ok {
+		if err := validResponse.VisitAuthMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthSignup operation middleware
+func (sh *strictHandler) AuthSignup(w http.ResponseWriter, r *http.Request) {
+	var request AuthSignupRequestObject
+
+	var body AuthSignupJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthSignup(ctx, request.(AuthSignupRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthSignup")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthSignupResponseObject); ok {
+		if err := validResponse.VisitAuthSignupResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // ProjectsCreate operation middleware

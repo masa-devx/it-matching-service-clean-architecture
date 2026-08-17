@@ -11,6 +11,7 @@ import (
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 	companyhandler "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/handler"
 	companyusecase "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/usecase"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/auth"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/config"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/infra"
 )
@@ -38,6 +39,15 @@ func run() error {
 
 	queries := db.New(pool)
 	projectUsecase := companyusecase.NewProject(queries)
+	authUsecase := companyusecase.NewAuth(pool, queries)
+
+	// 認証が不要な operation のホワイトリスト。
+	// TODO(#31): 仕様（OpenAPI の security 定義）から起動時に導出する形へ置き換える
+	publicOps := map[string]bool{
+		"AuthSignup":     true,
+		"AuthLogin":      true,
+		"ProjectsCreate": true, // #31 で保護に切り替え（company_id をトークンから取るのと同時）
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +57,10 @@ func run() error {
 
 	// company API: 仕様（openapi-company.yaml）から生成されたルーターを /company 配下にマウントする。
 	// パスの一次情報は仕様側にあり、ここでは「どこに載せるか」だけを決める
-	companyStrict := company.NewStrictHandler(companyhandler.New(projectUsecase), nil)
+	companyStrict := company.NewStrictHandler(
+		companyhandler.New(projectUsecase, authUsecase, cfg.JWTSecret),
+		[]company.StrictMiddlewareFunc{auth.NewStrictAuth[company.StrictHandlerFunc](cfg.JWTSecret, publicOps)},
+	)
 	company.HandlerWithOptions(companyStrict, company.StdHTTPServerOptions{
 		BaseURL:    "/company",
 		BaseRouter: mux,
