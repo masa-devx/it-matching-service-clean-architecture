@@ -32,3 +32,4 @@
 | [0005](0005-separate-ports-containers.md) | ポート・コンテナ名を tsunagu-works と分離する | Accepted |
 | [0006](0006-single-frontend-after-only.md) | このリポジトリを After 専用にする（フロント1アプリ・スナップショット撤去） | Accepted |
 | [0007](0007-form-zod-from-generated.md) | フォーム検証は生成Zodの加工で行う（案1＋案4） | Accepted |
+| [0008](0008-pgx-tx-test-isolation.md) | 実DBテストの分離は pgx.Tx で行う（go-txdb 不採用） | Accepted |
