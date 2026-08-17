@@ -45,10 +45,11 @@ WHERE id = $1 AND company_id = $2;
 
 -- name: UpdateProjectStatus :one
 -- 状態遷移の更新。WHERE に「今も遷移元のまま」を含めることで、
--- 判定と更新の間に他リクエストが割り込む競合を DB が原子的に検査する（0行更新＝競合）
+-- 判定と更新の間に他リクエストが割り込む競合を DB が原子的に検査する（0行更新＝競合）。
+-- status が2回登場するため、取り違え防止に名前付きパラメータ（sqlc の @記法）を使う
 UPDATE projects
-SET status = $4
-WHERE id = $1 AND company_id = $2 AND status = $3
+SET status = @to_status
+WHERE id = @id AND company_id = @company_id AND status = @from_status
 RETURNING
     id,
     title,

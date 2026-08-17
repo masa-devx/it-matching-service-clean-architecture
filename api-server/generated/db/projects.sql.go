@@ -121,8 +121,8 @@ func (q *Queries) GetProjectForCompany(ctx context.Context, arg GetProjectForCom
 
 const updateProjectStatus = `-- name: UpdateProjectStatus :one
 UPDATE projects
-SET status = $4
-WHERE id = $1 AND company_id = $2 AND status = $3
+SET status = $1
+WHERE id = $2 AND company_id = $3 AND status = $4
 RETURNING
     id,
     title,
@@ -138,20 +138,21 @@ RETURNING
 `
 
 type UpdateProjectStatusParams struct {
-	ID        int64
-	CompanyID int64
-	Status    string
-	Status_2  string
+	ToStatus   string
+	ID         int64
+	CompanyID  int64
+	FromStatus string
 }
 
 // 状態遷移の更新。WHERE に「今も遷移元のまま」を含めることで、
-// 判定と更新の間に他リクエストが割り込む競合を DB が原子的に検査する（0行更新＝競合）
+// 判定と更新の間に他リクエストが割り込む競合を DB が原子的に検査する（0行更新＝競合）。
+// status が2回登場するため、取り違え防止に名前付きパラメータ（sqlc の @記法）を使う
 func (q *Queries) UpdateProjectStatus(ctx context.Context, arg UpdateProjectStatusParams) (Project, error) {
 	row := q.db.QueryRow(ctx, updateProjectStatus,
+		arg.ToStatus,
 		arg.ID,
 		arg.CompanyID,
-		arg.Status,
-		arg.Status_2,
+		arg.FromStatus,
 	)
 	var i Project
 	err := row.Scan(
