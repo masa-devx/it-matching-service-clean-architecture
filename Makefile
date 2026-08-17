@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -27,4 +27,11 @@ migrate-status: ## マイグレーションの適用状況を表示
 
 migrate-new: ## 新規マイグレーション作成（例: make migrate-new NAME=create_projects）
 	$(MAKE) -C migrations new NAME=$(NAME)
+
+## --- テストDB（実DBテスト用） ---
+
+db-test-setup: ## テストDB（tsunagu_test）を作成しスキーマを適用（冪等・要 make db-up）
+	docker compose exec -T db psql -U tsunagu -d tsunagu -tc "SELECT 1 FROM pg_database WHERE datname = 'tsunagu_test'" | grep -q 1 || \
+		docker compose exec -T db psql -U tsunagu -d tsunagu -c "CREATE DATABASE tsunagu_test"
+	$(MAKE) -C migrations test-up
 
