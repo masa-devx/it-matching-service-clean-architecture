@@ -1,4 +1,7 @@
 // Package handler は company API（生成された StrictServerInterface）の実装を置く。
+//
+// エラー変換の規約: validator のエラー → 400（メッセージは利用者向けなのでそのまま返す）／
+// usecase のエラー → 500（詳細はログのみ・クライアントには安全な文言だけ）
 package handler
 
 import (
@@ -8,21 +11,24 @@ import (
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/usecase"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/validator"
 )
 
-// Handler は company API のハンドラ実装。依存（Queries）は main から手渡しされる
+// Handler は company API のハンドラ実装。依存（usecase）は main から手渡しされる
 type Handler struct {
-	queries *db.Queries
+	project *usecase.Project
 }
 
-func New(queries *db.Queries) *Handler {
-	return &Handler{queries: queries}
+func New(project *usecase.Project) *Handler {
+	return &Handler{project: project}
 }
 
 // 実装漏れをコンパイルエラーにする（仕様にエンドポイントが増えると、ここで検出される）
 var _ company.StrictServerInterface = (*Handler)(nil)
 
 // ProjectsCreate は案件を draft として作成する。
+// この層の仕事は「検証の呼び出し → 生成型と DB 型の詰め替え → エラーの HTTP 変換」だけ
 func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreateRequestObject) (company.ProjectsCreateResponseObject, error) {
 	if req.Body == nil {
 		return company.ProjectsCreatedefaultJSONResponse{
@@ -30,9 +36,16 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 			StatusCode: http.StatusBadRequest,
 		}, nil
 	}
+	input := *req.Body
 
-	input := req.Body
-	row, err := h.queries.CreateProject(ctx, db.CreateProjectParams{
+	if err := validator.CreateProject(input); err != nil {
+		return company.ProjectsCreatedefaultJSONResponse{
+			Body:       company.TsunaguWorksApiError{Error: err.Error()},
+			StatusCode: http.StatusBadRequest,
+		}, nil
+	}
+
+	project, err := h.project.Create(ctx, db.CreateProjectParams{
 		Title:          input.Title,
 		Description:    input.Description,
 		HourlyRateMin:  input.HourlyRateMin,
@@ -42,8 +55,7 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 		RequiredSkills: input.RequiredSkills,
 	})
 	if err != nil {
-		// 内部エラーの詳細はログのみに残し、クライアントには安全な文言だけを返す
-		log.Printf("CreateProject failed: %v", err)
+		log.Printf("ProjectsCreate: %v", err)
 		return company.ProjectsCreatedefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "案件の作成に失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -51,15 +63,15 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 	}
 
 	return company.ProjectsCreate201JSONResponse{
-		Id:             row.ID,
-		Title:          row.Title,
-		Description:    row.Description,
-		HourlyRateMin:  row.HourlyRateMin,
-		HourlyRateMax:  row.HourlyRateMax,
-		HoursPerWeek:   row.HoursPerWeek,
-		RemoteOk:       row.RemoteOk,
-		RequiredSkills: row.RequiredSkills,
-		Status:         company.TsunaguWorksProjectStatus(row.Status),
-		CreatedAt:      row.CreatedAt,
+		Id:             project.ID,
+		Title:          project.Title,
+		Description:    project.Description,
+		HourlyRateMin:  project.HourlyRateMin,
+		HourlyRateMax:  project.HourlyRateMax,
+		HoursPerWeek:   project.HoursPerWeek,
+		RemoteOk:       project.RemoteOk,
+		RequiredSkills: project.RequiredSkills,
+		Status:         company.TsunaguWorksProjectStatus(project.Status),
+		CreatedAt:      project.CreatedAt,
 	}, nil
 }
