@@ -28,7 +28,7 @@ type Project struct {
 	RequiredSkills []string
 	Status         string
 	CreatedAt      time.Time
-	CompanyID      *int64
+	CompanyID      int64
 }
 
 type Talent struct {
