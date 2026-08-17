@@ -48,4 +48,31 @@ interface Projects {
     @statusCode statusCode: 201;
     @body project: Project;
   } | ApiError;
+
+  /** 公開する（draft / closed → published。遷移の可否は掲載状態の遷移表が決める） */
+  @useAuth(BearerAuth)
+  @route("/{id}/publish")
+  @post
+  publish(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body project: Project;
+  } | ApiError;
+
+  /** 非公開にする（published → draft） */
+  @useAuth(BearerAuth)
+  @route("/{id}/unpublish")
+  @post
+  unpublish(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body project: Project;
+  } | ApiError;
+
+  /** 募集を終了する（published → closed。再募集は publish） */
+  @useAuth(BearerAuth)
+  @route("/{id}/close")
+  @post
+  close(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body project: Project;
+  } | ApiError;
 }

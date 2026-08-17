@@ -80,16 +80,21 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 		}, nil
 	}
 
-	return company.ProjectsCreate201JSONResponse{
-		Id:             project.ID,
-		Title:          project.Title,
-		Description:    project.Description,
-		HourlyRateMin:  project.HourlyRateMin,
-		HourlyRateMax:  project.HourlyRateMax,
-		HoursPerWeek:   project.HoursPerWeek,
-		RemoteOk:       project.RemoteOk,
-		RequiredSkills: project.RequiredSkills,
-		Status:         company.TsunaguWorksProjectStatus(project.Status),
-		CreatedAt:      project.CreatedAt,
-	}, nil
+	return company.ProjectsCreate201JSONResponse(toAPIProject(project)), nil
+}
+
+// toAPIProject は DB の行を API の型へ詰め替える（作成・状態遷移で共用）
+func toAPIProject(p db.Project) company.TsunaguWorksProject {
+	return company.TsunaguWorksProject{
+		Id:             p.ID,
+		Title:          p.Title,
+		Description:    p.Description,
+		HourlyRateMin:  p.HourlyRateMin,
+		HourlyRateMax:  p.HourlyRateMax,
+		HoursPerWeek:   p.HoursPerWeek,
+		RemoteOk:       p.RemoteOk,
+		RequiredSkills: p.RequiredSkills,
+		Status:         company.TsunaguWorksProjectStatus(p.Status),
+		CreatedAt:      p.CreatedAt,
+	}
 }

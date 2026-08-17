@@ -197,3 +197,132 @@ export const projectsCreate = async (tsunaguWorksProjectCreateInput: TsunaguWork
 
 
 
+export type projectsCloseResponse200 = {
+  data: TsunaguWorksProject
+  status: 200
+}
+
+export type projectsCloseResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsCloseResponseSuccess = (projectsCloseResponse200) & {
+  headers: Headers;
+};
+export type projectsCloseResponseError = (projectsCloseResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsCloseResponse = (projectsCloseResponseSuccess | projectsCloseResponseError)
+
+export const getProjectsCloseUrl = (id: number,) => {
+
+
+
+
+  return `/projects/${id}/close`
+}
+
+/**
+ * 募集を終了する（published → closed。再募集は publish）
+ */
+export const projectsClose = async (id: number, options?: RequestInit): Promise<projectsCloseResponse> => {
+
+  return customFetch<projectsCloseResponse>(getProjectsCloseUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+export type projectsPublishResponse200 = {
+  data: TsunaguWorksProject
+  status: 200
+}
+
+export type projectsPublishResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsPublishResponseSuccess = (projectsPublishResponse200) & {
+  headers: Headers;
+};
+export type projectsPublishResponseError = (projectsPublishResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsPublishResponse = (projectsPublishResponseSuccess | projectsPublishResponseError)
+
+export const getProjectsPublishUrl = (id: number,) => {
+
+
+
+
+  return `/projects/${id}/publish`
+}
+
+/**
+ * 公開する（draft / closed → published。遷移の可否は掲載状態の遷移表が決める）
+ */
+export const projectsPublish = async (id: number, options?: RequestInit): Promise<projectsPublishResponse> => {
+
+  return customFetch<projectsPublishResponse>(getProjectsPublishUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+export type projectsUnpublishResponse200 = {
+  data: TsunaguWorksProject
+  status: 200
+}
+
+export type projectsUnpublishResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsUnpublishResponseSuccess = (projectsUnpublishResponse200) & {
+  headers: Headers;
+};
+export type projectsUnpublishResponseError = (projectsUnpublishResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsUnpublishResponse = (projectsUnpublishResponseSuccess | projectsUnpublishResponseError)
+
+export const getProjectsUnpublishUrl = (id: number,) => {
+
+
+
+
+  return `/projects/${id}/unpublish`
+}
+
+/**
+ * 非公開にする（published → draft）
+ */
+export const projectsUnpublish = async (id: number, options?: RequestInit): Promise<projectsUnpublishResponse> => {
+
+  return customFetch<projectsUnpublishResponse>(getProjectsUnpublishUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+

@@ -101,6 +101,84 @@ paths:
               $ref: '#/components/schemas/TsunaguWorks.ProjectCreateInput'
       security:
         - BearerAuth: []
+  /projects/{id}/close:
+    post:
+      operationId: Projects_close
+      description: 募集を終了する（published → closed。再募集は publish）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.Project'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
+  /projects/{id}/publish:
+    post:
+      operationId: Projects_publish
+      description: 公開する（draft / closed → published。遷移の可否は掲載状態の遷移表が決める）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.Project'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
+  /projects/{id}/unpublish:
+    post:
+      operationId: Projects_unpublish
+      description: 非公開にする（published → draft）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.Project'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
 components:
   schemas:
     TsunaguWorks.ApiError:

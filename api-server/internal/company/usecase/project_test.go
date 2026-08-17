@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/usecase"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/domain"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/test/factories"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/test/helpers"
 )
@@ -99,4 +101,100 @@ func TestProjectCreate(t *testing.T) {
 			t.Fatal("CHECK 制約違反がエラーにならなかった")
 		}
 	})
+}
+
+// TestProjectChangeStatus は掲載状態の遷移を実DBで固定する。
+//
+// 目的: 遷移表（domain）・所有チェック（WHERE company_id）・条件付き UPDATE が
+// 揃って初めて安全な状態遷移になることを保証する。
+//
+// 観点: 掲載フローの一巡（公開→非公開→公開→終了→再募集）／不許可遷移が
+// TransitionError（可能な遷移先つき）になること／他社・不存在の案件は
+// 区別されず ErrProjectNotFound になること（存在の有無を漏らさない）。
+func TestProjectChangeStatus(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("掲載フローの一巡: draft→published→draft→published→closed→published", func(t *testing.T) {
+		_, queries := helpers.NewTestTx(t)
+		uc := usecase.NewProject(queries)
+		userID, _ := setupCompany(t, queries)
+		project, err := uc.Create(ctx, userID, factories.CreateProjectParams())
+		if err != nil {
+			t.Fatalf("作成に失敗: %v", err)
+		}
+
+		steps := []domain.ProjectStatus{
+			domain.ProjectPublished, // 公開
+			domain.ProjectDraft,     // 非公開
+			domain.ProjectPublished, // 再公開
+			domain.ProjectClosed,    // 募集終了
+			domain.ProjectPublished, // 再募集
+		}
+		for _, to := range steps {
+			updated, err := uc.ChangeStatus(ctx, userID, project.ID, to)
+			if err != nil {
+				t.Fatalf("%s への遷移に失敗: %v", to, err)
+			}
+			if updated.Status != string(to) {
+				t.Fatalf("status: %s を期待したが %s", to, updated.Status)
+			}
+		}
+	})
+
+	t.Run("不許可の遷移は TransitionError（可能な遷移先つき）", func(t *testing.T) {
+		_, queries := helpers.NewTestTx(t)
+		uc := usecase.NewProject(queries)
+		userID, _ := setupCompany(t, queries)
+		project, err := uc.Create(ctx, userID, factories.CreateProjectParams())
+		if err != nil {
+			t.Fatalf("作成に失敗: %v", err)
+		}
+
+		// draft → closed は表に無い
+		_, err = uc.ChangeStatus(ctx, userID, project.ID, domain.ProjectClosed)
+		var transitionErr *usecase.TransitionError
+		if !errors.As(err, &transitionErr) {
+			t.Fatalf("TransitionError を期待したが: %v", err)
+		}
+		if !strings.Contains(transitionErr.Error(), "published") {
+			t.Errorf("エラーメッセージに可能な遷移先が含まれない: %v", transitionErr)
+		}
+	})
+
+	t.Run("他社の案件と不存在の案件は同じ ErrProjectNotFound", func(t *testing.T) {
+		_, queries := helpers.NewTestTx(t)
+		uc := usecase.NewProject(queries)
+		ownerID, _ := setupCompany(t, queries)
+		otherID, _ := setupCompany(t, queries)
+		project, err := uc.Create(ctx, ownerID, factories.CreateProjectParams())
+		if err != nil {
+			t.Fatalf("作成に失敗: %v", err)
+		}
+
+		// 他社（otherID）が所有者の案件を publish しようとする
+		_, err = uc.ChangeStatus(ctx, otherID, project.ID, domain.ProjectPublished)
+		if !errors.Is(err, usecase.ErrProjectNotFound) {
+			t.Errorf("他社: ErrProjectNotFound を期待したが: %v", err)
+		}
+
+		_, err = uc.ChangeStatus(ctx, ownerID, 99999999, domain.ProjectPublished)
+		if !errors.Is(err, usecase.ErrProjectNotFound) {
+			t.Errorf("不存在: ErrProjectNotFound を期待したが: %v", err)
+		}
+	})
+}
+
+// setupCompany は user と company プロフィールを作り、userID と companyID を返す共通ヘルパー
+func setupCompany(t *testing.T, queries *db.Queries) (int64, int64) {
+	t.Helper()
+	ctx := context.Background()
+	user, err := queries.CreateUser(ctx, factories.CreateUserParams())
+	if err != nil {
+		t.Fatalf("ユーザー作成に失敗: %v", err)
+	}
+	comp, err := queries.CreateCompany(ctx, factories.CreateCompanyParams(user.ID))
+	if err != nil {
+		t.Fatalf("企業プロフィール作成に失敗: %v", err)
+	}
+	return user.ID, comp.ID
 }

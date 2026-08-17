@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -143,6 +144,15 @@ type ServerInterface interface {
 
 	// (POST /projects)
 	ProjectsCreate(w http.ResponseWriter, r *http.Request)
+
+	// (POST /projects/{id}/close)
+	ProjectsClose(w http.ResponseWriter, r *http.Request, id int64)
+
+	// (POST /projects/{id}/publish)
+	ProjectsPublish(w http.ResponseWriter, r *http.Request, id int64)
+
+	// (POST /projects/{id}/unpublish)
+	ProjectsUnpublish(w http.ResponseWriter, r *http.Request, id int64)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -201,6 +211,84 @@ func (siw *ServerInterfaceWrapper) ProjectsCreate(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ProjectsCreate(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ProjectsClose operation middleware
+func (siw *ServerInterfaceWrapper) ProjectsClose(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ProjectsClose(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ProjectsPublish operation middleware
+func (siw *ServerInterfaceWrapper) ProjectsPublish(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ProjectsPublish(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ProjectsUnpublish operation middleware
+func (siw *ServerInterfaceWrapper) ProjectsUnpublish(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ProjectsUnpublish(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -334,6 +422,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/me", wrapper.AuthMe)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/signup", wrapper.AuthSignup)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects", wrapper.ProjectsCreate)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{id}/close", wrapper.ProjectsClose)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{id}/publish", wrapper.ProjectsPublish)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{id}/unpublish", wrapper.ProjectsUnpublish)
 
 	return m
 }
@@ -493,6 +584,123 @@ func (response ProjectsCreatedefaultJSONResponse) VisitProjectsCreateResponse(w 
 	return err
 }
 
+type ProjectsCloseRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type ProjectsCloseResponseObject interface {
+	VisitProjectsCloseResponse(w http.ResponseWriter) error
+}
+
+type ProjectsClose200JSONResponse TsunaguWorksProject
+
+func (response ProjectsClose200JSONResponse) VisitProjectsCloseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProjectsClosedefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response ProjectsClosedefaultJSONResponse) VisitProjectsCloseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProjectsPublishRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type ProjectsPublishResponseObject interface {
+	VisitProjectsPublishResponse(w http.ResponseWriter) error
+}
+
+type ProjectsPublish200JSONResponse TsunaguWorksProject
+
+func (response ProjectsPublish200JSONResponse) VisitProjectsPublishResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProjectsPublishdefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response ProjectsPublishdefaultJSONResponse) VisitProjectsPublishResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProjectsUnpublishRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type ProjectsUnpublishResponseObject interface {
+	VisitProjectsUnpublishResponse(w http.ResponseWriter) error
+}
+
+type ProjectsUnpublish200JSONResponse TsunaguWorksProject
+
+func (response ProjectsUnpublish200JSONResponse) VisitProjectsUnpublishResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProjectsUnpublishdefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response ProjectsUnpublishdefaultJSONResponse) VisitProjectsUnpublishResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -507,6 +715,15 @@ type StrictServerInterface interface {
 
 	// (POST /projects)
 	ProjectsCreate(ctx context.Context, request ProjectsCreateRequestObject) (ProjectsCreateResponseObject, error)
+
+	// (POST /projects/{id}/close)
+	ProjectsClose(ctx context.Context, request ProjectsCloseRequestObject) (ProjectsCloseResponseObject, error)
+
+	// (POST /projects/{id}/publish)
+	ProjectsPublish(ctx context.Context, request ProjectsPublishRequestObject) (ProjectsPublishResponseObject, error)
+
+	// (POST /projects/{id}/unpublish)
+	ProjectsUnpublish(ctx context.Context, request ProjectsUnpublishRequestObject) (ProjectsUnpublishResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -665,40 +882,121 @@ func (sh *strictHandler) ProjectsCreate(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// ProjectsClose operation middleware
+func (sh *strictHandler) ProjectsClose(w http.ResponseWriter, r *http.Request, id int64) {
+	var request ProjectsCloseRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ProjectsClose(ctx, request.(ProjectsCloseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ProjectsClose")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ProjectsCloseResponseObject); ok {
+		if err := validResponse.VisitProjectsCloseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ProjectsPublish operation middleware
+func (sh *strictHandler) ProjectsPublish(w http.ResponseWriter, r *http.Request, id int64) {
+	var request ProjectsPublishRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ProjectsPublish(ctx, request.(ProjectsPublishRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ProjectsPublish")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ProjectsPublishResponseObject); ok {
+		if err := validResponse.VisitProjectsPublishResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ProjectsUnpublish operation middleware
+func (sh *strictHandler) ProjectsUnpublish(w http.ResponseWriter, r *http.Request, id int64) {
+	var request ProjectsUnpublishRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ProjectsUnpublish(ctx, request.(ProjectsUnpublishRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ProjectsUnpublish")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ProjectsUnpublishResponseObject); ok {
+		if err := validResponse.VisitProjectsUnpublishResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
