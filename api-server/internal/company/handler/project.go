@@ -6,6 +6,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/usecase"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/validator"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/auth"
 )
 
 // Handler は company API のハンドラ実装。依存（usecase・JWT秘密鍵）は main から手渡しされる
@@ -32,6 +34,14 @@ var _ company.StrictServerInterface = (*Handler)(nil)
 // ProjectsCreate は案件を draft として作成する。
 // この層の仕事は「検証の呼び出し → 生成型と DB 型の詰め替え → エラーの HTTP 変換」だけ
 func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreateRequestObject) (company.ProjectsCreateResponseObject, error) {
+	claims, ok := auth.ClaimsFrom(ctx)
+	if !ok {
+		return company.ProjectsCreatedefaultJSONResponse{
+			Body:       company.TsunaguWorksApiError{Error: "認証が必要です"},
+			StatusCode: http.StatusUnauthorized,
+		}, nil
+	}
+
 	if req.Body == nil {
 		return company.ProjectsCreatedefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "リクエストボディが必要です"},
@@ -47,7 +57,7 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 		}, nil
 	}
 
-	project, err := h.project.Create(ctx, db.CreateProjectParams{
+	project, err := h.project.Create(ctx, claims.UserID, db.CreateProjectParams{
 		Title:          input.Title,
 		Description:    input.Description,
 		HourlyRateMin:  input.HourlyRateMin,
@@ -57,6 +67,12 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 		RequiredSkills: input.RequiredSkills,
 	})
 	if err != nil {
+		if errors.Is(err, usecase.ErrAuthFailed) {
+			return company.ProjectsCreatedefaultJSONResponse{
+				Body:       company.TsunaguWorksApiError{Error: "認証が必要です"},
+				StatusCode: http.StatusUnauthorized,
+			}, nil
+		}
 		log.Printf("ProjectsCreate: %v", err)
 		return company.ProjectsCreatedefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "案件の作成に失敗しました"},

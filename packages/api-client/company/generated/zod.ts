@@ -61,7 +61,7 @@ export const AuthSignupResponse = zod.object({
 
 
 /**
- * 案件を作成する（draft として作成される）
+ * 案件を作成する（draft として作成される・要認証。所有者はトークンから決まる）
  */
 export const projectsCreateBodyTitleMax = 100;
 

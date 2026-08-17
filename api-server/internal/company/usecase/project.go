@@ -5,7 +5,10 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 )
@@ -20,9 +23,24 @@ func NewProject(queries *db.Queries) *Project {
 }
 
 // Create は案件を draft として作成する。
-// 現状は単発クエリのため薄いが、業務が育つ場所はここ:
-// 掲載数の上限チェック・通知の発行・複数テーブル更新（＝トランザクション）などはこの層に足す
-func (u *Project) Create(ctx context.Context, params db.CreateProjectParams) (db.Project, error) {
+// 所有者（company_id）はクライアントから受け取らず、検証済みトークンの userID から
+// プロフィールを引いて決める——「他社を所有者に指定する」形が存在しない（IDOR対策）
+func (u *Project) Create(ctx context.Context, userID int64, params db.CreateProjectParams) (db.Project, error) {
+	comp, err := u.queries.GetCompanyByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// トークンは有効だがプロフィールの実体が無い（削除済み等）
+			return db.Project{}, ErrAuthFailed
+		}
+		return db.Project{}, fmt.Errorf("企業プロフィール取得に失敗: %w", err)
+	}
+	params.CompanyID = comp.ID
+
+	// nil スライスは SQL の NULL になり NOT NULL 制約に弾かれる（#30 と同型の正規化）
+	if params.RequiredSkills == nil {
+		params.RequiredSkills = []string{}
+	}
+
 	project, err := u.queries.CreateProject(ctx, params)
 	if err != nil {
 		return db.Project{}, fmt.Errorf("案件の作成に失敗: %w", err)

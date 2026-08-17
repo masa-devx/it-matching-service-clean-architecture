@@ -12,6 +12,7 @@ import (
 const createProject = `-- name: CreateProject :one
 
 INSERT INTO projects (
+    company_id,
     title,
     description,
     hourly_rate_min,
@@ -20,7 +21,7 @@ INSERT INTO projects (
     remote_ok,
     required_skills
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING
     id,
@@ -37,6 +38,7 @@ RETURNING
 `
 
 type CreateProjectParams struct {
+	CompanyID      int64
 	Title          string
 	Description    string
 	HourlyRateMin  *int32
@@ -49,6 +51,7 @@ type CreateProjectParams struct {
 // 案件のクエリ。status は列挙しない（DB の DEFAULT 'draft' に任せる＝作成時に公開状態を指定できる形を作らない）
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
 	row := q.db.QueryRow(ctx, createProject,
+		arg.CompanyID,
 		arg.Title,
 		arg.Description,
 		arg.HourlyRateMin,

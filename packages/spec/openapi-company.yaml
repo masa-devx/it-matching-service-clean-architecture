@@ -78,7 +78,7 @@ paths:
   /projects:
     post:
       operationId: Projects_create
-      description: 案件を作成する（draft として作成される）
+      description: 案件を作成する（draft として作成される・要認証。所有者はトークンから決まる）
       parameters: []
       responses:
         '201':
@@ -99,6 +99,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TsunaguWorks.ProjectCreateInput'
+      security:
+        - BearerAuth: []
 components:
   schemas:
     TsunaguWorks.ApiError:

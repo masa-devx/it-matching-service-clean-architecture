@@ -182,7 +182,7 @@ export const getProjectsCreateUrl = () => {
 }
 
 /**
- * 案件を作成する（draft として作成される）
+ * 案件を作成する（draft として作成される・要認証。所有者はトークンから決まる）
  */
 export const projectsCreate = async (tsunaguWorksProjectCreateInput: TsunaguWorksProjectCreateInput, options?: RequestInit): Promise<projectsCreateResponse> => {
 

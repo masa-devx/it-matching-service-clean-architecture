@@ -41,7 +41,8 @@ interface Auth {
 
 @route("/projects")
 interface Projects {
-  /** 案件を作成する（draft として作成される） */
+  /** 案件を作成する（draft として作成される・要認証。所有者はトークンから決まる） */
+  @useAuth(BearerAuth)
   @post
   create(@body input: ProjectCreateInput): {
     @statusCode statusCode: 201;
