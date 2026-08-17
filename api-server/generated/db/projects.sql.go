@@ -76,3 +76,96 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 	)
 	return i, err
 }
+
+const getProjectForCompany = `-- name: GetProjectForCompany :one
+SELECT
+    id,
+    title,
+    description,
+    hourly_rate_min,
+    hourly_rate_max,
+    hours_per_week,
+    remote_ok,
+    required_skills,
+    status,
+    created_at,
+    company_id
+FROM projects
+WHERE id = $1 AND company_id = $2
+`
+
+type GetProjectForCompanyParams struct {
+	ID        int64
+	CompanyID int64
+}
+
+// 所有チェック込みの取得。WHERE に company_id を含める＝他社の案件は「存在しない」のと同じ扱い
+func (q *Queries) GetProjectForCompany(ctx context.Context, arg GetProjectForCompanyParams) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectForCompany, arg.ID, arg.CompanyID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.HourlyRateMin,
+		&i.HourlyRateMax,
+		&i.HoursPerWeek,
+		&i.RemoteOk,
+		&i.RequiredSkills,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CompanyID,
+	)
+	return i, err
+}
+
+const updateProjectStatus = `-- name: UpdateProjectStatus :one
+UPDATE projects
+SET status = $4
+WHERE id = $1 AND company_id = $2 AND status = $3
+RETURNING
+    id,
+    title,
+    description,
+    hourly_rate_min,
+    hourly_rate_max,
+    hours_per_week,
+    remote_ok,
+    required_skills,
+    status,
+    created_at,
+    company_id
+`
+
+type UpdateProjectStatusParams struct {
+	ID        int64
+	CompanyID int64
+	Status    string
+	Status_2  string
+}
+
+// 状態遷移の更新。WHERE に「今も遷移元のまま」を含めることで、
+// 判定と更新の間に他リクエストが割り込む競合を DB が原子的に検査する（0行更新＝競合）
+func (q *Queries) UpdateProjectStatus(ctx context.Context, arg UpdateProjectStatusParams) (Project, error) {
+	row := q.db.QueryRow(ctx, updateProjectStatus,
+		arg.ID,
+		arg.CompanyID,
+		arg.Status,
+		arg.Status_2,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.HourlyRateMin,
+		&i.HourlyRateMax,
+		&i.HoursPerWeek,
+		&i.RemoteOk,
+		&i.RequiredSkills,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CompanyID,
+	)
+	return i, err
+}
