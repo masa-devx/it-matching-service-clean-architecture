@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/auth"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/infra"
 )
 
 // TxBeginner はトランザクションを開始できるもの。
@@ -18,24 +18,11 @@ type TxBeginner interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
+// 認証フローの業務エラーは視点共通の語彙として shared/auth に集約し（#30）、再輸出する
 var (
-	// ErrEmailTaken は email の重複（handler が 409 に変換する）
-	ErrEmailTaken = errors.New("このメールアドレスは既に登録されています")
-	// ErrAuthFailed は認証失敗。理由（不存在・パスワード不一致・ロール違い）は区別しない
-	ErrAuthFailed = errors.New("メールアドレスまたはパスワードが正しくありません")
+	ErrEmailTaken = auth.ErrEmailTaken
+	ErrAuthFailed = auth.ErrAuthFailed
 )
-
-// ユーザー不存在時にも bcrypt を1回実行し、応答時間の差で email の存在有無を漏らさないための
-// ダミーハッシュ（同一401の3点セット: 文言・ステータス・応答時間）
-var dummyHash string
-
-func init() {
-	h, err := auth.HashPassword("timing-equalizer-dummy")
-	if err != nil {
-		panic(fmt.Sprintf("ダミーハッシュの生成に失敗: %v", err))
-	}
-	dummyHash = h
-}
 
 // Auth は認証まわりの業務ロジック
 type Auth struct {
@@ -78,7 +65,7 @@ func (u *Auth) SignupCompany(ctx context.Context, p SignupCompanyParams) (db.Use
 		Role:         auth.RoleCompany,
 	})
 	if err != nil {
-		if isUniqueViolation(err) {
+		if infra.IsUniqueViolation(err) {
 			return db.User{}, db.Company{}, ErrEmailTaken
 		}
 		return db.User{}, db.Company{}, fmt.Errorf("ユーザー作成に失敗: %w", err)
@@ -107,7 +94,7 @@ func (u *Auth) LoginCompany(ctx context.Context, email, password string) (db.Use
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// 不存在でも bcrypt を1回実行して応答時間を揃える
-			_ = auth.VerifyPassword(dummyHash, password)
+			auth.VerifyPasswordWithDummy(password)
 			return db.User{}, ErrAuthFailed
 		}
 		return db.User{}, fmt.Errorf("ユーザー取得に失敗: %w", err)
@@ -140,12 +127,4 @@ func (u *Auth) MeCompany(ctx context.Context, userID int64) (db.User, db.Company
 		return db.User{}, db.Company{}, fmt.Errorf("プロフィール取得に失敗: %w", err)
 	}
 	return user, comp, nil
-}
-
-// isUniqueViolation は PostgreSQL の UNIQUE 制約違反（SQLSTATE 23505）か判定する。
-// 事前 SELECT で重複チェックしない（確認と挿入の間に他リクエストが割り込む TOCTOU を避け、
-// 制約違反を「起きてから翻訳する」tsunagu-works の型）
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
