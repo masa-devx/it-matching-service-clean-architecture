@@ -8,12 +8,15 @@ import (
 	"time"
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
+	talentapi "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/talent"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 	companyhandler "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/handler"
 	companyusecase "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/usecase"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/auth"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/config"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/infra"
+	talenthandler "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/talent/handler"
+	talentusecase "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/talent/usecase"
 )
 
 // main は組み立て（DI）だけを行う: 設定読込 → DB接続 → 依存の手渡し → ルーター登録 → 起動。
@@ -63,6 +66,21 @@ func run() error {
 	)
 	company.HandlerWithOptions(companyStrict, company.StdHTTPServerOptions{
 		BaseURL:    "/company",
+		BaseRouter: mux,
+	})
+
+	// talent API: company と対称のマウント（/talent × role=talent が #31 で強制される）
+	talentAuthUsecase := talentusecase.NewAuth(pool, queries)
+	talentPublicOps := map[string]bool{
+		"AuthSignup": true,
+		"AuthLogin":  true,
+	}
+	talentStrict := talentapi.NewStrictHandler(
+		talenthandler.New(talentAuthUsecase, cfg.JWTSecret),
+		[]talentapi.StrictMiddlewareFunc{auth.NewStrictAuth[talentapi.StrictHandlerFunc](cfg.JWTSecret, talentPublicOps)},
+	)
+	talentapi.HandlerWithOptions(talentStrict, talentapi.StdHTTPServerOptions{
+		BaseURL:    "/talent",
 		BaseRouter: mux,
 	})
 
