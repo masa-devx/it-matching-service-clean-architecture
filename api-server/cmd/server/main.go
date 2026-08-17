@@ -44,13 +44,13 @@ func run() error {
 	projectUsecase := companyusecase.NewProject(queries)
 	authUsecase := companyusecase.NewAuth(pool, queries)
 
-	// 認証が不要な operation のホワイトリスト。
-	// TODO(#31): 仕様（OpenAPI の security 定義）から起動時に導出する形へ置き換える
-	publicOps := map[string]bool{
-		"AuthSignup":     true,
-		"AuthLogin":      true,
-		"ProjectsCreate": true, // #31 で保護に切り替え（company_id をトークンから取るのと同時）
+	// 認証必須の operation は仕様（security 定義）から起動時に1回だけ導出する。
+	// コードに手書きのリストを持たない＝認証要否の一次情報は .tsp の @useAuth
+	companySpec, err := company.GetSpec()
+	if err != nil {
+		return fmt.Errorf("company 仕様の読み込みに失敗: %w", err)
 	}
+	companyAuthOps := auth.RequiredAuthOps(companySpec)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -62,22 +62,23 @@ func run() error {
 	// パスの一次情報は仕様側にあり、ここでは「どこに載せるか」だけを決める
 	companyStrict := company.NewStrictHandler(
 		companyhandler.New(projectUsecase, authUsecase, cfg.JWTSecret),
-		[]company.StrictMiddlewareFunc{auth.NewStrictAuth[company.StrictHandlerFunc](cfg.JWTSecret, publicOps)},
+		[]company.StrictMiddlewareFunc{auth.NewStrictAuth[company.StrictHandlerFunc](cfg.JWTSecret, auth.RoleCompany, companyAuthOps)},
 	)
 	company.HandlerWithOptions(companyStrict, company.StdHTTPServerOptions{
 		BaseURL:    "/company",
 		BaseRouter: mux,
 	})
 
-	// talent API: company と対称のマウント（/talent × role=talent が #31 で強制される）
+	// talent API: company と対称のマウント（/talent × role=talent を一律強制）
 	talentAuthUsecase := talentusecase.NewAuth(pool, queries)
-	talentPublicOps := map[string]bool{
-		"AuthSignup": true,
-		"AuthLogin":  true,
+	talentSpec, err := talentapi.GetSpec()
+	if err != nil {
+		return fmt.Errorf("talent 仕様の読み込みに失敗: %w", err)
 	}
+	talentAuthOps := auth.RequiredAuthOps(talentSpec)
 	talentStrict := talentapi.NewStrictHandler(
 		talenthandler.New(talentAuthUsecase, cfg.JWTSecret),
-		[]talentapi.StrictMiddlewareFunc{auth.NewStrictAuth[talentapi.StrictHandlerFunc](cfg.JWTSecret, talentPublicOps)},
+		[]talentapi.StrictMiddlewareFunc{auth.NewStrictAuth[talentapi.StrictHandlerFunc](cfg.JWTSecret, auth.RoleTalent, talentAuthOps)},
 	)
 	talentapi.HandlerWithOptions(talentStrict, talentapi.StdHTTPServerOptions{
 		BaseURL:    "/talent",
