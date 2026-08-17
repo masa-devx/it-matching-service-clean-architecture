@@ -9,6 +9,58 @@
 import * as zod from 'zod';
 
 /**
+ * ログイン
+ */
+export const AuthLoginBody = zod.object({
+  "email": zod.email(),
+  "password": zod.string()
+}).describe('ログイン入力')
+
+export const AuthLoginResponse = zod.object({
+  "token": zod.string()
+}).describe('認証トークン（web は httpOnly Cookie に変換して保持し、ブラウザ JS には渡さない）')
+
+
+/**
+ * ログイン中ユーザーの情報（要認証）
+ */
+export const AuthMeResponse = zod.object({
+  "user_id": zod.int(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "location": zod.string(),
+  "description": zod.string()
+}).describe('ログイン中の企業ユーザー情報')
+
+
+/**
+ * サインアップ（アカウントとプロフィールを同時作成し、トークンを発行する）
+ */
+export const authSignupBodyPasswordMin = 8;
+export const authSignupBodyPasswordMax = 72;
+
+export const authSignupBodyNameMax = 100;
+
+export const authSignupBodyLocationMax = 100;
+
+export const authSignupBodyDescriptionMax = 1000;
+
+
+
+export const AuthSignupBody = zod.object({
+  "email": zod.email(),
+  "password": zod.string().min(authSignupBodyPasswordMin).max(authSignupBodyPasswordMax).describe('パスワード（上限は bcrypt の入力上限 72 バイトに合わせる）'),
+  "name": zod.string().min(1).max(authSignupBodyNameMax).describe('会社名'),
+  "location": zod.string().max(authSignupBodyLocationMax).optional(),
+  "description": zod.string().max(authSignupBodyDescriptionMax).optional()
+}).describe('企業のサインアップ入力（アカウントとプロフィールを同時に作る）')
+
+export const AuthSignupResponse = zod.object({
+  "token": zod.string()
+}).describe('認証トークン（web は httpOnly Cookie に変換して保持し、ブラウザ JS には渡さない）')
+
+
+/**
  * 案件を作成する（draft として作成される）
  */
 export const projectsCreateBodyTitleMax = 100;

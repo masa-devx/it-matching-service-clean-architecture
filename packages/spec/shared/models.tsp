@@ -75,3 +75,49 @@ model ApiError {
   error: string;
   request_id?: string;
 }
+
+/** 認証トークン（web は httpOnly Cookie に変換して保持し、ブラウザ JS には渡さない） */
+model AuthToken {
+  token: string;
+}
+
+/** 企業のサインアップ入力（アカウントとプロフィールを同時に作る） */
+model CompanySignupInput {
+  @format("email")
+  email: string;
+
+  /** パスワード（上限は bcrypt の入力上限 72 バイトに合わせる） */
+  @secret
+  @minLength(8)
+  @maxLength(72)
+  password: string;
+
+  /** 会社名 */
+  @minLength(1)
+  @maxLength(100)
+  name: string;
+
+  @maxLength(100)
+  location?: string;
+
+  @maxLength(1000)
+  description?: string;
+}
+
+/** ログイン入力 */
+model LoginInput {
+  @format("email")
+  email: string;
+
+  @secret
+  password: string;
+}
+
+/** ログイン中の企業ユーザー情報 */
+model CompanyMe {
+  user_id: int64;
+  email: string;
+  name: string;
+  location: string;
+  description: string;
+}
