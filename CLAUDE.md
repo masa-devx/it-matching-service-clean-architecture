@@ -31,7 +31,7 @@
 | DB | PostgreSQL（Docker）＋ **sqlc**（repository層は作らない。`Queries` が repository 相当） |
 | サーバー状態 | TanStack Query（prefetch / Hydration）。書き込みは Server Actions |
 | 認証・認可 | 自前JWT（bcrypt・httpOnly Cookie）。**ロール認可はパスプレフィックス（/company/*, /talent/*）×ミドルウェアで一律** |
-| テスト | go-txdb + factories（実DB・モックしない）/ Vitest / Playwright |
+| テスト | 実DBテスト（pgx.Tx分離・ADR-0008）+ factories・モックしない/ Vitest / Playwright |
 | デプロイ | Cloud Run + Cloud Run Job（migrate）+ Neon |
 
 ### ポート（他プロジェクトと衝突しない値に固定）
@@ -67,7 +67,7 @@
 
 ```
 0: 1エンドポイント貫通（生成品質の検証。ここで詰まったら設計見直し）← まずここだけやる
-1: 土台（層構成・DI・go-txdb・CI・依存方向の強制）
+1: 土台（層構成・DI・実DBテスト基盤・CI・依存方向の強制）
 2: 認証＋プロフィール（2系統・ロールMW） → 3: 案件 → 4: 応募（状態機械）
 5: デプロイ（Cloud Run） → 6: E2E・トレーシング → 7: eKYC
 ```

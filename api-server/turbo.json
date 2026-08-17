@@ -20,7 +20,8 @@
     },
     "test": {
       "dependsOn": ["generate"],
-      "inputs": ["**/*.go", "go.mod", "go.sum"]
+      "inputs": ["**/*.go", "go.mod", "go.sum", "../migrations/ddl/**"],
+      "env": ["TEST_DATABASE_URL"]
     },
     "lint": {
       "dependsOn": ["generate"],

@@ -5,3 +5,11 @@ development:
   datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu sslmode=disable
   dir: ddl
   table: gorp_migrations
+
+# 実DBテスト用（同一インスタンスの別データベース。テストは BEGIN→ROLLBACK で分離するため
+# スキーマだけあればよく、開発データと混ざらない）
+test:
+  dialect: postgres
+  datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu_test sslmode=disable
+  dir: ddl
+  table: gorp_migrations
