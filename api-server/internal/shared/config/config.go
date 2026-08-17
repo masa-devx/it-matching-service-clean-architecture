@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Port        int
 	DatabaseURL string
+	JWTSecret   []byte
 }
 
 // Load は環境変数から設定を組み立てる。
@@ -24,6 +25,11 @@ func Load() (Config, error) {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL が設定されていません（cp .env.example .env を確認してください）")
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return Config{}, fmt.Errorf("JWT_SECRET が設定されていません（cp .env.example .env を確認してください）")
 	}
 
 	// 環境変数は外部入力として扱い、数値であることを検証してから使う
@@ -39,5 +45,6 @@ func Load() (Config, error) {
 	return Config{
 		Port:        port,
 		DatabaseURL: dbURL,
+		JWTSecret:   []byte(jwtSecret),
 	}, nil
 }
