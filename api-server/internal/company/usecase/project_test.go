@@ -198,3 +198,99 @@ func setupCompany(t *testing.T, queries *db.Queries) (int64, int64) {
 	}
 	return user.ID, comp.ID
 }
+
+// TestProjectListMine は自社案件の一覧を実DBで固定する。
+//
+// 目的: 所有チェックが WHERE にあること（他社の案件は一覧に存在しない）と並び順を保証する。
+// 観点: 2社を作り、自社の分だけが新しい順で返ること。
+func TestProjectListMine(t *testing.T) {
+	ctx := context.Background()
+	_, queries := helpers.NewTestTx(t)
+	uc := usecase.NewProject(queries)
+
+	ownerID, _ := setupCompany(t, queries)
+	otherID, _ := setupCompany(t, queries)
+
+	first, err := uc.Create(ctx, ownerID, factories.CreateProjectParams())
+	if err != nil {
+		t.Fatalf("作成に失敗: %v", err)
+	}
+	second, err := uc.Create(ctx, ownerID, factories.CreateProjectParams())
+	if err != nil {
+		t.Fatalf("作成に失敗: %v", err)
+	}
+	if _, err := uc.Create(ctx, otherID, factories.CreateProjectParams()); err != nil {
+		t.Fatalf("他社の作成に失敗: %v", err)
+	}
+
+	projects, err := uc.ListMine(ctx, ownerID)
+	if err != nil {
+		t.Fatalf("一覧取得に失敗: %v", err)
+	}
+	if len(projects) != 2 {
+		t.Fatalf("自社の2件を期待したが %d 件（他社の案件が混ざっていないか）", len(projects))
+	}
+	if projects[0].ID != second.ID || projects[1].ID != first.ID {
+		t.Errorf("新しい順を期待したが: %d, %d", projects[0].ID, projects[1].ID)
+	}
+}
+
+// TestProjectUpdate は案件編集を実DBで固定する。
+//
+// 目的: 「編集で公開状態が変わらない」（SET 句に status が無い）ことと所有チェックを保証する。
+// 観点: published の案件を編集しても published のまま／値は更新される／他社は404相当。
+func TestProjectUpdate(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("値は更新され、公開状態は変わらない", func(t *testing.T) {
+		_, queries := helpers.NewTestTx(t)
+		uc := usecase.NewProject(queries)
+		userID, _ := setupCompany(t, queries)
+
+		project, err := uc.Create(ctx, userID, factories.CreateProjectParams())
+		if err != nil {
+			t.Fatalf("作成に失敗: %v", err)
+		}
+		if _, err := uc.ChangeStatus(ctx, userID, project.ID, domain.ProjectPublished); err != nil {
+			t.Fatalf("公開に失敗: %v", err)
+		}
+
+		updated, err := uc.Update(ctx, userID, project.ID, db.UpdateProjectParams{
+			Title:        "更新後のタイトル",
+			Description:  "更新後の詳細",
+			HoursPerWeek: 20,
+			RemoteOk:     false,
+		})
+		if err != nil {
+			t.Fatalf("更新に失敗: %v", err)
+		}
+		if updated.Title != "更新後のタイトル" || updated.HoursPerWeek != 20 {
+			t.Errorf("値が更新されていない: %+v", updated)
+		}
+		if updated.Status != string(domain.ProjectPublished) {
+			t.Errorf("編集で status が変わった: %s（SET句にstatusが混入していないか）", updated.Status)
+		}
+		if updated.RequiredSkills == nil {
+			t.Error("nil skills が正規化されていない")
+		}
+	})
+
+	t.Run("他社の案件は更新できない（ErrProjectNotFound）", func(t *testing.T) {
+		_, queries := helpers.NewTestTx(t)
+		uc := usecase.NewProject(queries)
+		ownerID, _ := setupCompany(t, queries)
+		otherID, _ := setupCompany(t, queries)
+
+		project, err := uc.Create(ctx, ownerID, factories.CreateProjectParams())
+		if err != nil {
+			t.Fatalf("作成に失敗: %v", err)
+		}
+
+		_, err = uc.Update(ctx, otherID, project.ID, db.UpdateProjectParams{
+			Title: "乗っ取り", Description: "x", HoursPerWeek: 10, RemoteOk: true,
+		})
+		if !errors.Is(err, usecase.ErrProjectNotFound) {
+			t.Errorf("ErrProjectNotFound を期待したが: %v", err)
+		}
+	})
+}
