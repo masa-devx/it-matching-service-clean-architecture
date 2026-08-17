@@ -79,6 +79,14 @@ model ProjectList {
   projects: Project[];
 }
 
+/** 公開案件の1ページ（seek ページネーション） */
+model ProjectPage {
+  projects: Project[];
+
+  /** 次ページの読み出し起点となる id。null なら最終ページ */
+  next_cursor: int64 | null;
+}
+
 /** エラーレスポンスの共通形 */
 @error
 model ApiError {
