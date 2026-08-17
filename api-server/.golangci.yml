@@ -19,6 +19,7 @@ linters:
     - modernize # 新しい標準ライブラリへの置き換え提案
     - bidichk # 不可視Unicode制御文字（Trojan Source）検出
     - bodyclose # HTTPレスポンスBodyのClose漏れ（外部API連携時に効く）
+    - depguard # 依存方向の強制（アーキテクチャ図を lint 設定に翻訳する）
   exclusions:
     # 生成物は lint 対象外（直すなら仕様か生成設定を直して再生成する）
     paths:
@@ -29,6 +30,35 @@ linters:
           - errcheck
           - gosec
   settings:
+    # 依存の向き（設計プラン§4）: handler → usecase → generated/db。
+    # domain は何にも依存しない。company ⇔ talent は相互に依存しない（ADR-0003）
+    depguard:
+      rules:
+        domain-purity:
+          list-mode: lax # 列挙した deny だけを禁止する
+          files:
+            - '**/internal/shared/domain/**'
+          deny:
+            - pkg: github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/infra
+              desc: domain は infra（DB接続）に依存しない
+            - pkg: github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated
+              desc: domain は生成物（DB・API型）に依存しない
+            - pkg: net/http
+              desc: domain は HTTP に依存しない
+        company-isolation:
+          list-mode: lax
+          files:
+            - '**/internal/company/**'
+          deny:
+            - pkg: github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/talent
+              desc: company から talent へ依存しない（視点の分離・ADR-0003）
+        talent-isolation:
+          list-mode: lax
+          files:
+            - '**/internal/talent/**'
+          deny:
+            - pkg: github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company
+              desc: talent から company へ依存しない（視点の分離・ADR-0003）
     staticcheck:
       checks:
         - "all"
