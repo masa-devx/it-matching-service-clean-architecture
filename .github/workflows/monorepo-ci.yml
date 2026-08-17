@@ -95,3 +95,16 @@ jobs:
 
       - name: Lint & Build
         run: pnpm turbo lint format:check test build
+
+      # 生成物の同期チェック（設計プラン§6・二次防衛）:
+      # 上の build が仕様から生成物を作り直した結果、コミット済みの生成物と差分が出たら
+      # 「生成し忘れ」または「生成物の手編集」なので落とす（一次防衛はローカルのタスクグラフ）
+      - name: Check generated files are up to date
+        run: |
+          git diff --exit-code -- \
+            'packages/spec/openapi-*.yaml' \
+            'api-server/generated' \
+            'packages/api-client/company/generated' || {
+            echo '::error::生成物が仕様と同期していません。ローカルで pnpm turbo build を実行し、生成物をコミットしてください'
+            exit 1
+          }
