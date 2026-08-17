@@ -11,7 +11,7 @@ union ProjectStatus {
   closed: "closed",
 }
 
-/** 案件（企業が掲載する仕事）※生成し忘れ実演用の変更・revert予定 */
+/** 案件（企業が掲載する仕事） */
 model Project {
   id: int64;
 
