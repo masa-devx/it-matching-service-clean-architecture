@@ -2,7 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
+import { listMyApplications } from '@/external/handler/application'
 import { getPublishedProject } from '@/external/handler/projectSearch'
+import { ApplicationStatusBadge } from '@/features/application/components/ApplicationStatusBadge'
+import { ApplyForm } from '@/features/application/components/client/ApplyForm'
 
 // 詳細はワンショット読みなので handler 直呼び（#45 編集ページと同型）。
 // 未公開（draft / closed）と不存在は API がどちらも 404 を返すため、同じ notFound() に落ちる
@@ -23,6 +26,12 @@ export default async function Page({
     notFound()
   }
   const project = result.data
+
+  // 応募済みならフォームの代わりに状態を出す（UIでも二重応募を防ぐ。保証は DB の UNIQUE）
+  const applications = await listMyApplications()
+  const myApplication = applications.ok
+    ? applications.data.find((a) => a.project_id === projectId)
+    : undefined
 
   const rate =
     project.hourly_rate_min == null && project.hourly_rate_max == null
@@ -72,6 +81,23 @@ export default async function Page({
         <p className="whitespace-pre-wrap text-sm leading-relaxed">
           {project.description}
         </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-bold">応募</h2>
+        {myApplication ? (
+          <div className="flex items-center justify-between gap-2 rounded-lg border p-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">この案件には応募済みです</span>
+              <ApplicationStatusBadge status={myApplication.status} />
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/talent/applications">応募一覧へ</Link>
+            </Button>
+          </div>
+        ) : (
+          <ApplyForm projectId={projectId} />
+        )}
       </section>
     </div>
   )
