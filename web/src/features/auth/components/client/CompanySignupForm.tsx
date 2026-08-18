@@ -5,6 +5,11 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+
 import { signupCompanyAction } from '../../actions/company'
 import {
   companySignupFormSchema,
@@ -42,95 +47,73 @@ export function CompanySignupForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md space-y-4">
       <h1 className="text-2xl font-bold">企業サインアップ</h1>
 
-      <div>
-        <label htmlFor="email" className="block font-medium">
-          メールアドレス
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="email">メールアドレス</Label>
+        <Input
           id="email"
           type="email"
+          aria-invalid={errors.email ? true : undefined}
           {...register('email')}
-          className="w-full rounded border p-2"
         />
         {errors.email && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.email.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="password" className="block font-medium">
-          パスワード（8文字以上）
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="password">パスワード（8文字以上）</Label>
+        <Input
           id="password"
           type="password"
+          aria-invalid={errors.password ? true : undefined}
           {...register('password')}
-          className="w-full rounded border p-2"
         />
         {errors.password && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.password.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="name" className="block font-medium">
-          会社名
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="name">会社名</Label>
+        <Input
           id="name"
+          aria-invalid={errors.name ? true : undefined}
           {...register('name')}
-          className="w-full rounded border p-2"
         />
         {errors.name && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.name.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="location" className="block font-medium">
-          所在地（任意）
-        </label>
-        <input
-          id="location"
-          {...register('location')}
-          className="w-full rounded border p-2"
-        />
+      <div className="space-y-1.5">
+        <Label htmlFor="location">所在地（任意）</Label>
+        <Input id="location" {...register('location')} />
       </div>
 
-      <div>
-        <label htmlFor="description" className="block font-medium">
-          事業内容（任意）
-        </label>
-        <textarea
-          id="description"
-          {...register('description')}
-          className="w-full rounded border p-2"
-        />
+      <div className="space-y-1.5">
+        <Label htmlFor="description">事業内容（任意）</Label>
+        <Textarea id="description" {...register('description')} />
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? '登録中…' : 'サインアップ'}
-      </button>
+      </Button>
 
       {serverError && (
-        <p role="alert" className="font-medium text-red-600">
+        <p role="alert" className="font-medium text-destructive">
           {serverError}
         </p>
       )}
 
       <p className="text-sm">
         既にアカウントをお持ちの方は{' '}
-        <Link href="/company/login" className="text-blue-600 underline">
+        <Link href="/company/login" className="text-primary underline">
           ログイン
         </Link>
       </p>

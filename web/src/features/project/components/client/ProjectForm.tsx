@@ -2,7 +2,13 @@
 
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
+
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 import { createProjectAction } from '../../actions/create'
 import {
@@ -21,6 +27,7 @@ export function ProjectForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ProjectFormInput, unknown, ProjectFormOutput>({
@@ -46,111 +53,102 @@ export function ProjectForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-xl space-y-4">
-      <div>
-        <label htmlFor="title" className="block font-medium">
-          タイトル
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="title">タイトル</Label>
+        <Input
           id="title"
+          aria-invalid={errors.title ? true : undefined}
           {...register('title')}
-          className="w-full rounded border p-2"
         />
         {errors.title && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.title.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="description" className="block font-medium">
-          詳細
-        </label>
-        <textarea
+      <div className="space-y-1.5">
+        <Label htmlFor="description">詳細</Label>
+        <Textarea
           id="description"
+          aria-invalid={errors.description ? true : undefined}
           {...register('description')}
-          className="w-full rounded border p-2"
         />
         {errors.description && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.description.message}
           </p>
         )}
       </div>
 
       <div className="flex gap-4">
-        <div>
-          <label htmlFor="hourly_rate_min" className="block font-medium">
-            時給下限（円・任意）
-          </label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="hourly_rate_min">時給下限（円・任意）</Label>
+          <Input
             id="hourly_rate_min"
             type="number"
+            aria-invalid={errors.hourly_rate_min ? true : undefined}
             {...register('hourly_rate_min', asNumber)}
-            className="w-full rounded border p-2"
           />
           {errors.hourly_rate_min && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-destructive">
               {errors.hourly_rate_min.message}
             </p>
           )}
         </div>
-        <div>
-          <label htmlFor="hourly_rate_max" className="block font-medium">
-            時給上限（円・任意）
-          </label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="hourly_rate_max">時給上限（円・任意）</Label>
+          <Input
             id="hourly_rate_max"
             type="number"
             {...register('hourly_rate_max', asNumber)}
-            className="w-full rounded border p-2"
           />
         </div>
       </div>
 
-      <div>
-        <label htmlFor="hours_per_week" className="block font-medium">
-          週の稼働時間
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="hours_per_week">週の稼働時間</Label>
+        <Input
           id="hours_per_week"
           type="number"
+          aria-invalid={errors.hours_per_week ? true : undefined}
           {...register('hours_per_week', asNumber)}
-          className="w-full rounded border p-2"
         />
         {errors.hours_per_week && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.hours_per_week.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" {...register('remote_ok')} />
-          リモート可
-        </label>
-      </div>
+      {/* Radix の Checkbox は native input ではないため register が使えず、Controller で値を接続する */}
+      <Controller
+        control={control}
+        name="remote_ok"
+        render={({ field }) => (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="remote_ok"
+              checked={field.value}
+              onCheckedChange={(checked) => field.onChange(checked === true)}
+            />
+            <Label htmlFor="remote_ok">リモート可</Label>
+          </div>
+        )}
+      />
 
-      <div>
-        <label htmlFor="required_skills" className="block font-medium">
-          必須スキル（カンマ区切り）
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="required_skills">必須スキル（カンマ区切り）</Label>
+        <Input
           id="required_skills"
           placeholder="Go, PostgreSQL"
           {...register('required_skills')}
-          className="w-full rounded border p-2"
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? '作成中…' : '案件を作成'}
-      </button>
+      </Button>
 
       {message && <p className="font-medium">{message}</p>}
     </form>

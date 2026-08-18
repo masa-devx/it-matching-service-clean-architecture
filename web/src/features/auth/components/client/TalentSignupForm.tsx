@@ -5,6 +5,11 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+
 import { signupTalentAction } from '../../actions/talent'
 import {
   talentSignupFormSchema,
@@ -42,96 +47,77 @@ export function TalentSignupForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md space-y-4">
       <h1 className="text-2xl font-bold">人材サインアップ</h1>
 
-      <div>
-        <label htmlFor="email" className="block font-medium">
-          メールアドレス
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="email">メールアドレス</Label>
+        <Input
           id="email"
           type="email"
+          aria-invalid={errors.email ? true : undefined}
           {...register('email')}
-          className="w-full rounded border p-2"
         />
         {errors.email && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.email.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="password" className="block font-medium">
-          パスワード（8文字以上）
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="password">パスワード（8文字以上）</Label>
+        <Input
           id="password"
           type="password"
+          aria-invalid={errors.password ? true : undefined}
           {...register('password')}
-          className="w-full rounded border p-2"
         />
         {errors.password && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.password.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="display_name" className="block font-medium">
-          表示名
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="display_name">表示名</Label>
+        <Input
           id="display_name"
+          aria-invalid={errors.display_name ? true : undefined}
           {...register('display_name')}
-          className="w-full rounded border p-2"
         />
         {errors.display_name && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.display_name.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="skills" className="block font-medium">
-          スキル（カンマ区切り）
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="skills">スキル（カンマ区切り）</Label>
+        <Input
           id="skills"
           placeholder="Go, TypeScript"
           {...register('skills')}
-          className="w-full rounded border p-2"
         />
       </div>
 
-      <div>
-        <label htmlFor="bio" className="block font-medium">
-          自己紹介（任意）
-        </label>
-        <textarea
-          id="bio"
-          {...register('bio')}
-          className="w-full rounded border p-2"
-        />
+      <div className="space-y-1.5">
+        <Label htmlFor="bio">自己紹介（任意）</Label>
+        <Textarea id="bio" {...register('bio')} />
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? '登録中…' : 'サインアップ'}
-      </button>
+      </Button>
 
       {serverError && (
-        <p role="alert" className="font-medium text-red-600">
+        <p role="alert" className="font-medium text-destructive">
           {serverError}
         </p>
       )}
 
       <p className="text-sm">
         既にアカウントをお持ちの方は{' '}
-        <Link href="/talent/login" className="text-blue-600 underline">
+        <Link href="/talent/login" className="text-primary underline">
           ログイン
         </Link>
       </p>

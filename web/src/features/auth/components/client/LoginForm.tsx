@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
 import { loginCompanyAction } from '../../actions/company'
 import { loginTalentAction } from '../../actions/talent'
 import {
@@ -45,57 +49,49 @@ export function LoginForm({ role }: Props) {
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md space-y-4">
       <h1 className="text-2xl font-bold">{roleLabel[role]}ログイン</h1>
 
-      <div>
-        <label htmlFor="email" className="block font-medium">
-          メールアドレス
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="email">メールアドレス</Label>
+        <Input
           id="email"
           type="email"
+          aria-invalid={errors.email ? true : undefined}
           {...register('email')}
-          className="w-full rounded border p-2"
         />
         {errors.email && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.email.message}
           </p>
         )}
       </div>
 
-      <div>
-        <label htmlFor="password" className="block font-medium">
-          パスワード
-        </label>
-        <input
+      <div className="space-y-1.5">
+        <Label htmlFor="password">パスワード</Label>
+        <Input
           id="password"
           type="password"
+          aria-invalid={errors.password ? true : undefined}
           {...register('password')}
-          className="w-full rounded border p-2"
         />
         {errors.password && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.password.message}
           </p>
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'ログイン中…' : 'ログイン'}
-      </button>
+      </Button>
 
       {serverError && (
-        <p role="alert" className="font-medium text-red-600">
+        <p role="alert" className="font-medium text-destructive">
           {serverError}
         </p>
       )}
 
       <p className="text-sm">
         アカウントをお持ちでない方は{' '}
-        <Link href={`/${role}/signup`} className="text-blue-600 underline">
+        <Link href={`/${role}/signup`} className="text-primary underline">
           サインアップ
         </Link>
       </p>
