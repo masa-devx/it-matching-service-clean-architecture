@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { ApplicationStatusBadge } from '../ApplicationStatusBadge'
+import { SelectionActions } from './SelectionActions'
 import { applicationsQuery } from '../../queries/applications'
 
 export function ApplicationList({ projectId }: { projectId: number }) {
@@ -45,6 +46,7 @@ export function ApplicationList({ projectId }: { projectId: number }) {
           <p className="text-xs text-muted-foreground">
             応募日: {new Date(a.created_at).toLocaleDateString('ja-JP')}
           </p>
+          <SelectionActions application={a} />
         </li>
       ))}
     </ul>
