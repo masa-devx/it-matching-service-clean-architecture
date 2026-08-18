@@ -104,14 +104,15 @@ RETURNING
     a.company_acted_at,
     a.created_at;
 
--- name: WithdrawApplication :one
--- 取り下げ（talent の遷移）。遷移元のホワイトリストは呼び出し側が
--- shared/domain の遷移表から導出して渡す（表が一次情報のまま WHERE に反映される）。
+-- name: UpdateApplicationStatusForTalent :one
+-- talent の遷移（withdraw / accept / decline は同じ形なので to_status で共通化・company 側と対称）。
+-- 遷移元のホワイトリストは呼び出し側が shared/domain の遷移表から導出して渡す
+-- （表が一次情報のまま WHERE に反映される）。
 -- WHERE に talent_id と from_statuses を含めることで、所有と遷移可否を DB が原子的に検査する。
 -- FROM projects はレスポンス用の project_title を1文で取るための JOIN（UPDATE...FROM）
 UPDATE applications a
 SET
-    status = 'withdrawn',
+    status = @to_status,
     talent_acted_at = now()
 FROM projects p
 WHERE a.id = @id

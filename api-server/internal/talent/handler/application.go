@@ -106,7 +106,7 @@ func (h *Handler) ApplicationsWithdraw(ctx context.Context, req talent.Applicati
 				Body:       talent.TsunaguWorksApiError{Error: err.Error()},
 				StatusCode: http.StatusNotFound,
 			}, nil
-		case errors.Is(err, usecase.ErrCannotWithdraw):
+		case errors.Is(err, usecase.ErrCannotChangeApplication):
 			// 遷移不可の詳細（現在の状態）はラップ済みメッセージに含まれている
 			return talent.ApplicationsWithdrawdefaultJSONResponse{
 				Body:       talent.TsunaguWorksApiError{Error: err.Error()},
@@ -128,6 +128,22 @@ func (h *Handler) ApplicationsWithdraw(ctx context.Context, req talent.Applicati
 	return talent.ApplicationsWithdraw200JSONResponse(toAPIApplication(
 		row.ID, row.ProjectID, row.ProjectTitle, row.Status, row.Message, row.CreatedAt,
 	)), nil
+}
+
+// 承諾・辞退のスタブ（#58 Step 2 で withdraw ごと共通ヘルパーに置き換える）
+
+func (h *Handler) ApplicationsAccept(ctx context.Context, req talent.ApplicationsAcceptRequestObject) (talent.ApplicationsAcceptResponseObject, error) {
+	return talent.ApplicationsAcceptdefaultJSONResponse{
+		Body:       talent.TsunaguWorksApiError{Error: "未実装です"},
+		StatusCode: http.StatusNotImplemented,
+	}, nil
+}
+
+func (h *Handler) ApplicationsDecline(ctx context.Context, req talent.ApplicationsDeclineRequestObject) (talent.ApplicationsDeclineResponseObject, error) {
+	return talent.ApplicationsDeclinedefaultJSONResponse{
+		Body:       talent.TsunaguWorksApiError{Error: "未実装です"},
+		StatusCode: http.StatusNotImplemented,
+	}, nil
 }
 
 // toAPIApplication は DB の行（JOIN 済み Row 各種）を API の型へ詰め替える。

@@ -205,7 +205,7 @@ func TestApplicationWithdraw(t *testing.T) {
 		}
 	})
 
-	t.Run("決着済み（withdrawn）は ErrCannotWithdraw（現在の状態つき409）", func(t *testing.T) {
+	t.Run("決着済み（withdrawn）は ErrCannotChangeApplication（現在の状態つき409）", func(t *testing.T) {
 		_, queries := helpers.NewTestTx(t)
 		uc := usecase.NewApplication(queries)
 		companyID := setupCompany(t, queries)
@@ -220,8 +220,8 @@ func TestApplicationWithdraw(t *testing.T) {
 		}
 
 		_, err = uc.Withdraw(ctx, userID, app.ID)
-		if !errors.Is(err, usecase.ErrCannotWithdraw) {
-			t.Fatalf("ErrCannotWithdraw を期待したが: %v", err)
+		if !errors.Is(err, usecase.ErrCannotChangeApplication) {
+			t.Fatalf("ErrCannotChangeApplication を期待したが: %v", err)
 		}
 		if !strings.Contains(err.Error(), "withdrawn") {
 			t.Errorf("エラーメッセージに現在の状態が含まれない: %v", err)

@@ -52,6 +52,58 @@ paths:
                 $ref: '#/components/schemas/TsunaguWorks.ApiError'
       security:
         - BearerAuth: []
+  /applications/{id}/accept:
+    post:
+      operationId: Applications_accept
+      description: オファーを承諾する（offered → accepted。ダブルオプトインの成立）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.Application'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
+  /applications/{id}/decline:
+    post:
+      operationId: Applications_decline
+      description: オファーを辞退する（offered → declined）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.Application'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
   /applications/{id}/withdraw:
     post:
       operationId: Applications_withdraw

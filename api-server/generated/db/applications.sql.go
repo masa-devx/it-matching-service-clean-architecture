@@ -317,16 +317,16 @@ func (q *Queries) UpdateApplicationStatusForCompany(ctx context.Context, arg Upd
 	return i, err
 }
 
-const withdrawApplication = `-- name: WithdrawApplication :one
+const updateApplicationStatusForTalent = `-- name: UpdateApplicationStatusForTalent :one
 UPDATE applications a
 SET
-    status = 'withdrawn',
+    status = $1,
     talent_acted_at = now()
 FROM projects p
-WHERE a.id = $1
-    AND a.talent_id = $2
+WHERE a.id = $2
+    AND a.talent_id = $3
     AND p.id = a.project_id
-    AND a.status = ANY ($3::text [])
+    AND a.status = ANY ($4::text [])
 RETURNING
     a.id,
     a.project_id,
@@ -337,13 +337,14 @@ RETURNING
     a.created_at
 `
 
-type WithdrawApplicationParams struct {
+type UpdateApplicationStatusForTalentParams struct {
+	ToStatus     string
 	ID           int64
 	TalentID     int64
 	FromStatuses []string
 }
 
-type WithdrawApplicationRow struct {
+type UpdateApplicationStatusForTalentRow struct {
 	ID            int64
 	ProjectID     int64
 	ProjectTitle  string
@@ -353,13 +354,19 @@ type WithdrawApplicationRow struct {
 	CreatedAt     time.Time
 }
 
-// 取り下げ（talent の遷移）。遷移元のホワイトリストは呼び出し側が
-// shared/domain の遷移表から導出して渡す（表が一次情報のまま WHERE に反映される）。
+// talent の遷移（withdraw / accept / decline は同じ形なので to_status で共通化・company 側と対称）。
+// 遷移元のホワイトリストは呼び出し側が shared/domain の遷移表から導出して渡す
+// （表が一次情報のまま WHERE に反映される）。
 // WHERE に talent_id と from_statuses を含めることで、所有と遷移可否を DB が原子的に検査する。
 // FROM projects はレスポンス用の project_title を1文で取るための JOIN（UPDATE...FROM）
-func (q *Queries) WithdrawApplication(ctx context.Context, arg WithdrawApplicationParams) (WithdrawApplicationRow, error) {
-	row := q.db.QueryRow(ctx, withdrawApplication, arg.ID, arg.TalentID, arg.FromStatuses)
-	var i WithdrawApplicationRow
+func (q *Queries) UpdateApplicationStatusForTalent(ctx context.Context, arg UpdateApplicationStatusForTalentParams) (UpdateApplicationStatusForTalentRow, error) {
+	row := q.db.QueryRow(ctx, updateApplicationStatusForTalent,
+		arg.ToStatus,
+		arg.ID,
+		arg.TalentID,
+		arg.FromStatuses,
+	)
+	var i UpdateApplicationStatusForTalentRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
