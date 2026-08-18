@@ -248,3 +248,131 @@ func TestApplicationWithdraw(t *testing.T) {
 		}
 	})
 }
+
+// TestApplicationAcceptDecline は承諾・辞退を実DBで固定する。
+//
+// 目的: 遷移表（talent の accept / decline は offered からのみ）が WHERE に反映され、
+// applied のまま承諾できない＝ダブルオプトインの片翼だけでは成立しないことを保証する。
+//
+// 観点: offered からの accept / decline（talent_acted_at 記録）／applied のままの
+// accept は409（現在の状態つき）。
+func TestApplicationAcceptDecline(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("accept: offered → accepted", func(t *testing.T) {
+		tx, queries := helpers.NewTestTx(t)
+		uc := usecase.NewApplication(queries)
+		companyID := setupCompany(t, queries)
+		project := createProject(t, queries, companyID, "published")
+		userID := setupTalent(t, queries)
+		app, err := uc.Apply(ctx, userID, project.ID, "")
+		if err != nil {
+			t.Fatalf("応募に失敗: %v", err)
+		}
+		setOffered(t, tx, app.ID)
+
+		row, err := uc.Accept(ctx, userID, app.ID)
+		if err != nil {
+			t.Fatalf("承諾に失敗: %v", err)
+		}
+		if row.Status != "accepted" {
+			t.Errorf("status: accepted を期待したが %s", row.Status)
+		}
+		if !row.TalentActedAt.Valid {
+			t.Error("talent_acted_at が記録されていない")
+		}
+	})
+
+	t.Run("decline: offered → declined", func(t *testing.T) {
+		tx, queries := helpers.NewTestTx(t)
+		uc := usecase.NewApplication(queries)
+		companyID := setupCompany(t, queries)
+		project := createProject(t, queries, companyID, "published")
+		userID := setupTalent(t, queries)
+		app, err := uc.Apply(ctx, userID, project.ID, "")
+		if err != nil {
+			t.Fatalf("応募に失敗: %v", err)
+		}
+		setOffered(t, tx, app.ID)
+
+		row, err := uc.Decline(ctx, userID, app.ID)
+		if err != nil {
+			t.Fatalf("辞退に失敗: %v", err)
+		}
+		if row.Status != "declined" {
+			t.Errorf("status: declined を期待したが %s", row.Status)
+		}
+	})
+
+	t.Run("applied のまま accept は409（片方の意思では成立しない）", func(t *testing.T) {
+		_, queries := helpers.NewTestTx(t)
+		uc := usecase.NewApplication(queries)
+		companyID := setupCompany(t, queries)
+		project := createProject(t, queries, companyID, "published")
+		userID := setupTalent(t, queries)
+		app, err := uc.Apply(ctx, userID, project.ID, "")
+		if err != nil {
+			t.Fatalf("応募に失敗: %v", err)
+		}
+
+		_, err = uc.Accept(ctx, userID, app.ID)
+		if !errors.Is(err, usecase.ErrCannotChangeApplication) {
+			t.Fatalf("ErrCannotChangeApplication を期待したが: %v", err)
+		}
+		if !strings.Contains(err.Error(), "applied") {
+			t.Errorf("エラーメッセージに現在の状態が含まれない: %v", err)
+		}
+	})
+}
+
+// TestApplicationDoubleOptInFlow は状態機械の一巡を実DBで固定する統合テスト。
+//
+// 目的: applied →(company)→ offered →(talent)→ accepted という「両者の合意の連鎖」が
+// 唯一の成立経路であること、accepted が終端（以後どの操作も409）であることを保証する。
+//
+// 観点: 各段階での不正操作の拒否と正規経路の成立、終端での全操作拒否。
+func TestApplicationDoubleOptInFlow(t *testing.T) {
+	ctx := context.Background()
+	tx, queries := helpers.NewTestTx(t)
+	uc := usecase.NewApplication(queries)
+	companyID := setupCompany(t, queries)
+	project := createProject(t, queries, companyID, "published")
+	userID := setupTalent(t, queries)
+
+	// 応募（applied）
+	app, err := uc.Apply(ctx, userID, project.ID, "一巡テスト")
+	if err != nil {
+		t.Fatalf("応募に失敗: %v", err)
+	}
+
+	// applied のままでは accept も decline もできない
+	if _, err := uc.Accept(ctx, userID, app.ID); !errors.Is(err, usecase.ErrCannotChangeApplication) {
+		t.Errorf("applied での accept: 409 を期待したが: %v", err)
+	}
+	if _, err := uc.Decline(ctx, userID, app.ID); !errors.Is(err, usecase.ErrCannotChangeApplication) {
+		t.Errorf("applied での decline: 409 を期待したが: %v", err)
+	}
+
+	// company がオファー（#57 の usecase は境界ルールで使えないため生SQL）
+	setOffered(t, tx, app.ID)
+
+	// talent が承諾 → ダブルオプトイン成立
+	row, err := uc.Accept(ctx, userID, app.ID)
+	if err != nil {
+		t.Fatalf("承諾に失敗: %v", err)
+	}
+	if row.Status != "accepted" {
+		t.Fatalf("status: accepted を期待したが %s", row.Status)
+	}
+
+	// accepted は終端: talent のどの操作も409
+	for name, op := range map[string]func(context.Context, int64, int64) (any, error){
+		"withdraw": func(ctx context.Context, u, id int64) (any, error) { return uc.Withdraw(ctx, u, id) },
+		"accept":   func(ctx context.Context, u, id int64) (any, error) { return uc.Accept(ctx, u, id) },
+		"decline":  func(ctx context.Context, u, id int64) (any, error) { return uc.Decline(ctx, u, id) },
+	} {
+		if _, err := op(ctx, userID, app.ID); !errors.Is(err, usecase.ErrCannotChangeApplication) {
+			t.Errorf("終端での %s: 409 を期待したが: %v", name, err)
+		}
+	}
+}
