@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -27,6 +27,9 @@ migrate-status: ## マイグレーションの適用状況を表示
 
 migrate-new: ## 新規マイグレーション作成（例: make migrate-new NAME=create_projects）
 	$(MAKE) -C migrations new NAME=$(NAME)
+
+seed: ## 開発用シードデータを投入（冪等・要 make db-up + migrate-up）
+	docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 < migrations/seed.sql
 
 ## --- テストDB（実DBテスト用） ---
 
