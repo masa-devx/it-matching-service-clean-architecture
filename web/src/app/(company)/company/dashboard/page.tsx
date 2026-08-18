@@ -2,6 +2,8 @@ import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
+import { Button } from '@/components/ui/button'
+
 import { CompanyMeCard } from '@/features/auth/components/client/CompanyMeCard'
 import { LogoutButton } from '@/features/auth/components/client/LogoutButton'
 import { companyMeQuery } from '@/features/auth/queries/companyMe'
@@ -30,12 +32,14 @@ export default async function Page() {
         <CompanyMeCard />
       </HydrationBoundary>
 
-      <Link
-        href="/company/projects/new"
-        className="inline-block rounded bg-blue-600 px-4 py-2 text-white"
-      >
-        案件を作成する
-      </Link>
+      <div className="flex gap-2">
+        <Button asChild>
+          <Link href="/company/projects">案件管理へ</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/company/projects/new">案件を作成する</Link>
+        </Button>
+      </div>
     </div>
   )
 }
