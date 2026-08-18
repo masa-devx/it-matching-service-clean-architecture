@@ -2,6 +2,7 @@
 
 import type { TsunaguWorksProject } from '@repo/api-client/talent/generated/models'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
 
@@ -56,7 +57,12 @@ export function ProjectSearchList({
       <ul className="space-y-3">
         {projects.map((p) => (
           <li key={p.id} className="rounded-lg border p-4">
-            <span className="font-medium">{p.title}</span>
+            <Link
+              href={`/talent/projects/${p.id}`}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {p.title}
+            </Link>
             <p className="mt-1 text-sm text-muted-foreground">
               {rateText(p)} ・ 週{p.hours_per_week}時間 ・{' '}
               {p.remote_ok ? 'リモート可' : 'リモート不可'} ・{' '}
