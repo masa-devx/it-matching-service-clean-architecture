@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
@@ -104,9 +107,33 @@ func run() error {
 		ReadHeaderTimeout: 5 * time.Second, // Slowloris 対策（ヘッダーを送り切らない接続を切る）
 	}
 
-	slog.Info("api-server listening", "port", cfg.Port)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	// graceful shutdown: SIGTERM（Cloud Run のコンテナ入替）/ SIGINT（Ctrl+C）で
+	// 新規受付を止め、処理中のリクエストの完了を待ってから終了する。
+	// 即死させると入替のたびに誰かのリクエストが切断される
+	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() {
+		slog.Info("api-server listening", "port", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
 		return err
+	case <-sigCtx.Done():
 	}
+
+	slog.Info("シグナルを受信、graceful shutdown を開始")
+	// 完了待ちには上限を設ける（Cloud Run の SIGKILL 猶予より短く）
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("graceful shutdown に失敗: %w", err)
+	}
+	slog.Info("shutdown 完了")
 	return nil
 }
