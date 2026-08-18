@@ -9,6 +9,10 @@
 
 export * from './projectsListParams';
 export * from './tsunaguWorksApiError';
+export * from './tsunaguWorksApplication';
+export * from './tsunaguWorksApplicationCreateInput';
+export * from './tsunaguWorksApplicationList';
+export * from './tsunaguWorksApplicationStatus';
 export * from './tsunaguWorksAuthToken';
 export * from './tsunaguWorksLoginInput';
 export * from './tsunaguWorksProject';

@@ -171,3 +171,43 @@ model TalentMe {
   skills: string[];
   bio: string;
 }
+
+/** 応募の選考状態（遷移の許可は shared/domain の遷移表が一次情報） */
+union ApplicationStatus {
+  applied: "applied",
+  offered: "offered",
+  accepted: "accepted",
+  rejected: "rejected",
+  withdrawn: "withdrawn",
+  declined: "declined",
+}
+
+/** 応募（talent 視点。project_title は projects との JOIN で供給する） */
+model Application {
+  id: int64;
+  project_id: int64;
+
+  /** 応募先案件のタイトル（一覧表示用） */
+  project_title: string;
+
+  status: ApplicationStatus;
+
+  /** 志望動機 */
+  message: string;
+
+  created_at: utcDateTime;
+}
+
+/** 応募の作成入力（talent_id はトークンから・status は applied 固定のため含めない） */
+model ApplicationCreateInput {
+  project_id: int64;
+
+  /** 志望動機（任意） */
+  @maxLength(2000)
+  message?: string;
+}
+
+/** 応募一覧のレスポンス */
+model ApplicationList {
+  applications: Application[];
+}
