@@ -34,3 +34,4 @@
 | [0007](0007-form-zod-from-generated.md)     | フォーム検証は生成Zodの加工で行う（案1＋案4）                              | Accepted   |
 | [0008](0008-pgx-tx-test-isolation.md)       | 実DBテストの分離は pgx.Tx で行う（go-txdb 不採用）                         | Accepted   |
 | [0009](0009-defer-visual-regression.md)     | 視覚回帰は導入せず Storybook ビルドと play 関数を検証線にする              | Accepted   |
+| [0010](0010-visual-regression-recheck.md)   | テーマ変更を機に視覚回帰を再判断し、導入見送りを継続する                   | Accepted   |
