@@ -35,9 +35,14 @@ export default async function Page() {
         </div>
       </dl>
 
-      <Button asChild>
-        <Link href="/talent/projects">案件を探す</Link>
-      </Button>
+      <div className="flex gap-2">
+        <Button asChild>
+          <Link href="/talent/projects">案件を探す</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/talent/applications">応募一覧</Link>
+        </Button>
+      </div>
     </div>
   )
 }
