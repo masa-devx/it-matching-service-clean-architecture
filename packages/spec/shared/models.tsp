@@ -211,3 +211,26 @@ model ApplicationCreateInput {
 model ApplicationList {
   applications: Application[];
 }
+
+/** 応募（company 視点。選考のための応募者プロフィールを JOIN で供給する） */
+model ApplicationForCompany {
+  id: int64;
+  project_id: int64;
+  status: ApplicationStatus;
+
+  /** 志望動機 */
+  message: string;
+
+  /** 応募者の表示名 */
+  talent_display_name: string;
+
+  /** 応募者のスキル */
+  talent_skills: string[];
+
+  created_at: utcDateTime;
+}
+
+/** 自社案件に届いた応募一覧のレスポンス */
+model ApplicationForCompanyList {
+  applications: ApplicationForCompany[];
+}

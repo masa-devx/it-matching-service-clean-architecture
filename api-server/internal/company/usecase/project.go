@@ -50,7 +50,12 @@ func NewProject(queries *db.Queries) *Project {
 // companyIDFor は検証済みトークンの userID から企業プロフィール ID を解決する。
 // 所有者はすべての操作でこの経路からしか決まらない（IDOR対策の一本化）
 func (u *Project) companyIDFor(ctx context.Context, userID int64) (int64, error) {
-	comp, err := u.queries.GetCompanyByUserID(ctx, userID)
+	return resolveCompanyID(ctx, u.queries, userID)
+}
+
+// resolveCompanyID は companyIDFor の実体（Project / Application の両 usecase で共有）
+func resolveCompanyID(ctx context.Context, queries *db.Queries, userID int64) (int64, error) {
+	comp, err := queries.GetCompanyByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// トークンは有効だがプロフィールの実体が無い（削除済み等）

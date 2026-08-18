@@ -101,4 +101,34 @@ interface Projects {
     @statusCode statusCode: 200;
     @body project: Project;
   } | ApiError;
+
+  /** 自社案件に届いた応募の一覧（応募者プロフィール込み・他社の案件は404） */
+  @useAuth(BearerAuth)
+  @route("/{id}/applications")
+  @get
+  listApplications(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body applications: ApplicationForCompanyList;
+  } | ApiError;
+}
+
+@route("/applications")
+interface Applications {
+  /** オファーする（applied → offered。それ以外の状態は409） */
+  @useAuth(BearerAuth)
+  @route("/{id}/offer")
+  @post
+  offer(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body application: ApplicationForCompany;
+  } | ApiError;
+
+  /** 不採用にする（applied → rejected。それ以外の状態は409） */
+  @useAuth(BearerAuth)
+  @route("/{id}/reject")
+  @post
+  reject(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body application: ApplicationForCompany;
+  } | ApiError;
 }

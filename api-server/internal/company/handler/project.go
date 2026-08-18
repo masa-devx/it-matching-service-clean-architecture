@@ -19,13 +19,19 @@ import (
 
 // Handler は company API のハンドラ実装。依存（usecase・JWT秘密鍵）は main から手渡しされる
 type Handler struct {
-	project   *usecase.Project
-	auth      *usecase.Auth
-	jwtSecret []byte
+	project     *usecase.Project
+	auth        *usecase.Auth
+	application *usecase.Application
+	jwtSecret   []byte
 }
 
-func New(project *usecase.Project, authUsecase *usecase.Auth, jwtSecret []byte) *Handler {
-	return &Handler{project: project, auth: authUsecase, jwtSecret: jwtSecret}
+func New(project *usecase.Project, authUsecase *usecase.Auth, applicationUsecase *usecase.Application, jwtSecret []byte) *Handler {
+	return &Handler{
+		project:     project,
+		auth:        authUsecase,
+		application: applicationUsecase,
+		jwtSecret:   jwtSecret,
+	}
 }
 
 // 実装漏れをコンパイルエラーにする（仕様にエンドポイントが増えると、ここで検出される）

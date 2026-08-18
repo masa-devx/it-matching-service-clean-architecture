@@ -46,6 +46,64 @@ FROM applications a
 JOIN projects p ON p.id = a.project_id
 WHERE a.id = $1 AND a.talent_id = $2;
 
+-- name: ListApplicationsForProject :many
+-- 自社案件の応募一覧（company 視点・応募者プロフィール込み・新しい順）。
+-- 所有確認（他社案件の404）は呼び出し側が GetProjectForCompany で先に行う:
+-- 「他社の案件（404）」と「自社の案件で応募ゼロ（空リスト）」を区別するため、
+-- WHERE への埋め込みではなく2クエリに分ける（読み取りなので競合窓の心配はない）
+SELECT
+    a.id,
+    a.project_id,
+    a.status,
+    a.message,
+    t.display_name AS talent_display_name,
+    t.skills AS talent_skills,
+    a.created_at
+FROM applications a
+JOIN talents t ON t.id = a.talent_id
+WHERE a.project_id = $1
+ORDER BY a.id DESC;
+
+-- name: GetApplicationForCompany :one
+-- 所有チェックが JOIN 越しになる: applications は company_id を持たないため、
+-- projects を結合して p.company_id を WHERE に埋め込む（他社の応募は「存在しない」扱い）
+SELECT
+    a.id,
+    a.project_id,
+    a.status,
+    a.message,
+    t.display_name AS talent_display_name,
+    t.skills AS talent_skills,
+    a.created_at
+FROM applications a
+JOIN projects p ON p.id = a.project_id
+JOIN talents t ON t.id = a.talent_id
+WHERE a.id = $1 AND p.company_id = $2;
+
+-- name: UpdateApplicationStatusForCompany :one
+-- 選考の遷移（offer / reject は同じ形なので to_status で共通化・#42 の型）。
+-- 所有（JOIN 越しの p.company_id）と遷移可否（from_statuses・遷移表から導出）を
+-- DB が原子的に検査する。company_acted_at で「企業がいつ動いたか」も同時に記録
+UPDATE applications a
+SET
+    status = @to_status,
+    company_acted_at = now()
+FROM projects p, talents t
+WHERE a.id = @id
+    AND p.id = a.project_id
+    AND p.company_id = @company_id
+    AND t.id = a.talent_id
+    AND a.status = ANY (@from_statuses::text [])
+RETURNING
+    a.id,
+    a.project_id,
+    a.status,
+    a.message,
+    t.display_name AS talent_display_name,
+    t.skills AS talent_skills,
+    a.company_acted_at,
+    a.created_at;
+
 -- name: WithdrawApplication :one
 -- 取り下げ（talent の遷移）。遷移元のホワイトリストは呼び出し側が
 -- shared/domain の遷移表から導出して渡す（表が一次情報のまま WHERE に反映される）。

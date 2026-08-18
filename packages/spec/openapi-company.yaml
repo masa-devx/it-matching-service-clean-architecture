@@ -7,6 +7,58 @@ info:
   version: 0.0.0
 tags: []
 paths:
+  /applications/{id}/offer:
+    post:
+      operationId: Applications_offer
+      description: オファーする（applied → offered。それ以外の状態は409）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApplicationForCompany'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
+  /applications/{id}/reject:
+    post:
+      operationId: Applications_reject
+      description: 不採用にする（applied → rejected。それ以外の状態は409）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApplicationForCompany'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
   /auth/login:
     post:
       operationId: Auth_login
@@ -177,6 +229,32 @@ paths:
               $ref: '#/components/schemas/TsunaguWorks.ProjectUpdateInput'
       security:
         - BearerAuth: []
+  /projects/{id}/applications:
+    get:
+      operationId: Projects_listApplications
+      description: 自社案件に届いた応募の一覧（応募者プロフィール込み・他社の案件は404）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApplicationForCompanyList'
+        default:
+          description: An unexpected error response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      security:
+        - BearerAuth: []
   /projects/{id}/close:
     post:
       operationId: Projects_close
@@ -267,6 +345,60 @@ components:
         request_id:
           type: string
       description: エラーレスポンスの共通形
+    TsunaguWorks.ApplicationForCompany:
+      type: object
+      required:
+        - id
+        - project_id
+        - status
+        - message
+        - talent_display_name
+        - talent_skills
+        - created_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        project_id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/TsunaguWorks.ApplicationStatus'
+        message:
+          type: string
+          description: 志望動機
+        talent_display_name:
+          type: string
+          description: 応募者の表示名
+        talent_skills:
+          type: array
+          items:
+            type: string
+          description: 応募者のスキル
+        created_at:
+          type: string
+          format: date-time
+      description: 応募（company 視点。選考のための応募者プロフィールを JOIN で供給する）
+    TsunaguWorks.ApplicationForCompanyList:
+      type: object
+      required:
+        - applications
+      properties:
+        applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/TsunaguWorks.ApplicationForCompany'
+      description: 自社案件に届いた応募一覧のレスポンス
+    TsunaguWorks.ApplicationStatus:
+      type: string
+      enum:
+        - applied
+        - offered
+        - accepted
+        - rejected
+        - withdrawn
+        - declined
+      description: 応募の選考状態（遷移の許可は shared/domain の遷移表が一次情報）
     TsunaguWorks.AuthToken:
       type: object
       required:
