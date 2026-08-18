@@ -43,6 +43,7 @@ func run() error {
 	queries := db.New(pool)
 	projectUsecase := companyusecase.NewProject(queries)
 	authUsecase := companyusecase.NewAuth(pool, queries)
+	companyApplicationUsecase := companyusecase.NewApplication(queries)
 
 	// 認証必須の operation は仕様（security 定義）から起動時に1回だけ導出する。
 	// コードに手書きのリストを持たない＝認証要否の一次情報は .tsp の @useAuth
@@ -61,7 +62,7 @@ func run() error {
 	// company API: 仕様（openapi-company.yaml）から生成されたルーターを /company 配下にマウントする。
 	// パスの一次情報は仕様側にあり、ここでは「どこに載せるか」だけを決める
 	companyStrict := company.NewStrictHandler(
-		companyhandler.New(projectUsecase, authUsecase, cfg.JWTSecret),
+		companyhandler.New(projectUsecase, authUsecase, companyApplicationUsecase, cfg.JWTSecret),
 		[]company.StrictMiddlewareFunc{auth.NewStrictAuth[company.StrictHandlerFunc](cfg.JWTSecret, auth.RoleCompany, companyAuthOps)},
 	)
 	company.HandlerWithOptions(companyStrict, company.StdHTTPServerOptions{
