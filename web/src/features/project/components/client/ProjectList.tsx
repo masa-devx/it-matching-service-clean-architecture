@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
 import { ProjectStatusBadge } from '../ProjectStatusBadge'
+import { ProjectStatusActions } from './ProjectStatusActions'
 import { companyProjectsQuery } from '../../queries/companyProjects'
 
 function rateText(p: TsunaguWorksProject): string {
@@ -62,6 +63,9 @@ export function ProjectList() {
               スキル: {p.required_skills.join(' / ')}
             </p>
           )}
+          <div className="mt-3">
+            <ProjectStatusActions project={p} />
+          </div>
         </li>
       ))}
     </ul>
