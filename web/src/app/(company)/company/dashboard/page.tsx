@@ -1,11 +1,20 @@
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
+import { CompanyMeCard } from '@/features/auth/components/client/CompanyMeCard'
 import { LogoutButton } from '@/features/auth/components/client/LogoutButton'
-import { meCompany } from '@/external/handler/auth'
+import { companyMeQuery } from '@/features/auth/queries/companyMe'
+import { getQueryClient } from '@/lib/query'
 
+// RSC で prefetch → dehydrate → HydrationBoundary の型:
+// サーバーで温めたキャッシュをクライアントの QueryClient が引き継ぐため、
+// クライアント側は初回からデータありで描画される（ローディングのちらつきが無い）
 export default async function Page() {
-  const me = await meCompany()
+  const queryClient = getQueryClient()
+
+  // fetchQuery は取得とキャッシュ登録を同時に行う（ガードで値も使うため prefetchQuery でなくこちら）
+  const me = await queryClient.fetchQuery(companyMeQuery)
   if (!me) {
     redirect('/company/login')
   }
@@ -17,22 +26,9 @@ export default async function Page() {
         <LogoutButton role="company" />
       </div>
 
-      <dl className="space-y-2 rounded border p-4">
-        <div>
-          <dt className="text-sm text-gray-500">会社名</dt>
-          <dd className="font-medium">{me.name}</dd>
-        </div>
-        <div>
-          <dt className="text-sm text-gray-500">メールアドレス</dt>
-          <dd className="font-medium">{me.email}</dd>
-        </div>
-        {me.location && (
-          <div>
-            <dt className="text-sm text-gray-500">所在地</dt>
-            <dd className="font-medium">{me.location}</dd>
-          </div>
-        )}
-      </dl>
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <CompanyMeCard />
+      </HydrationBoundary>
 
       <Link
         href="/company/projects/new"

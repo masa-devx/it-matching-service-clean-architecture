@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { cache } from 'react'
+
 import type {
   TsunaguWorksCompanyMe,
   TsunaguWorksCompanySignupInput,
@@ -114,18 +116,21 @@ export async function meTalent(): Promise<TsunaguWorksTalentMe | null> {
   }
 }
 
-// currentRole は (guest) ガード用: ログイン済みならどちらのロールかを返す。
-// トークンが無ければ API を呼ばずに即 null（ゲストページの表示を遅くしない）
-export async function currentRole(): Promise<'company' | 'talent' | null> {
-  const token = await getSessionToken()
-  if (!token) {
+// currentRole は (guest) ガードと LP の導線出し分けが使う: ログイン済みならどちらのロールかを返す。
+// トークンが無ければ API を呼ばずに即 null（ゲストページの表示を遅くしない）。
+// React の cache() で「同一リクエスト内なら layout と page で呼んでも API は1回」にする
+export const currentRole = cache(
+  async (): Promise<'company' | 'talent' | null> => {
+    const token = await getSessionToken()
+    if (!token) {
+      return null
+    }
+    if (await meCompany()) {
+      return 'company'
+    }
+    if (await meTalent()) {
+      return 'talent'
+    }
     return null
-  }
-  if (await meCompany()) {
-    return 'company'
-  }
-  if (await meTalent()) {
-    return 'talent'
-  }
-  return null
-}
+  },
+)

@@ -811,3 +811,23 @@ SQL文字列の検査という通常はやらない形だが:
 - [ ] narg の「NULL＝条件無効」の仕組みを SQL の評価順で言える
 - [ ] `@>` が AND 検索になる理由と、OR にしたければどうするか（`&&`）を言える
 - [ ] `(status, id DESC)` の列順の意味を言える
+
+---
+
+## Phase 3 #44: 開発用シード（このリポジトリ版）
+
+### 何をした
+
+`migrations/seed.sql` + `make seed` を追加。ユーザー4人（password123）とデモ案件47件（published 42 = 既定 limit 20 で**ちょうど3ページ**・draft 3・closed 2）。
+
+### 概念（tsunagu-works の型を再利用）
+
+- **冪等性の2方式の使い分け**: users/プロフィール = upsert（既知の状態に収束）／projects = delete-then-insert（`デモ案件 #` 接頭辞で識別・手動データは消さない）
+- **決定的な擬似ランダム**: `generate_series` + 剰余。スキル7種への分散は `(i*3 + j*5) % 7` — **乗数が要素数と互いに素**であることを確認済み（Before で `(i*7)%14` が2値に偏った実バグの教訓）
+- **件数はテスト設計から逆算**: 「3ページ目で next_cursor が null になる瞬間」まで確認できる42件、未公開の混入確認用に draft/closed を混ぜる
+- **`ON_ERROR_STOP=1`**: psql は既定でエラー行を飛ばして続行する。BEGIN...COMMIT で括り、失敗は全部巻き戻す
+
+### 理解度チェック
+
+- [ ] users が upsert・projects が delete-then-insert の理由（逆だと何が困るか）を言える
+- [ ] シードの件数を「何を確認したいか」から逆算する例を言える
