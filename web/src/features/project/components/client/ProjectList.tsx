@@ -49,6 +49,11 @@ export function ProjectList() {
             <div className="flex items-center gap-2">
               <ProjectStatusBadge status={p.status} />
               <Button asChild variant="outline" size="sm">
+                <Link href={`/company/projects/${p.id}/applications`}>
+                  応募を見る
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
                 <Link href={`/company/projects/${p.id}/edit`}>編集</Link>
               </Button>
             </div>
