@@ -72,13 +72,14 @@ func run() error {
 	// talent API: company と対称のマウント（/talent × role=talent を一律強制）
 	talentAuthUsecase := talentusecase.NewAuth(pool, queries)
 	talentProjectUsecase := talentusecase.NewProject(queries)
+	talentApplicationUsecase := talentusecase.NewApplication(queries)
 	talentSpec, err := talentapi.GetSpec()
 	if err != nil {
 		return fmt.Errorf("talent 仕様の読み込みに失敗: %w", err)
 	}
 	talentAuthOps := auth.RequiredAuthOps(talentSpec)
 	talentStrict := talentapi.NewStrictHandler(
-		talenthandler.New(talentAuthUsecase, talentProjectUsecase, cfg.JWTSecret),
+		talenthandler.New(talentAuthUsecase, talentProjectUsecase, talentApplicationUsecase, cfg.JWTSecret),
 		[]talentapi.StrictMiddlewareFunc{auth.NewStrictAuth[talentapi.StrictHandlerFunc](cfg.JWTSecret, auth.RoleTalent, talentAuthOps)},
 	)
 	talentapi.HandlerWithOptions(talentStrict, talentapi.StdHTTPServerOptions{

@@ -72,3 +72,31 @@ interface Projects {
     @body project: Project;
   } | ApiError;
 }
+
+@route("/applications")
+interface Applications {
+  /** 応募する（公開中の案件のみ・同じ案件への二重応募は409） */
+  @useAuth(BearerAuth)
+  @post
+  create(@body input: ApplicationCreateInput): {
+    @statusCode statusCode: 201;
+    @body application: Application;
+  } | ApiError;
+
+  /** 自分の応募一覧（新しい順・案件タイトル込み） */
+  @useAuth(BearerAuth)
+  @get
+  list(): {
+    @statusCode statusCode: 200;
+    @body applications: ApplicationList;
+  } | ApiError;
+
+  /** 応募を取り下げる（applied / offered から。決着済みは409） */
+  @useAuth(BearerAuth)
+  @route("/{id}/withdraw")
+  @post
+  withdraw(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body application: Application;
+  } | ApiError;
+}

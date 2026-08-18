@@ -9,6 +9,60 @@
 import * as zod from 'zod';
 
 /**
+ * 応募する（公開中の案件のみ・同じ案件への二重応募は409）
+ */
+export const applicationsCreateBodyMessageMax = 2000;
+
+
+
+export const ApplicationsCreateBody = zod.object({
+  "project_id": zod.int(),
+  "message": zod.string().max(applicationsCreateBodyMessageMax).optional().describe('志望動機（任意）')
+}).describe('応募の作成入力（talent_id はトークンから・status は applied 固定のため含めない）')
+
+export const ApplicationsCreateResponse = zod.object({
+  "id": zod.int(),
+  "project_id": zod.int(),
+  "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
+  "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
+  "message": zod.string().describe('志望動機'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('応募（talent 視点。project_title は projects との JOIN で供給する）')
+
+
+/**
+ * 自分の応募一覧（新しい順・案件タイトル込み）
+ */
+export const ApplicationsListResponse = zod.object({
+  "applications": zod.array(zod.object({
+  "id": zod.int(),
+  "project_id": zod.int(),
+  "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
+  "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
+  "message": zod.string().describe('志望動機'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('応募（talent 視点。project_title は projects との JOIN で供給する）'))
+}).describe('応募一覧のレスポンス')
+
+
+/**
+ * 応募を取り下げる（applied / offered から。決着済みは409）
+ */
+export const ApplicationsWithdrawParams = zod.object({
+  "id": zod.int()
+})
+
+export const ApplicationsWithdrawResponse = zod.object({
+  "id": zod.int(),
+  "project_id": zod.int(),
+  "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
+  "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
+  "message": zod.string().describe('志望動機'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('応募（talent 視点。project_title は projects との JOIN で供給する）')
+
+
+/**
  * ログイン
  */
 export const AuthLoginBody = zod.object({
