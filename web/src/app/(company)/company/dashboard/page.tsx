@@ -5,7 +5,6 @@ import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 
 import { CompanyMeCard } from '@/features/auth/components/client/CompanyMeCard'
-import { LogoutButton } from '@/features/auth/components/client/LogoutButton'
 import { companyMeQuery } from '@/features/auth/queries/companyMe'
 import { getQueryClient } from '@/lib/query'
 
@@ -23,10 +22,7 @@ export default async function Page() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">企業ダッシュボード</h1>
-        <LogoutButton role="company" />
-      </div>
+      <h1 className="text-2xl font-bold">企業ダッシュボード</h1>
 
       <HydrationBoundary state={dehydrate(queryClient)}>
         <CompanyMeCard />
