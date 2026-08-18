@@ -7,7 +7,7 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -69,7 +69,7 @@ func (h *Handler) AuthSignup(ctx context.Context, req talent.AuthSignupRequestOb
 				StatusCode: http.StatusConflict,
 			}, nil
 		}
-		log.Printf("talent AuthSignup: %v", err)
+		slog.ErrorContext(ctx, "talent AuthSignup", "err", err)
 		return talent.AuthSignupdefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "サインアップに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -78,7 +78,7 @@ func (h *Handler) AuthSignup(ctx context.Context, req talent.AuthSignupRequestOb
 
 	token, err := auth.IssueToken(h.jwtSecret, user.ID, user.Role, tokenTTL)
 	if err != nil {
-		log.Printf("talent AuthSignup: トークン発行に失敗: %v", err)
+		slog.ErrorContext(ctx, "talent AuthSignup: トークン発行に失敗", "err", err)
 		return talent.AuthSignupdefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "サインアップに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -104,7 +104,7 @@ func (h *Handler) AuthLogin(ctx context.Context, req talent.AuthLoginRequestObje
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("talent AuthLogin: %v", err)
+		slog.ErrorContext(ctx, "talent AuthLogin", "err", err)
 		return talent.AuthLogindefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "ログインに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -113,7 +113,7 @@ func (h *Handler) AuthLogin(ctx context.Context, req talent.AuthLoginRequestObje
 
 	token, err := auth.IssueToken(h.jwtSecret, user.ID, user.Role, tokenTTL)
 	if err != nil {
-		log.Printf("talent AuthLogin: トークン発行に失敗: %v", err)
+		slog.ErrorContext(ctx, "talent AuthLogin: トークン発行に失敗", "err", err)
 		return talent.AuthLogindefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "ログインに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -140,7 +140,7 @@ func (h *Handler) AuthMe(ctx context.Context, req talent.AuthMeRequestObject) (t
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("talent AuthMe: %v", err)
+		slog.ErrorContext(ctx, "talent AuthMe", "err", err)
 		return talent.AuthMedefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "取得に失敗しました"},
 			StatusCode: http.StatusInternalServerError,

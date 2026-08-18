@@ -7,7 +7,7 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
@@ -79,7 +79,7 @@ func (h *Handler) ProjectsCreate(ctx context.Context, req company.ProjectsCreate
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("ProjectsCreate: %v", err)
+		slog.ErrorContext(ctx, "ProjectsCreate", "err", err)
 		return company.ProjectsCreatedefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "案件の作成に失敗しました"},
 			StatusCode: http.StatusInternalServerError,

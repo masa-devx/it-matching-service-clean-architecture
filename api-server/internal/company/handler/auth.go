@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -46,7 +46,7 @@ func (h *Handler) AuthSignup(ctx context.Context, req company.AuthSignupRequestO
 				StatusCode: http.StatusConflict,
 			}, nil
 		}
-		log.Printf("AuthSignup: %v", err)
+		slog.ErrorContext(ctx, "AuthSignup", "err", err)
 		return company.AuthSignupdefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "サインアップに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -55,7 +55,7 @@ func (h *Handler) AuthSignup(ctx context.Context, req company.AuthSignupRequestO
 
 	token, err := auth.IssueToken(h.jwtSecret, user.ID, user.Role, tokenTTL)
 	if err != nil {
-		log.Printf("AuthSignup: トークン発行に失敗: %v", err)
+		slog.ErrorContext(ctx, "AuthSignup: トークン発行に失敗", "err", err)
 		return company.AuthSignupdefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "サインアップに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -81,7 +81,7 @@ func (h *Handler) AuthLogin(ctx context.Context, req company.AuthLoginRequestObj
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("AuthLogin: %v", err)
+		slog.ErrorContext(ctx, "AuthLogin", "err", err)
 		return company.AuthLogindefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "ログインに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -90,7 +90,7 @@ func (h *Handler) AuthLogin(ctx context.Context, req company.AuthLoginRequestObj
 
 	token, err := auth.IssueToken(h.jwtSecret, user.ID, user.Role, tokenTTL)
 	if err != nil {
-		log.Printf("AuthLogin: トークン発行に失敗: %v", err)
+		slog.ErrorContext(ctx, "AuthLogin: トークン発行に失敗", "err", err)
 		return company.AuthLogindefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "ログインに失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -118,7 +118,7 @@ func (h *Handler) AuthMe(ctx context.Context, req company.AuthMeRequestObject) (
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("AuthMe: %v", err)
+		slog.ErrorContext(ctx, "AuthMe", "err", err)
 		return company.AuthMedefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "取得に失敗しました"},
 			StatusCode: http.StatusInternalServerError,

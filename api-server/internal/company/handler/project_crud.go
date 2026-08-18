@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
@@ -14,7 +14,7 @@ import (
 )
 
 // projectFailure は案件系エンドポイント共通のエラー→HTTP変換（規約の一元化）
-func projectFailure(op string, err error) *apiFailure {
+func projectFailure(ctx context.Context, op string, err error) *apiFailure {
 	var transitionErr *usecase.TransitionError
 	switch {
 	case errors.Is(err, usecase.ErrAuthFailed):
@@ -26,7 +26,7 @@ func projectFailure(op string, err error) *apiFailure {
 	case errors.Is(err, usecase.ErrStatusConflict):
 		return &apiFailure{code: http.StatusConflict, msg: err.Error()}
 	default:
-		log.Printf("%s: %v", op, err)
+		slog.ErrorContext(ctx, op, "err", err)
 		return &apiFailure{code: http.StatusInternalServerError, msg: "処理に失敗しました"}
 	}
 }
@@ -42,7 +42,7 @@ func (h *Handler) ProjectsList(ctx context.Context, req company.ProjectsListRequ
 
 	projects, err := h.project.ListMine(ctx, claims.UserID)
 	if err != nil {
-		fail := projectFailure("ProjectsList", err)
+		fail := projectFailure(ctx, "ProjectsList", err)
 		return company.ProjectsListdefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: fail.msg},
 			StatusCode: fail.code,
@@ -67,7 +67,7 @@ func (h *Handler) ProjectsGet(ctx context.Context, req company.ProjectsGetReques
 
 	project, err := h.project.GetMine(ctx, claims.UserID, req.Id)
 	if err != nil {
-		fail := projectFailure("ProjectsGet", err)
+		fail := projectFailure(ctx, "ProjectsGet", err)
 		return company.ProjectsGetdefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: fail.msg},
 			StatusCode: fail.code,
@@ -109,7 +109,7 @@ func (h *Handler) ProjectsUpdate(ctx context.Context, req company.ProjectsUpdate
 		RequiredSkills: input.RequiredSkills,
 	})
 	if err != nil {
-		fail := projectFailure("ProjectsUpdate", err)
+		fail := projectFailure(ctx, "ProjectsUpdate", err)
 		return company.ProjectsUpdatedefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: fail.msg},
 			StatusCode: fail.code,
