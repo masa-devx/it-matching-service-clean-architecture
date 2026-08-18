@@ -54,8 +54,9 @@ jobs:
           restore-keys: turbo-frontend-${{ runner.os }}-
 
       # --filter=!api-server: Go を除く全パッケージ（web / api-client / spec / typescript-config）
+      # build-storybook も含める: 壊れた story（import 切れ・型エラー）が CI で落ちる
       - name: Lint & Test & Build (TS)
-        run: pnpm turbo lint format:check test build --filter=!api-server
+        run: pnpm turbo lint format:check test build build-storybook --filter=!api-server
 
       - name: Check generated files are up to date
         run: |

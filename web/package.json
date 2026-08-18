@@ -10,7 +10,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",
@@ -34,6 +36,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.5.9",
+    "@storybook/nextjs-vite": "^10.5.9",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -46,10 +50,13 @@
     "eslint-config-next": "16.2.12",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-storybook": "^10.5.9",
     "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
+    "storybook": "^10.5.9",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite": "latest",
     "vitest": "^4.1.10"
   }
 }
