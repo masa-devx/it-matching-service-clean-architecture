@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
+import { Button } from '@/components/ui/button'
 import { LogoutButton } from '@/features/auth/components/client/LogoutButton'
 import { meTalent } from '@/external/handler/auth'
 
@@ -32,6 +34,10 @@ export default async function Page() {
           </dd>
         </div>
       </dl>
+
+      <Button asChild>
+        <Link href="/talent/projects">案件を探す</Link>
+      </Button>
     </div>
   )
 }
