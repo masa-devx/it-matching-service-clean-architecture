@@ -43,3 +43,12 @@ globs:
 - 自作コンポーネントのファイルは PascalCase（`SignupForm.tsx`）。`components/ui/`（shadcn生成物）は CLI 準拠の kebab-case のまま／lib・hooks は camelCase（`authClient.ts` / `useAuth.ts`）
 - 参考ゴール構成: [next-app-router-architecture](https://github.com/YukiOnishi1129/next-app-router-architecture)（features / external / Container-Presenter）
 - 学び・ハマりは `docs/フロントエンド.md` へ
+
+## Storybook（#38 で導入・運用ルール）
+
+- **新規 UI 部品には story を必須とする**（Definition of Done）。一覧・ページ級の部品は「データあり / 空 / エラー」を、フォームは「初期 / 入力エラー / 送信中 / サーバーエラー」を含める
+- story はコンポーネントに**併設**する（`Xxx.stories.tsx`・colocate が腐り防止）。カタログ階層: `UI/`（shadcn）・`Parts/`（小部品）・`Features/`（フォーム等）・`Pages/`（ページ級リスト）
+- **AI が生成した UI は story を添えてレビュー**する（コード diff でなく Storybook 上の状態の目視で確認する）
+- Server Action・server-only モジュールは `.mock.ts` を併設し `.storybook/main.ts` の差し替え対象に登録する（story からは `.mock` を直接 import して挙動を制御）
+- モックデータは「そのページの見せ場が1画面に出る構成」にする（全状態1件ずつ・境界値混在）
+- 視覚回帰は導入しない（[ADR-0009](../../docs/adr/0009-defer-visual-regression.md)・発動条件もそちら）

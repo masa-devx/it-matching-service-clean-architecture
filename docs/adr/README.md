@@ -23,13 +23,14 @@
 
 ## 一覧
 
-| # | タイトル | ステータス |
-| --- | --- | --- |
-| [0001](0001-keep-postgresql.md) | PostgreSQL を維持する | Accepted |
-| [0002](0002-no-repository-layer.md) | repository 層を作らない | Accepted |
-| [0003](0003-viewpoint-first-directories.md) | ディレクトリは「視点→層」で分割する | Accepted |
-| [0004](0004-no-runtime-validation.md) | フロントエンドでランタイム検証をしない | Accepted |
-| [0005](0005-separate-ports-containers.md) | ポート・コンテナ名を tsunagu-works と分離する | Accepted |
-| [0006](0006-single-frontend-after-only.md) | このリポジトリを After 専用にする（フロント1アプリ・スナップショット撤去） | Accepted |
-| [0007](0007-form-zod-from-generated.md) | フォーム検証は生成Zodの加工で行う（案1＋案4） | Accepted |
-| [0008](0008-pgx-tx-test-isolation.md) | 実DBテストの分離は pgx.Tx で行う（go-txdb 不採用） | Accepted |
+| #                                           | タイトル                                                                   | ステータス |
+| ------------------------------------------- | -------------------------------------------------------------------------- | ---------- |
+| [0001](0001-keep-postgresql.md)             | PostgreSQL を維持する                                                      | Accepted   |
+| [0002](0002-no-repository-layer.md)         | repository 層を作らない                                                    | Accepted   |
+| [0003](0003-viewpoint-first-directories.md) | ディレクトリは「視点→層」で分割する                                        | Accepted   |
+| [0004](0004-no-runtime-validation.md)       | フロントエンドでランタイム検証をしない                                     | Accepted   |
+| [0005](0005-separate-ports-containers.md)   | ポート・コンテナ名を tsunagu-works と分離する                              | Accepted   |
+| [0006](0006-single-frontend-after-only.md)  | このリポジトリを After 専用にする（フロント1アプリ・スナップショット撤去） | Accepted   |
+| [0007](0007-form-zod-from-generated.md)     | フォーム検証は生成Zodの加工で行う（案1＋案4）                              | Accepted   |
+| [0008](0008-pgx-tx-test-isolation.md)       | 実DBテストの分離は pgx.Tx で行う（go-txdb 不採用）                         | Accepted   |
+| [0009](0009-defer-visual-regression.md)     | 視覚回帰は導入せず Storybook ビルドと play 関数を検証線にする              | Accepted   |
