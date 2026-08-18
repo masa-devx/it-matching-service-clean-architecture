@@ -28,6 +28,12 @@ import { companyProjectKeys } from '../../queries/companyProjects'
 // UI は「普段させない」ためのガイドで、正しさの保証はサーバーの遷移表＋条件付きUPDATE。
 // タブ2枚などで食い違ったときは 409 がトーストで返る。
 // confirm があるものは外から見える変化（公開・終了）なので確認ダイアログを挟む
+const successMessage: Record<ProjectStatusAction, string> = {
+  publish: 'を公開しました',
+  unpublish: 'を非公開にしました',
+  close: 'の募集を終了しました',
+}
+
 const actionsByStatus: Record<
   TsunaguWorksProjectStatus,
   Array<{
@@ -84,8 +90,10 @@ export function ProjectStatusActions({
       }
       return result.data
     },
-    // 一覧・詳細をまとめて無効化（前方一致）→ 表示中の useQuery が自動で再取得する
-    onSuccess: () => {
+    // 一覧・詳細をまとめて無効化（前方一致）→ 表示中の useQuery が自動で再取得する。
+    // 成功トーストは対象名入り（一覧に同種ボタンが並ぶ画面では「どれに効いたか」を必ず伝える）
+    onSuccess: (_updated, action) => {
+      toast.success(`「${project.title}」${successMessage[action]}`)
       void queryClient.invalidateQueries({ queryKey: companyProjectKeys.all })
     },
     // 409（遷移競合）は Go が「可能な遷移先つき」の文言を返すのでそのまま見せる

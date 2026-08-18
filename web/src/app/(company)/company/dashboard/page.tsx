@@ -3,28 +3,29 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
-
 import { CompanyMeCard } from '@/features/auth/components/client/CompanyMeCard'
 import { companyMeQuery } from '@/features/auth/queries/companyMe'
+import { CompanyDashboardStats } from '@/features/project/components/client/CompanyDashboardStats'
+import { companyProjectsQuery } from '@/features/project/queries/companyProjects'
 import { getQueryClient } from '@/lib/query'
 
-// RSC で prefetch → dehydrate → HydrationBoundary の型:
-// サーバーで温めたキャッシュをクライアントの QueryClient が引き継ぐため、
-// クライアント側は初回からデータありで描画される（ローディングのちらつきが無い）
+// me はガードで値も使うため fetchQuery・案件一覧（統計の元データ）は prefetchQuery。
+// 統計は一覧キャッシュからの導出なので、専用の集計 API は無い
 export default async function Page() {
   const queryClient = getQueryClient()
 
-  // fetchQuery は取得とキャッシュ登録を同時に行う（ガードで値も使うため prefetchQuery でなくこちら）
   const me = await queryClient.fetchQuery(companyMeQuery)
   if (!me) {
     redirect('/company/login')
   }
+  await queryClient.prefetchQuery(companyProjectsQuery)
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">企業ダッシュボード</h1>
 
       <HydrationBoundary state={dehydrate(queryClient)}>
+        <CompanyDashboardStats />
         <CompanyMeCard />
       </HydrationBoundary>
 

@@ -1,8 +1,9 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Inbox } from 'lucide-react'
 
+import { EmptyState } from '@/components/EmptyState'
 import { ExpandableText } from '@/components/ExpandableText'
 import { SkillBadges } from '@/components/SkillBadges'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,9 +27,11 @@ export function ApplicationList({ projectId }: { projectId: number }) {
   }
   if (applications.length === 0) {
     return (
-      <p className="text-muted-foreground">
-        まだ応募がありません。案件が公開中であれば、人材の検索結果に表示されています。
-      </p>
+      <EmptyState
+        icon={Inbox}
+        title="まだ応募がありません"
+        description="案件が公開中であれば、人材の検索結果に表示されています。"
+      />
     )
   }
 
