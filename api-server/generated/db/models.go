@@ -6,7 +6,20 @@ package db
 
 import (
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type Application struct {
+	ID             int64
+	ProjectID      int64
+	TalentID       int64
+	Status         string
+	Message        string
+	CompanyActedAt pgtype.Timestamptz
+	TalentActedAt  pgtype.Timestamptz
+	CreatedAt      time.Time
+}
 
 type Company struct {
 	ID          int64
