@@ -1,9 +1,10 @@
-# sql-migrate の接続設定（このディレクトリで make up / down / status を実行）
-# パスワードはローカル学習用（docker-compose.yml と同値）。本番想定では環境変数で渡す
+# sql-migrate の接続設定（必ず Makefile 経由で実行する: make -C migrations up など）
+# dir が ../migrations/ddl なのは、Makefile が `go -C ../api-server tool sql-migrate` で
+# 実行する（cwd = api-server になる）ため。パスワードはローカル学習用（docker-compose.yml と同値）
 development:
   dialect: postgres
   datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu sslmode=disable
-  dir: ddl
+  dir: ../migrations/ddl
   table: gorp_migrations
 
 # 実DBテスト用（同一インスタンスの別データベース。テストは BEGIN→ROLLBACK で分離するため
@@ -11,5 +12,5 @@ development:
 test:
   dialect: postgres
   datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu_test sslmode=disable
-  dir: ddl
+  dir: ../migrations/ddl
   table: gorp_migrations
