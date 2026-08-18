@@ -1,38 +1,39 @@
-# 新構成（api-server/ packages/ ほか）の CI: turbo で lint → build（ローカルと同一コマンド）
-# 旧構成の CI は api-ci.yml / web-ci.yml が担当（パスで棲み分け）
-name: monorepo-ci
+# バックエンド CI: Go + PostgreSQL（実DBテスト・マイグレーション・生成物の Go 側）。
+# フロントエンドは frontend-ci.yml が担当（言語の境界で分割・#62）。
+# paths を backend 関連に絞ることで、web だけの PR ではこのワークフロー自体が起動しない
+name: backend-ci
 
 on:
   pull_request:
     paths:
-      - 'api-server/**'
-      - 'web/**'
-      - 'packages/**'
-      - 'turbo.json'
-      - 'pnpm-workspace.yaml'
-      - 'pnpm-lock.yaml'
-      - 'package.json'
-      - '.nvmrc'
-      - '.github/workflows/monorepo-ci.yml'
+      - "api-server/**"
+      - "migrations/**"
+      - "packages/spec/**" # 仕様変更は Go の生成物に影響する
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/backend-ci.yml"
   push:
     branches: [main]
     paths:
-      - 'api-server/**'
-      - 'web/**'
-      - 'packages/**'
-      - 'turbo.json'
-      - 'pnpm-workspace.yaml'
-      - 'pnpm-lock.yaml'
-      - 'package.json'
-      - '.nvmrc'
-      - '.github/workflows/monorepo-ci.yml'
+      - "api-server/**"
+      - "migrations/**"
+      - "packages/spec/**"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/backend-ci.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  check:
+  backend:
     runs-on: ubuntu-latest
     services:
       # 実DBテスト用の PostgreSQL。ホスト側ポートをローカル開発と同じ 5435 に合わせることで、
@@ -44,7 +45,7 @@ jobs:
           POSTGRES_PASSWORD: tsunagu
           POSTGRES_DB: tsunagu_test
         ports:
-          - '5435:5432'
+          - "5435:5432"
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
@@ -80,31 +81,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # turbo のローカルキャッシュを CI でも共有（変更のないパッケージはスキップされる）
+      # turbo のローカルキャッシュ（ワークフロー名をキーに含めて frontend 側と衝突させない）
       - name: Cache turbo
         uses: actions/cache@v4
         with:
           path: .turbo
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
+          key: turbo-backend-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-backend-${{ runner.os }}-
 
       # テストDBへスキーマを適用（DB自体はサービスコンテナが POSTGRES_DB で作成済み）。
       # sql-migrate は go.mod の tool ディレクティブ（版固定）＝ go install 不要・モジュールキャッシュに乗る
       - name: Migrate test DB
         run: make -C migrations test-up
 
-      - name: Lint & Build
-        run: pnpm turbo lint format:check test build
+      # --filter=api-server: 依存する spec の build（YAML 生成）も ^build で自動的に走る
+      - name: Lint & Test & Build (Go)
+        run: pnpm turbo lint test build --filter=api-server
 
-      # 生成物の同期チェック（設計プラン§6・二次防衛）:
-      # 上の build が仕様から生成物を作り直した結果、コミット済みの生成物と差分が出たら
-      # 「生成し忘れ」または「生成物の手編集」なので落とす（一次防衛はローカルのタスクグラフ）
+      # 生成物の同期チェック（設計プラン§6・二次防衛）: このジョブが再生成した範囲を確認する
       - name: Check generated files are up to date
         run: |
           git diff --exit-code -- \
             'packages/spec/openapi-*.yaml' \
-            'api-server/generated' \
-            'packages/api-client/company/generated' || {
+            'api-server/generated' || {
             echo '::error::生成物が仕様と同期していません。ローカルで pnpm turbo build を実行し、生成物をコミットしてください'
             exit 1
           }
