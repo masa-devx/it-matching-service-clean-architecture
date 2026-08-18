@@ -25,7 +25,7 @@ func (h *Handler) changeProjectStatus(ctx context.Context, projectID int64, to d
 
 	project, err := h.project.ChangeStatus(ctx, claims.UserID, projectID, to)
 	if err != nil {
-		return company.TsunaguWorksProject{}, projectFailure("changeProjectStatus", err)
+		return company.TsunaguWorksProject{}, projectFailure(ctx, "changeProjectStatus", err)
 	}
 
 	return toAPIProject(project), nil

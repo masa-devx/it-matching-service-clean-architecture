@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
@@ -15,6 +16,7 @@ import (
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/auth"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/config"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/infra"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/middleware"
 	talenthandler "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/talent/handler"
 	talentusecase "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/talent/usecase"
 )
@@ -22,8 +24,12 @@ import (
 // main は組み立て（DI）だけを行う: 設定読込 → DB接続 → 依存の手渡し → ルーター登録 → 起動。
 // ルーティングは生成コードに任せ、手書きのルートを増やさない（health は運用エンドポイントなので例外）
 func main() {
+	// ロガーは最初に設定する（以降の全ログが JSON 構造化になる）
+	slog.SetDefault(middleware.NewLogger())
+
 	if err := run(); err != nil {
-		log.Fatal(err)
+		slog.Error("起動に失敗", "err", err)
+		os.Exit(1)
 	}
 }
 
@@ -88,13 +94,17 @@ func run() error {
 		BaseRouter: mux,
 	})
 
+	// ミドルウェアチェーン（外→内）: RequestID → Recovery → AccessLog → ルーター。
+	// RequestID が最外なのは、panic ログにも request_id を付けるため
+	handler := middleware.RequestID(middleware.Recovery(middleware.AccessLog(mux)))
+
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second, // Slowloris 対策（ヘッダーを送り切らない接続を切る）
 	}
 
-	log.Printf("api-server listening on :%d", cfg.Port)
+	slog.Info("api-server listening", "port", cfg.Port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}

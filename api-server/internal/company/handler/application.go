@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -36,7 +36,7 @@ func (h *Handler) ProjectsListApplications(ctx context.Context, req company.Proj
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("company ProjectsListApplications: %v", err)
+		slog.ErrorContext(ctx, "company ProjectsListApplications", "err", err)
 		return company.ProjectsListApplicationsdefaultJSONResponse{
 			Body:       company.TsunaguWorksApiError{Error: "一覧の取得に失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -99,7 +99,7 @@ func (h *Handler) changeApplicationStatus(
 				StatusCode: http.StatusUnauthorized,
 			}
 		}
-		log.Printf("company changeApplicationStatus: %v", err)
+		slog.ErrorContext(ctx, "company changeApplicationStatus", "err", err)
 		return company.TsunaguWorksApplicationForCompany{}, &failureResponse{
 			Body:       company.TsunaguWorksApiError{Error: "選考の操作に失敗しました"},
 			StatusCode: http.StatusInternalServerError,

@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -47,7 +47,7 @@ func (h *Handler) ApplicationsCreate(ctx context.Context, req talent.Application
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("talent ApplicationsCreate: %v", err)
+		slog.ErrorContext(ctx, "talent ApplicationsCreate", "err", err)
 		return talent.ApplicationsCreatedefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "応募に失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -76,7 +76,7 @@ func (h *Handler) ApplicationsList(ctx context.Context, req talent.ApplicationsL
 				StatusCode: http.StatusUnauthorized,
 			}, nil
 		}
-		log.Printf("talent ApplicationsList: %v", err)
+		slog.ErrorContext(ctx, "talent ApplicationsList", "err", err)
 		return talent.ApplicationsListdefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "一覧の取得に失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -155,7 +155,7 @@ func (h *Handler) changeApplicationStatus(
 				StatusCode: http.StatusUnauthorized,
 			}
 		}
-		log.Printf("talent changeApplicationStatus: %v", err)
+		slog.ErrorContext(ctx, "talent changeApplicationStatus", "err", err)
 		return talent.TsunaguWorksApplication{}, &failureResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "応募の操作に失敗しました"},
 			StatusCode: http.StatusInternalServerError,

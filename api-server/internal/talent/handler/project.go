@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	talent "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/talent"
@@ -24,7 +24,7 @@ func (h *Handler) ProjectsList(ctx context.Context, req talent.ProjectsListReque
 
 	page, err := h.project.ListPublished(ctx, params)
 	if err != nil {
-		log.Printf("talent ProjectsList: %v", err)
+		slog.ErrorContext(ctx, "talent ProjectsList", "err", err)
 		return talent.ProjectsListdefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "一覧の取得に失敗しました"},
 			StatusCode: http.StatusInternalServerError,
@@ -50,7 +50,7 @@ func (h *Handler) ProjectsGet(ctx context.Context, req talent.ProjectsGetRequest
 				StatusCode: http.StatusNotFound,
 			}, nil
 		}
-		log.Printf("talent ProjectsGet: %v", err)
+		slog.ErrorContext(ctx, "talent ProjectsGet", "err", err)
 		return talent.ProjectsGetdefaultJSONResponse{
 			Body:       talent.TsunaguWorksApiError{Error: "取得に失敗しました"},
 			StatusCode: http.StatusInternalServerError,
