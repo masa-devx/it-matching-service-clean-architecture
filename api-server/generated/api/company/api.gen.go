@@ -23,6 +23,36 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for TsunaguWorksApplicationStatus.
+const (
+	Accepted  TsunaguWorksApplicationStatus = "accepted"
+	Applied   TsunaguWorksApplicationStatus = "applied"
+	Declined  TsunaguWorksApplicationStatus = "declined"
+	Offered   TsunaguWorksApplicationStatus = "offered"
+	Rejected  TsunaguWorksApplicationStatus = "rejected"
+	Withdrawn TsunaguWorksApplicationStatus = "withdrawn"
+)
+
+// Valid indicates whether the value is a known member of the TsunaguWorksApplicationStatus enum.
+func (e TsunaguWorksApplicationStatus) Valid() bool {
+	switch e {
+	case Accepted:
+		return true
+	case Applied:
+		return true
+	case Declined:
+		return true
+	case Offered:
+		return true
+	case Rejected:
+		return true
+	case Withdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TsunaguWorksProjectStatus.
 const (
 	Closed    TsunaguWorksProjectStatus = "closed"
@@ -49,6 +79,33 @@ type TsunaguWorksApiError struct {
 	Error     string  `json:"error"`
 	RequestId *string `json:"request_id,omitempty"`
 }
+
+// TsunaguWorksApplicationForCompany 応募（company 視点。選考のための応募者プロフィールを JOIN で供給する）
+type TsunaguWorksApplicationForCompany struct {
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+
+	// Message 志望動機
+	Message   string `json:"message"`
+	ProjectId int64  `json:"project_id"`
+
+	// Status 応募の選考状態（遷移の許可は shared/domain の遷移表が一次情報）
+	Status TsunaguWorksApplicationStatus `json:"status"`
+
+	// TalentDisplayName 応募者の表示名
+	TalentDisplayName string `json:"talent_display_name"`
+
+	// TalentSkills 応募者のスキル
+	TalentSkills []string `json:"talent_skills"`
+}
+
+// TsunaguWorksApplicationForCompanyList 自社案件に届いた応募一覧のレスポンス
+type TsunaguWorksApplicationForCompanyList struct {
+	Applications []TsunaguWorksApplicationForCompany `json:"applications"`
+}
+
+// TsunaguWorksApplicationStatus 応募の選考状態（遷移の許可は shared/domain の遷移表が一次情報）
+type TsunaguWorksApplicationStatus string
 
 // TsunaguWorksAuthToken 認証トークン（web は httpOnly Cookie に変換して保持し、ブラウザ JS には渡さない）
 type TsunaguWorksAuthToken struct {
@@ -152,6 +209,12 @@ type ProjectsUpdateJSONRequestBody = TsunaguWorksProjectUpdateInput
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
+	// (POST /applications/{id}/offer)
+	ApplicationsOffer(w http.ResponseWriter, r *http.Request, id int64)
+
+	// (POST /applications/{id}/reject)
+	ApplicationsReject(w http.ResponseWriter, r *http.Request, id int64)
+
 	// (POST /auth/login)
 	AuthLogin(w http.ResponseWriter, r *http.Request)
 
@@ -173,6 +236,9 @@ type ServerInterface interface {
 	// (PATCH /projects/{id})
 	ProjectsUpdate(w http.ResponseWriter, r *http.Request, id int64)
 
+	// (GET /projects/{id}/applications)
+	ProjectsListApplications(w http.ResponseWriter, r *http.Request, id int64)
+
 	// (POST /projects/{id}/close)
 	ProjectsClose(w http.ResponseWriter, r *http.Request, id int64)
 
@@ -191,6 +257,58 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ApplicationsOffer operation middleware
+func (siw *ServerInterfaceWrapper) ApplicationsOffer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ApplicationsOffer(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ApplicationsReject operation middleware
+func (siw *ServerInterfaceWrapper) ApplicationsReject(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ApplicationsReject(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // AuthLogin operation middleware
 func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Request) {
@@ -305,6 +423,32 @@ func (siw *ServerInterfaceWrapper) ProjectsUpdate(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ProjectsUpdate(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ProjectsListApplications operation middleware
+func (siw *ServerInterfaceWrapper) ProjectsListApplications(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id int64
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ProjectsListApplications(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -512,6 +656,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/applications/{id}/offer", wrapper.ApplicationsOffer)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/applications/{id}/reject", wrapper.ApplicationsReject)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/login", wrapper.AuthLogin)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/auth/me", wrapper.AuthMe)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/auth/signup", wrapper.AuthSignup)
@@ -519,11 +665,90 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects", wrapper.ProjectsCreate)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{id}", wrapper.ProjectsGet)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/projects/{id}", wrapper.ProjectsUpdate)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/projects/{id}/applications", wrapper.ProjectsListApplications)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{id}/close", wrapper.ProjectsClose)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{id}/publish", wrapper.ProjectsPublish)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/projects/{id}/unpublish", wrapper.ProjectsUnpublish)
 
 	return m
+}
+
+type ApplicationsOfferRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type ApplicationsOfferResponseObject interface {
+	VisitApplicationsOfferResponse(w http.ResponseWriter) error
+}
+
+type ApplicationsOffer200JSONResponse TsunaguWorksApplicationForCompany
+
+func (response ApplicationsOffer200JSONResponse) VisitApplicationsOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ApplicationsOfferdefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response ApplicationsOfferdefaultJSONResponse) VisitApplicationsOfferResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ApplicationsRejectRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type ApplicationsRejectResponseObject interface {
+	VisitApplicationsRejectResponse(w http.ResponseWriter) error
+}
+
+type ApplicationsReject200JSONResponse TsunaguWorksApplicationForCompany
+
+func (response ApplicationsReject200JSONResponse) VisitApplicationsRejectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ApplicationsRejectdefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response ApplicationsRejectdefaultJSONResponse) VisitApplicationsRejectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type AuthLoginRequestObject struct {
@@ -798,6 +1023,45 @@ func (response ProjectsUpdatedefaultJSONResponse) VisitProjectsUpdateResponse(w 
 	return err
 }
 
+type ProjectsListApplicationsRequestObject struct {
+	Id int64 `json:"id"`
+}
+
+type ProjectsListApplicationsResponseObject interface {
+	VisitProjectsListApplicationsResponse(w http.ResponseWriter) error
+}
+
+type ProjectsListApplications200JSONResponse TsunaguWorksApplicationForCompanyList
+
+func (response ProjectsListApplications200JSONResponse) VisitProjectsListApplicationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ProjectsListApplicationsdefaultJSONResponse struct {
+	Body       TsunaguWorksApiError
+	StatusCode int
+}
+
+func (response ProjectsListApplicationsdefaultJSONResponse) VisitProjectsListApplicationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ProjectsCloseRequestObject struct {
 	Id int64 `json:"id"`
 }
@@ -918,6 +1182,12 @@ func (response ProjectsUnpublishdefaultJSONResponse) VisitProjectsUnpublishRespo
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
+	// (POST /applications/{id}/offer)
+	ApplicationsOffer(ctx context.Context, request ApplicationsOfferRequestObject) (ApplicationsOfferResponseObject, error)
+
+	// (POST /applications/{id}/reject)
+	ApplicationsReject(ctx context.Context, request ApplicationsRejectRequestObject) (ApplicationsRejectResponseObject, error)
+
 	// (POST /auth/login)
 	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
 
@@ -938,6 +1208,9 @@ type StrictServerInterface interface {
 
 	// (PATCH /projects/{id})
 	ProjectsUpdate(ctx context.Context, request ProjectsUpdateRequestObject) (ProjectsUpdateResponseObject, error)
+
+	// (GET /projects/{id}/applications)
+	ProjectsListApplications(ctx context.Context, request ProjectsListApplicationsRequestObject) (ProjectsListApplicationsResponseObject, error)
 
 	// (POST /projects/{id}/close)
 	ProjectsClose(ctx context.Context, request ProjectsCloseRequestObject) (ProjectsCloseResponseObject, error)
@@ -986,6 +1259,58 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ApplicationsOffer operation middleware
+func (sh *strictHandler) ApplicationsOffer(w http.ResponseWriter, r *http.Request, id int64) {
+	var request ApplicationsOfferRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ApplicationsOffer(ctx, request.(ApplicationsOfferRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ApplicationsOffer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ApplicationsOfferResponseObject); ok {
+		if err := validResponse.VisitApplicationsOfferResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ApplicationsReject operation middleware
+func (sh *strictHandler) ApplicationsReject(w http.ResponseWriter, r *http.Request, id int64) {
+	var request ApplicationsRejectRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ApplicationsReject(ctx, request.(ApplicationsRejectRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ApplicationsReject")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ApplicationsRejectResponseObject); ok {
+		if err := validResponse.VisitApplicationsRejectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // AuthLogin operation middleware
@@ -1188,6 +1513,32 @@ func (sh *strictHandler) ProjectsUpdate(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// ProjectsListApplications operation middleware
+func (sh *strictHandler) ProjectsListApplications(w http.ResponseWriter, r *http.Request, id int64) {
+	var request ProjectsListApplicationsRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ProjectsListApplications(ctx, request.(ProjectsListApplicationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ProjectsListApplications")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ProjectsListApplicationsResponseObject); ok {
+		if err := validResponse.VisitProjectsListApplicationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ProjectsClose operation middleware
 func (sh *strictHandler) ProjectsClose(w http.ResponseWriter, r *http.Request, id int64) {
 	var request ProjectsCloseRequestObject
@@ -1271,43 +1622,50 @@ func (sh *strictHandler) ProjectsUnpublish(w http.ResponseWriter, r *http.Reques
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"c3DNMYR+4RCanv53AAAA//8=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

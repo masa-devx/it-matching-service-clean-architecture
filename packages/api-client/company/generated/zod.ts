@@ -9,6 +9,42 @@
 import * as zod from 'zod';
 
 /**
+ * オファーする（applied → offered。それ以外の状態は409）
+ */
+export const ApplicationsOfferParams = zod.object({
+  "id": zod.int()
+})
+
+export const ApplicationsOfferResponse = zod.object({
+  "id": zod.int(),
+  "project_id": zod.int(),
+  "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
+  "message": zod.string().describe('志望動機'),
+  "talent_display_name": zod.string().describe('応募者の表示名'),
+  "talent_skills": zod.array(zod.string()).describe('応募者のスキル'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('応募（company 視点。選考のための応募者プロフィールを JOIN で供給する）')
+
+
+/**
+ * 不採用にする（applied → rejected。それ以外の状態は409）
+ */
+export const ApplicationsRejectParams = zod.object({
+  "id": zod.int()
+})
+
+export const ApplicationsRejectResponse = zod.object({
+  "id": zod.int(),
+  "project_id": zod.int(),
+  "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
+  "message": zod.string().describe('志望動機'),
+  "talent_display_name": zod.string().describe('応募者の表示名'),
+  "talent_skills": zod.array(zod.string()).describe('応募者のスキル'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('応募（company 視点。選考のための応募者プロフィールを JOIN で供給する）')
+
+
+/**
  * ログイン
  */
 export const AuthLoginBody = zod.object({
@@ -228,6 +264,26 @@ export const ProjectsUpdateResponse = zod.object({
   "status": zod.enum(['draft', 'published', 'closed']).describe('案件の掲載状態'),
   "created_at": zod.iso.datetime({"offset":true})
 }).describe('案件（企業が掲載する仕事）')
+
+
+/**
+ * 自社案件に届いた応募の一覧（応募者プロフィール込み・他社の案件は404）
+ */
+export const ProjectsListApplicationsParams = zod.object({
+  "id": zod.int()
+})
+
+export const ProjectsListApplicationsResponse = zod.object({
+  "applications": zod.array(zod.object({
+  "id": zod.int(),
+  "project_id": zod.int(),
+  "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
+  "message": zod.string().describe('志望動機'),
+  "talent_display_name": zod.string().describe('応募者の表示名'),
+  "talent_skills": zod.array(zod.string()).describe('応募者のスキル'),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('応募（company 視点。選考のための応募者プロフィールを JOIN で供給する）'))
+}).describe('自社案件に届いた応募一覧のレスポンス')
 
 
 /**

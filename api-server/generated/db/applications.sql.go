@@ -55,6 +55,53 @@ func (q *Queries) CreateApplication(ctx context.Context, arg CreateApplicationPa
 	return i, err
 }
 
+const getApplicationForCompany = `-- name: GetApplicationForCompany :one
+SELECT
+    a.id,
+    a.project_id,
+    a.status,
+    a.message,
+    t.display_name AS talent_display_name,
+    t.skills AS talent_skills,
+    a.created_at
+FROM applications a
+JOIN projects p ON p.id = a.project_id
+JOIN talents t ON t.id = a.talent_id
+WHERE a.id = $1 AND p.company_id = $2
+`
+
+type GetApplicationForCompanyParams struct {
+	ID        int64
+	CompanyID int64
+}
+
+type GetApplicationForCompanyRow struct {
+	ID                int64
+	ProjectID         int64
+	Status            string
+	Message           string
+	TalentDisplayName string
+	TalentSkills      []string
+	CreatedAt         time.Time
+}
+
+// 所有チェックが JOIN 越しになる: applications は company_id を持たないため、
+// projects を結合して p.company_id を WHERE に埋め込む（他社の応募は「存在しない」扱い）
+func (q *Queries) GetApplicationForCompany(ctx context.Context, arg GetApplicationForCompanyParams) (GetApplicationForCompanyRow, error) {
+	row := q.db.QueryRow(ctx, getApplicationForCompany, arg.ID, arg.CompanyID)
+	var i GetApplicationForCompanyRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Status,
+		&i.Message,
+		&i.TalentDisplayName,
+		&i.TalentSkills,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getApplicationForTalent = `-- name: GetApplicationForTalent :one
 SELECT
     a.id,
@@ -95,6 +142,63 @@ func (q *Queries) GetApplicationForTalent(ctx context.Context, arg GetApplicatio
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listApplicationsForProject = `-- name: ListApplicationsForProject :many
+SELECT
+    a.id,
+    a.project_id,
+    a.status,
+    a.message,
+    t.display_name AS talent_display_name,
+    t.skills AS talent_skills,
+    a.created_at
+FROM applications a
+JOIN talents t ON t.id = a.talent_id
+WHERE a.project_id = $1
+ORDER BY a.id DESC
+`
+
+type ListApplicationsForProjectRow struct {
+	ID                int64
+	ProjectID         int64
+	Status            string
+	Message           string
+	TalentDisplayName string
+	TalentSkills      []string
+	CreatedAt         time.Time
+}
+
+// 自社案件の応募一覧（company 視点・応募者プロフィール込み・新しい順）。
+// 所有確認（他社案件の404）は呼び出し側が GetProjectForCompany で先に行う:
+// 「他社の案件（404）」と「自社の案件で応募ゼロ（空リスト）」を区別するため、
+// WHERE への埋め込みではなく2クエリに分ける（読み取りなので競合窓の心配はない）
+func (q *Queries) ListApplicationsForProject(ctx context.Context, projectID int64) ([]ListApplicationsForProjectRow, error) {
+	rows, err := q.db.Query(ctx, listApplicationsForProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListApplicationsForProjectRow
+	for rows.Next() {
+		var i ListApplicationsForProjectRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Status,
+			&i.Message,
+			&i.TalentDisplayName,
+			&i.TalentSkills,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listApplicationsForTalent = `-- name: ListApplicationsForTalent :many
@@ -147,6 +251,70 @@ func (q *Queries) ListApplicationsForTalent(ctx context.Context, talentID int64)
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateApplicationStatusForCompany = `-- name: UpdateApplicationStatusForCompany :one
+UPDATE applications a
+SET
+    status = $1,
+    company_acted_at = now()
+FROM projects p, talents t
+WHERE a.id = $2
+    AND p.id = a.project_id
+    AND p.company_id = $3
+    AND t.id = a.talent_id
+    AND a.status = ANY ($4::text [])
+RETURNING
+    a.id,
+    a.project_id,
+    a.status,
+    a.message,
+    t.display_name AS talent_display_name,
+    t.skills AS talent_skills,
+    a.company_acted_at,
+    a.created_at
+`
+
+type UpdateApplicationStatusForCompanyParams struct {
+	ToStatus     string
+	ID           int64
+	CompanyID    int64
+	FromStatuses []string
+}
+
+type UpdateApplicationStatusForCompanyRow struct {
+	ID                int64
+	ProjectID         int64
+	Status            string
+	Message           string
+	TalentDisplayName string
+	TalentSkills      []string
+	CompanyActedAt    pgtype.Timestamptz
+	CreatedAt         time.Time
+}
+
+// 選考の遷移（offer / reject は同じ形なので to_status で共通化・#42 の型）。
+// 所有（JOIN 越しの p.company_id）と遷移可否（from_statuses・遷移表から導出）を
+// DB が原子的に検査する。company_acted_at で「企業がいつ動いたか」も同時に記録
+func (q *Queries) UpdateApplicationStatusForCompany(ctx context.Context, arg UpdateApplicationStatusForCompanyParams) (UpdateApplicationStatusForCompanyRow, error) {
+	row := q.db.QueryRow(ctx, updateApplicationStatusForCompany,
+		arg.ToStatus,
+		arg.ID,
+		arg.CompanyID,
+		arg.FromStatuses,
+	)
+	var i UpdateApplicationStatusForCompanyRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Status,
+		&i.Message,
+		&i.TalentDisplayName,
+		&i.TalentSkills,
+		&i.CompanyActedAt,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const withdrawApplication = `-- name: WithdrawApplication :one

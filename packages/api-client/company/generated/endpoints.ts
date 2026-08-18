@@ -8,6 +8,8 @@
  */
 import type {
   TsunaguWorksApiError,
+  TsunaguWorksApplicationForCompany,
+  TsunaguWorksApplicationForCompanyList,
   TsunaguWorksAuthToken,
   TsunaguWorksCompanyMe,
   TsunaguWorksCompanySignupInput,
@@ -26,6 +28,92 @@ export type HTTPStatusCode3xx = 300 | 301 | 302 | 303 | 304 | 305 | 307 | 308;
 export type HTTPStatusCode4xx = 400 | 401 | 402 | 403 | 404 | 405 | 406 | 407 | 408 | 409 | 410 | 411 | 412 | 413 | 414 | 415 | 416 | 417 | 418 | 419 | 420 | 421 | 422 | 423 | 424 | 426 | 428 | 429 | 431 | 451;
 export type HTTPStatusCode5xx = 500 | 501 | 502 | 503 | 504 | 505 | 507 | 511;
 export type HTTPStatusCodes = HTTPStatusCode1xx | HTTPStatusCode2xx | HTTPStatusCode3xx | HTTPStatusCode4xx | HTTPStatusCode5xx;
+
+export type applicationsOfferResponse200 = {
+  data: TsunaguWorksApplicationForCompany
+  status: 200
+}
+
+export type applicationsOfferResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type applicationsOfferResponseSuccess = (applicationsOfferResponse200) & {
+  headers: Headers;
+};
+export type applicationsOfferResponseError = (applicationsOfferResponseDefault) & {
+  headers: Headers;
+};
+
+export type applicationsOfferResponse = (applicationsOfferResponseSuccess | applicationsOfferResponseError)
+
+export const getApplicationsOfferUrl = (id: number,) => {
+
+
+
+
+  return `/applications/${id}/offer`
+}
+
+/**
+ * オファーする（applied → offered。それ以外の状態は409）
+ */
+export const applicationsOffer = async (id: number, options?: RequestInit): Promise<applicationsOfferResponse> => {
+
+  return customFetch<applicationsOfferResponse>(getApplicationsOfferUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+export type applicationsRejectResponse200 = {
+  data: TsunaguWorksApplicationForCompany
+  status: 200
+}
+
+export type applicationsRejectResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type applicationsRejectResponseSuccess = (applicationsRejectResponse200) & {
+  headers: Headers;
+};
+export type applicationsRejectResponseError = (applicationsRejectResponseDefault) & {
+  headers: Headers;
+};
+
+export type applicationsRejectResponse = (applicationsRejectResponseSuccess | applicationsRejectResponseError)
+
+export const getApplicationsRejectUrl = (id: number,) => {
+
+
+
+
+  return `/applications/${id}/reject`
+}
+
+/**
+ * 不採用にする（applied → rejected。それ以外の状態は409）
+ */
+export const applicationsReject = async (id: number, options?: RequestInit): Promise<applicationsRejectResponse> => {
+
+  return customFetch<applicationsRejectResponse>(getApplicationsRejectUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
 
 export type authLoginResponse200 = {
   data: TsunaguWorksAuthToken
@@ -324,6 +412,49 @@ export const projectsUpdate = async (id: number,
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(tsunaguWorksProjectUpdateInput)
+  }
+);}
+
+
+
+export type projectsListApplicationsResponse200 = {
+  data: TsunaguWorksApplicationForCompanyList
+  status: 200
+}
+
+export type projectsListApplicationsResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type projectsListApplicationsResponseSuccess = (projectsListApplicationsResponse200) & {
+  headers: Headers;
+};
+export type projectsListApplicationsResponseError = (projectsListApplicationsResponseDefault) & {
+  headers: Headers;
+};
+
+export type projectsListApplicationsResponse = (projectsListApplicationsResponseSuccess | projectsListApplicationsResponseError)
+
+export const getProjectsListApplicationsUrl = (id: number,) => {
+
+
+
+
+  return `/projects/${id}/applications`
+}
+
+/**
+ * 自社案件に届いた応募の一覧（応募者プロフィール込み・他社の案件は404）
+ */
+export const projectsListApplications = async (id: number, options?: RequestInit): Promise<projectsListApplicationsResponse> => {
+
+  return customFetch<projectsListApplicationsResponse>(getProjectsListApplicationsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
   }
 );}
 
