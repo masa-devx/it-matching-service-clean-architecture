@@ -99,4 +99,22 @@ interface Applications {
     @statusCode statusCode: 200;
     @body application: Application;
   } | ApiError;
+
+  /** オファーを承諾する（offered → accepted。ダブルオプトインの成立） */
+  @useAuth(BearerAuth)
+  @route("/{id}/accept")
+  @post
+  accept(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body application: Application;
+  } | ApiError;
+
+  /** オファーを辞退する（offered → declined） */
+  @useAuth(BearerAuth)
+  @route("/{id}/decline")
+  @post
+  decline(@path id: int64): {
+    @statusCode statusCode: 200;
+    @body application: Application;
+  } | ApiError;
 }

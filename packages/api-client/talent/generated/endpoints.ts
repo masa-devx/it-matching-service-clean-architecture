@@ -115,6 +115,92 @@ export const applicationsList = async ( options?: RequestInit): Promise<applicat
 
 
 
+export type applicationsAcceptResponse200 = {
+  data: TsunaguWorksApplication
+  status: 200
+}
+
+export type applicationsAcceptResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type applicationsAcceptResponseSuccess = (applicationsAcceptResponse200) & {
+  headers: Headers;
+};
+export type applicationsAcceptResponseError = (applicationsAcceptResponseDefault) & {
+  headers: Headers;
+};
+
+export type applicationsAcceptResponse = (applicationsAcceptResponseSuccess | applicationsAcceptResponseError)
+
+export const getApplicationsAcceptUrl = (id: number,) => {
+
+
+
+
+  return `/applications/${id}/accept`
+}
+
+/**
+ * オファーを承諾する（offered → accepted。ダブルオプトインの成立）
+ */
+export const applicationsAccept = async (id: number, options?: RequestInit): Promise<applicationsAcceptResponse> => {
+
+  return customFetchTalent<applicationsAcceptResponse>(getApplicationsAcceptUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+export type applicationsDeclineResponse200 = {
+  data: TsunaguWorksApplication
+  status: 200
+}
+
+export type applicationsDeclineResponseDefault = {
+  data: TsunaguWorksApiError
+  status: Exclude<HTTPStatusCodes, 200>
+}
+
+export type applicationsDeclineResponseSuccess = (applicationsDeclineResponse200) & {
+  headers: Headers;
+};
+export type applicationsDeclineResponseError = (applicationsDeclineResponseDefault) & {
+  headers: Headers;
+};
+
+export type applicationsDeclineResponse = (applicationsDeclineResponseSuccess | applicationsDeclineResponseError)
+
+export const getApplicationsDeclineUrl = (id: number,) => {
+
+
+
+
+  return `/applications/${id}/decline`
+}
+
+/**
+ * オファーを辞退する（offered → declined）
+ */
+export const applicationsDecline = async (id: number, options?: RequestInit): Promise<applicationsDeclineResponse> => {
+
+  return customFetchTalent<applicationsDeclineResponse>(getApplicationsDeclineUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
 export type applicationsWithdrawResponse200 = {
   data: TsunaguWorksApplication
   status: 200

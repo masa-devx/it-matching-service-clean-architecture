@@ -17,8 +17,8 @@ var (
 	ErrApplicationNotFound = errors.New("応募が見つかりません")
 	// ErrAlreadyApplied は二重応募（UNIQUE 制約違反・409）
 	ErrAlreadyApplied = errors.New("この案件にはすでに応募しています")
-	// ErrCannotWithdraw は決着済み等、遷移表が取り下げを許可しない状態（409）
-	ErrCannotWithdraw = errors.New("現在の状態では取り下げできません")
+	// ErrCannotChangeApplication は決着済み等、遷移表が許可しない状態への操作（409）
+	ErrCannotChangeApplication = errors.New("現在の状態ではこの操作はできません")
 )
 
 // Application は応募（talent 視点: 出す・取り下げる）の業務ロジック
@@ -91,36 +91,53 @@ func (u *Application) ListMine(ctx context.Context, userID int64) ([]db.ListAppl
 	return rows, nil
 }
 
-// withdrawableFrom は「talent が withdrawn へ遷移できる元状態」を遷移表から導出する。
+// Withdraw は応募を取り下げる（applied / offered → withdrawn）
+func (u *Application) Withdraw(ctx context.Context, userID, applicationID int64) (db.UpdateApplicationStatusForTalentRow, error) {
+	return u.changeStatus(ctx, userID, applicationID, domain.ApplicationWithdrawn)
+}
+
+// Accept はオファーを承諾する（offered → accepted・ダブルオプトインの成立）
+func (u *Application) Accept(ctx context.Context, userID, applicationID int64) (db.UpdateApplicationStatusForTalentRow, error) {
+	return u.changeStatus(ctx, userID, applicationID, domain.ApplicationAccepted)
+}
+
+// Decline はオファーを辞退する（offered → declined）
+func (u *Application) Decline(ctx context.Context, userID, applicationID int64) (db.UpdateApplicationStatusForTalentRow, error) {
+	return u.changeStatus(ctx, userID, applicationID, domain.ApplicationDeclined)
+}
+
+// changeableFrom は「talent が to へ遷移させられる元状態」を遷移表から導出する。
 // SQL にハードコードしない＝遷移表（shared/domain）が一次情報のまま WHERE に反映される
-func withdrawableFrom() []string {
+func changeableFrom(to domain.ApplicationStatus) []string {
 	var froms []string
 	for _, from := range domain.AllApplicationStatuses {
-		if domain.CanTransitApplication(domain.ActorTalent, from, domain.ApplicationWithdrawn) {
+		if domain.CanTransitApplication(domain.ActorTalent, from, to) {
 			froms = append(froms, string(from))
 		}
 	}
 	return froms
 }
 
-// Withdraw は応募を取り下げる。所有（talent_id）と遷移可否（from_statuses）は
-// 条件付き UPDATE が原子的に検査し、0行なら再取得して 404 と 409 を区別する
-func (u *Application) Withdraw(ctx context.Context, userID, applicationID int64) (db.WithdrawApplicationRow, error) {
+// changeStatus は talent の遷移を実行する（withdraw / accept / decline の共通実体）。
+// 所有（talent_id）と遷移可否（from_statuses）は条件付き UPDATE が原子的に検査し、
+// 0行なら再取得して 404 と 409 を区別する
+func (u *Application) changeStatus(ctx context.Context, userID, applicationID int64, to domain.ApplicationStatus) (db.UpdateApplicationStatusForTalentRow, error) {
 	talentID, err := u.talentIDFor(ctx, userID)
 	if err != nil {
-		return db.WithdrawApplicationRow{}, err
+		return db.UpdateApplicationStatusForTalentRow{}, err
 	}
 
-	row, err := u.queries.WithdrawApplication(ctx, db.WithdrawApplicationParams{
+	row, err := u.queries.UpdateApplicationStatusForTalent(ctx, db.UpdateApplicationStatusForTalentParams{
 		ID:           applicationID,
 		TalentID:     talentID,
-		FromStatuses: withdrawableFrom(),
+		ToStatus:     string(to),
+		FromStatuses: changeableFrom(to),
 	})
 	if err == nil {
 		return row, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return db.WithdrawApplicationRow{}, fmt.Errorf("取り下げに失敗: %w", err)
+		return db.UpdateApplicationStatusForTalentRow{}, fmt.Errorf("応募状態の更新に失敗: %w", err)
 	}
 
 	// 0行 = 不存在/他人（404）か、遷移不可の状態（409）かを取得して区別する
@@ -130,9 +147,9 @@ func (u *Application) Withdraw(ctx context.Context, userID, applicationID int64)
 	})
 	if getErr != nil {
 		if errors.Is(getErr, pgx.ErrNoRows) {
-			return db.WithdrawApplicationRow{}, ErrApplicationNotFound
+			return db.UpdateApplicationStatusForTalentRow{}, ErrApplicationNotFound
 		}
-		return db.WithdrawApplicationRow{}, fmt.Errorf("応募の取得に失敗: %w", getErr)
+		return db.UpdateApplicationStatusForTalentRow{}, fmt.Errorf("応募の取得に失敗: %w", getErr)
 	}
-	return db.WithdrawApplicationRow{}, fmt.Errorf("%w（現在: %s）", ErrCannotWithdraw, app.Status)
+	return db.UpdateApplicationStatusForTalentRow{}, fmt.Errorf("%w（現在: %s）", ErrCannotChangeApplication, app.Status)
 }
