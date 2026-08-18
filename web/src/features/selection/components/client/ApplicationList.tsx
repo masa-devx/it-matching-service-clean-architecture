@@ -1,6 +1,11 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { CalendarDays } from 'lucide-react'
+
+import { ExpandableText } from '@/components/ExpandableText'
+import { SkillBadges } from '@/components/SkillBadges'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 import { ApplicationStatusBadge } from '../ApplicationStatusBadge'
 import { SelectionActions } from './SelectionActions'
@@ -30,23 +35,24 @@ export function ApplicationList({ projectId }: { projectId: number }) {
   return (
     <ul className="space-y-3">
       {applications.map((a) => (
-        <li key={a.id} className="space-y-2 rounded-lg border p-4">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium">{a.talent_display_name}</span>
-            <ApplicationStatusBadge status={a.status} />
-          </div>
-          {a.talent_skills.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              スキル: {a.talent_skills.join(' / ')}
-            </p>
-          )}
-          {a.message !== '' && (
-            <p className="text-sm whitespace-pre-wrap">{a.message}</p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            応募日: {new Date(a.created_at).toLocaleDateString('ja-JP')}
-          </p>
-          <SelectionActions application={a} />
+        <li key={a.id}>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>{a.talent_display_name}</CardTitle>
+                <ApplicationStatusBadge status={a.status} />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <SkillBadges skills={a.talent_skills} />
+              {a.message !== '' && <ExpandableText text={a.message} />}
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarDays className="size-3.5" aria-hidden="true" />
+                応募日: {new Date(a.created_at).toLocaleDateString('ja-JP')}
+              </p>
+              <SelectionActions application={a} />
+            </CardContent>
+          </Card>
         </li>
       ))}
     </ul>
