@@ -2,9 +2,17 @@
 
 import type { TsunaguWorksProject } from '@repo/api-client/talent/generated/models'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { CalendarDays, Clock, JapaneseYen, Wifi, WifiOff } from 'lucide-react'
+import {
+  CalendarDays,
+  Clock,
+  JapaneseYen,
+  SearchX,
+  Wifi,
+  WifiOff,
+} from 'lucide-react'
 import Link from 'next/link'
 
+import { EmptyState } from '@/components/EmptyState'
 import { SkillBadges } from '@/components/SkillBadges'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,9 +56,15 @@ export function ProjectSearchList({
 
   if (projects.length === 0) {
     return (
-      <p className="text-muted-foreground">
-        条件に合う案件が見つかりませんでした。条件を減らして試してください。
-      </p>
+      <EmptyState
+        icon={SearchX}
+        title="条件に合う案件が見つかりませんでした"
+        description="スキルや時給の条件を減らして試してください。"
+      >
+        <Button asChild variant="outline" size="sm">
+          <Link href="/talent/projects">条件をクリア</Link>
+        </Button>
+      </EmptyState>
     )
   }
 

@@ -2,9 +2,17 @@
 
 import type { TsunaguWorksProject } from '@repo/api-client/company/generated/models'
 import { useQuery } from '@tanstack/react-query'
-import { CalendarDays, Clock, JapaneseYen, Wifi, WifiOff } from 'lucide-react'
+import {
+  CalendarDays,
+  Clock,
+  FolderPlus,
+  JapaneseYen,
+  Wifi,
+  WifiOff,
+} from 'lucide-react'
 import Link from 'next/link'
 
+import { EmptyState } from '@/components/EmptyState'
 import { SkillBadges } from '@/components/SkillBadges'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,9 +51,15 @@ export function ProjectList() {
   }
   if (projects.length === 0) {
     return (
-      <p className="text-muted-foreground">
-        案件がまだありません。「新規作成」から最初の案件を掲載しましょう。
-      </p>
+      <EmptyState
+        icon={FolderPlus}
+        title="案件がまだありません"
+        description="最初の案件を掲載して、人材からの応募を受け付けましょう。"
+      >
+        <Button asChild size="sm">
+          <Link href="/company/projects/new">新規作成</Link>
+        </Button>
+      </EmptyState>
     )
   }
 

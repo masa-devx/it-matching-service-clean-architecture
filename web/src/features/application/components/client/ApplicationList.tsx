@@ -1,9 +1,10 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Send } from 'lucide-react'
 import Link from 'next/link'
 
+import { EmptyState } from '@/components/EmptyState'
 import { ExpandableText } from '@/components/ExpandableText'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,12 +28,15 @@ export function ApplicationList() {
   }
   if (applications.length === 0) {
     return (
-      <div className="space-y-3">
-        <p className="text-muted-foreground">まだ応募がありません。</p>
-        <Button asChild variant="outline">
+      <EmptyState
+        icon={Send}
+        title="まだ応募がありません"
+        description="気になる案件を見つけて応募してみましょう。"
+      >
+        <Button asChild size="sm">
           <Link href="/talent/projects">案件を探す</Link>
         </Button>
-      </div>
+      </EmptyState>
     )
   }
 
