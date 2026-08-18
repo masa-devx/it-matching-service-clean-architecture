@@ -1,7 +1,5 @@
 import Link from 'next/link'
 import { Building2, User } from 'lucide-react'
-import type { CurrentUser } from '@/lib/auth'
-import { dashboardPath } from '@/lib/roleRedirect'
 import { Button } from '@/components/ui/button'
 
 // 二面市場（企業⇔人材）のサービスでは、来訪者がどちら側か分からない。
@@ -21,7 +19,7 @@ const entries = [
   },
 ]
 
-export function Hero({ user }: { user: CurrentUser | null }) {
+export function Hero({ dashboardHref }: { dashboardHref: string | null }) {
   return (
     <section className="flex flex-col items-center gap-8 px-4 py-16 text-center sm:py-24">
       <div className="flex max-w-2xl flex-col gap-4">
@@ -37,9 +35,9 @@ export function Hero({ user }: { user: CurrentUser | null }) {
         </p>
       </div>
 
-      {user ? (
+      {dashboardHref ? (
         <Button asChild className="h-11">
-          <Link href={dashboardPath(user.role)}>ダッシュボードへ</Link>
+          <Link href={dashboardHref}>ダッシュボードへ</Link>
         </Button>
       ) : (
         <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">

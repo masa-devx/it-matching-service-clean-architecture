@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button'
 // 上まで戻らせない（スクロールし切った人が最も関心が高い）
 export function FinalCta() {
   return (
-    <section className="flex flex-col items-center gap-6 bg-card px-4 py-16 text-center">
+    <section
+      id="cta"
+      className="flex flex-col items-center gap-6 bg-card px-4 py-16 text-center"
+    >
       <div className="flex max-w-xl flex-col gap-2">
         <h2 className="text-2xl font-bold tracking-tight">
           まずは無料で始めてみませんか
