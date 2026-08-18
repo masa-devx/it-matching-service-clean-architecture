@@ -49,20 +49,22 @@ WHERE a.id = $1 AND a.talent_id = $2;
 -- name: WithdrawApplication :one
 -- 取り下げ（talent の遷移）。遷移元のホワイトリストは呼び出し側が
 -- shared/domain の遷移表から導出して渡す（表が一次情報のまま WHERE に反映される）。
--- WHERE に talent_id と from_statuses を含めることで、所有と遷移可否を DB が原子的に検査する
-UPDATE applications
+-- WHERE に talent_id と from_statuses を含めることで、所有と遷移可否を DB が原子的に検査する。
+-- FROM projects はレスポンス用の project_title を1文で取るための JOIN（UPDATE...FROM）
+UPDATE applications a
 SET
     status = 'withdrawn',
     talent_acted_at = now()
-WHERE id = @id
-    AND talent_id = @talent_id
-    AND status = ANY (@from_statuses::text [])
+FROM projects p
+WHERE a.id = @id
+    AND a.talent_id = @talent_id
+    AND p.id = a.project_id
+    AND a.status = ANY (@from_statuses::text [])
 RETURNING
-    id,
-    project_id,
-    talent_id,
-    status,
-    message,
-    company_acted_at,
-    talent_acted_at,
-    created_at;
+    a.id,
+    a.project_id,
+    p.title AS project_title,
+    a.status,
+    a.message,
+    a.talent_acted_at,
+    a.created_at;

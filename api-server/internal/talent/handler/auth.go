@@ -21,13 +21,19 @@ const tokenTTL = 24 * time.Hour
 
 // Handler は talent API のハンドラ実装。依存は main から手渡しされる
 type Handler struct {
-	auth      *usecase.Auth
-	project   *usecase.Project
-	jwtSecret []byte
+	auth        *usecase.Auth
+	project     *usecase.Project
+	application *usecase.Application
+	jwtSecret   []byte
 }
 
-func New(authUsecase *usecase.Auth, projectUsecase *usecase.Project, jwtSecret []byte) *Handler {
-	return &Handler{auth: authUsecase, project: projectUsecase, jwtSecret: jwtSecret}
+func New(authUsecase *usecase.Auth, projectUsecase *usecase.Project, applicationUsecase *usecase.Application, jwtSecret []byte) *Handler {
+	return &Handler{
+		auth:        authUsecase,
+		project:     projectUsecase,
+		application: applicationUsecase,
+		jwtSecret:   jwtSecret,
+	}
 }
 
 // 実装漏れをコンパイルエラーにする

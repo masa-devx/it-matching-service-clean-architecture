@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createApplication = `-- name: CreateApplication :one
@@ -148,22 +150,23 @@ func (q *Queries) ListApplicationsForTalent(ctx context.Context, talentID int64)
 }
 
 const withdrawApplication = `-- name: WithdrawApplication :one
-UPDATE applications
+UPDATE applications a
 SET
     status = 'withdrawn',
     talent_acted_at = now()
-WHERE id = $1
-    AND talent_id = $2
-    AND status = ANY ($3::text [])
+FROM projects p
+WHERE a.id = $1
+    AND a.talent_id = $2
+    AND p.id = a.project_id
+    AND a.status = ANY ($3::text [])
 RETURNING
-    id,
-    project_id,
-    talent_id,
-    status,
-    message,
-    company_acted_at,
-    talent_acted_at,
-    created_at
+    a.id,
+    a.project_id,
+    p.title AS project_title,
+    a.status,
+    a.message,
+    a.talent_acted_at,
+    a.created_at
 `
 
 type WithdrawApplicationParams struct {
@@ -172,19 +175,29 @@ type WithdrawApplicationParams struct {
 	FromStatuses []string
 }
 
+type WithdrawApplicationRow struct {
+	ID            int64
+	ProjectID     int64
+	ProjectTitle  string
+	Status        string
+	Message       string
+	TalentActedAt pgtype.Timestamptz
+	CreatedAt     time.Time
+}
+
 // 取り下げ（talent の遷移）。遷移元のホワイトリストは呼び出し側が
 // shared/domain の遷移表から導出して渡す（表が一次情報のまま WHERE に反映される）。
-// WHERE に talent_id と from_statuses を含めることで、所有と遷移可否を DB が原子的に検査する
-func (q *Queries) WithdrawApplication(ctx context.Context, arg WithdrawApplicationParams) (Application, error) {
+// WHERE に talent_id と from_statuses を含めることで、所有と遷移可否を DB が原子的に検査する。
+// FROM projects はレスポンス用の project_title を1文で取るための JOIN（UPDATE...FROM）
+func (q *Queries) WithdrawApplication(ctx context.Context, arg WithdrawApplicationParams) (WithdrawApplicationRow, error) {
 	row := q.db.QueryRow(ctx, withdrawApplication, arg.ID, arg.TalentID, arg.FromStatuses)
-	var i Application
+	var i WithdrawApplicationRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
-		&i.TalentID,
+		&i.ProjectTitle,
 		&i.Status,
 		&i.Message,
-		&i.CompanyActedAt,
 		&i.TalentActedAt,
 		&i.CreatedAt,
 	)
