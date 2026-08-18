@@ -27,6 +27,12 @@ import { applicationKeys } from '../../queries/applications'
 // 状態ごとに出す操作（actor=talent の遷移表の UI 側の写し・#59 company 側と対）。
 // 承諾は合意の成立＝最も不可逆な操作なので、確認文でもその重みを伝える。
 // 正しさの保証はサーバー（条件付きUPDATE）。競合時は 409（現在: x）がトーストで返る
+const successMessage: Record<ApplicationAction, string> = {
+  withdraw: 'への応募を取り下げました',
+  accept: 'のオファーを承諾しました',
+  decline: 'のオファーを辞退しました',
+}
+
 const actionsByStatus: Record<
   TsunaguWorksApplicationStatus,
   Array<{
@@ -98,7 +104,8 @@ export function ApplicationActions({
       }
       return result.data
     },
-    onSuccess: () => {
+    onSuccess: (_updated, action) => {
+      toast.success(`「${application.project_title}」${successMessage[action]}`)
       void queryClient.invalidateQueries({ queryKey: applicationKeys.all })
     },
     onError: (error) => {

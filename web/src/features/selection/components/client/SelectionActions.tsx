@@ -28,6 +28,11 @@ import { selectionKeys } from '../../queries/applications'
 // company が動けるのは applied のときだけ。正しさの保証はサーバー（条件付きUPDATE）で、
 // タブ2枚などで食い違ったら 409（現在: x）がトーストで返る。
 // どちらも相手に届く不可逆の意思表示なので、両方とも確認ダイアログを挟む
+const successMessage: Record<SelectionAction, string> = {
+  offer: 'にオファーしました',
+  reject: 'を不採用にしました',
+}
+
 const actionsByStatus: Record<
   TsunaguWorksApplicationStatus,
   Array<{
@@ -78,7 +83,10 @@ export function SelectionActions({
       }
       return result.data
     },
-    onSuccess: () => {
+    onSuccess: (_updated, action) => {
+      toast.success(
+        `${application.talent_display_name} さん${successMessage[action]}`,
+      )
       void queryClient.invalidateQueries({ queryKey: selectionKeys.all })
     },
     onError: (error) => {
