@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
-import { LogoutButton } from '@/features/auth/components/client/LogoutButton'
 import { meTalent } from '@/external/handler/auth'
 
 export default async function Page() {
@@ -13,10 +12,7 @@ export default async function Page() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">人材ダッシュボード</h1>
-        <LogoutButton role="talent" />
-      </div>
+      <h1 className="text-2xl font-bold">人材ダッシュボード</h1>
 
       <dl className="space-y-2 rounded border p-4">
         <div>
