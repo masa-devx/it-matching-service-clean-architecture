@@ -97,7 +97,7 @@ packages/spec/shared/models.tsp（1箇所で定義）
 
 ```bash
 # 0. 前提ツール（初回のみ）: Node 24（.nvmrc）・pnpm（corepack）・Go 1.26
-go install github.com/rubenv/sql-migrate/...@latest                       # マイグレーション
+# ※ sql-migrate は go.mod の tool ディレクティブで管理（go install 不要・make 経由で自動解決）
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest  # linter（~/go/bin にPATHを通す）
 
 # 1. 環境変数（初回のみ）

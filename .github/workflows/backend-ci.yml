@@ -1,0 +1,120 @@
+# バックエンド CI: Go + PostgreSQL（実DBテスト・マイグレーション・生成物の Go 側）。
+# フロントエンドは frontend-ci.yml が担当（言語の境界で分割・#62）。
+# paths を backend 関連に絞ることで、web だけの PR ではこのワークフロー自体が起動しない
+name: backend-ci
+
+on:
+  pull_request:
+    paths:
+      - "api-server/**"
+      - "migrations/**"
+      - "packages/spec/**" # 仕様変更は Go の生成物に影響する
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/backend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "api-server/**"
+      - "migrations/**"
+      - "packages/spec/**"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/backend-ci.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      # 実DBテスト用の PostgreSQL。ホスト側ポートをローカル開発と同じ 5435 に合わせることで、
+      # dbconfig.yml（test 環境）とテストヘルパーの既定URLが CI でもそのまま使える
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tsunagu
+          POSTGRES_PASSWORD: tsunagu
+          POSTGRES_DB: tsunagu_test
+        ports:
+          - "5435:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://tsunagu:tsunagu@localhost:5435/tsunagu_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm はルート package.json の packageManager フィールドをバージョンの単一の真実にする
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: api-server/go.mod
+          # go.sum をキーにモジュール+ビルドキャッシュを共有（test / build / go tool 全部に効く）
+          cache: true
+          cache-dependency-path: api-server/go.sum
+
+      # go install はソースからのビルドで数分かかるため、公式スクリプトでバイナリを取得する。
+      # 版は明示的に固定する（@latest だとある日突然 CI だけ新ルールで落ちる）。
+      # 公式 action（golangci-lint-action）は lint を action 自身が実行する形になり
+      # turbo 経由（ローカルと同一コマンド）の原則が壊れるため使わない
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.12.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      # golangci-lint の解析キャッシュ（未変更パッケージの再解析をスキップして lint 自体が速くなる）
+      - name: Cache golangci-lint analysis
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ github.sha }}
+          restore-keys: golangci-lint-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # turbo のローカルキャッシュ（ワークフロー名をキーに含めて frontend 側と衝突させない）
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-backend-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-backend-${{ runner.os }}-
+
+      # テストDBへスキーマを適用（DB自体はサービスコンテナが POSTGRES_DB で作成済み）。
+      # sql-migrate は go.mod の tool ディレクティブ（版固定）＝ go install 不要・モジュールキャッシュに乗る
+      - name: Migrate test DB
+        run: make -C migrations test-up
+
+      # --filter=api-server: 依存する spec の build（YAML 生成）も ^build で自動的に走る
+      - name: Lint & Test & Build (Go)
+        run: pnpm turbo lint test build --filter=api-server
+
+      # 生成物の同期チェック（設計プラン§6・二次防衛）: このジョブが再生成した範囲を確認する
+      - name: Check generated files are up to date
+        run: |
+          git diff --exit-code -- \
+            'packages/spec/openapi-*.yaml' \
+            'api-server/generated' || {
+            echo '::error::生成物が仕様と同期していません。ローカルで pnpm turbo build を実行し、生成物をコミットしてください'
+            exit 1
+          }

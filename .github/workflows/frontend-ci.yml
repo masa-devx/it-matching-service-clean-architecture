@@ -1,0 +1,67 @@
+# フロントエンド CI: Node のみ（DB もコンテナも Go も不要）。
+# バックエンドは backend-ci.yml が担当（言語の境界で分割・#62）。
+# packages/** を含むのは、仕様（spec）変更が api-client の生成物に影響するため
+name: frontend-ci
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - "packages/**"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "packages/**"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/frontend-ci.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-frontend-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-frontend-${{ runner.os }}-
+
+      # --filter=!api-server: Go を除く全パッケージ（web / api-client / spec / typescript-config）
+      - name: Lint & Test & Build (TS)
+        run: pnpm turbo lint format:check test build --filter=!api-server
+
+      - name: Check generated files are up to date
+        run: |
+          git diff --exit-code -- \
+            'packages/api-client/company/generated' \
+            'packages/api-client/talent/generated' || {
+            echo '::error::生成物が仕様と同期していません。ローカルで pnpm turbo build を実行し、生成物をコミットしてください'
+            exit 1
+          }
