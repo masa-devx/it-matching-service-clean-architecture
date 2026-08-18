@@ -1,6 +1,7 @@
 'use client'
 
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
+import type { TsunaguWorksProject } from '@repo/api-client/company/generated/models'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 
@@ -11,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
 import { createProjectAction } from '../../actions/create'
+import { updateProjectAction } from '../../actions/update'
 import {
   projectFormSchema,
   type ProjectFormInput,
@@ -22,8 +24,31 @@ const asNumber = {
   setValueAs: (v: unknown) => (v === '' || v == null ? undefined : Number(v)),
 }
 
-export function ProjectForm() {
+// 作成と編集で同じフォームを使う。project の有無がモード:
+// 無し=作成（空の初期値・成功時はメッセージ表示）／有り=編集（値を復元・成功時は一覧へ redirect）。
+// API 側も作成と編集で同じ入力形（ProjectUpdateInput は CreateInput の spread）なので、スキーマも1本で足りる
+export function ProjectForm({ project }: { project?: TsunaguWorksProject }) {
   const [message, setMessage] = useState<string | null>(null)
+
+  // 作成モードは数値項目が未入力（undefined）で始まる部分値のため、
+  // ProjectFormInput 全体では注釈しない（useForm の DefaultValues が部分値を許容する）
+  const defaultValues = project
+    ? {
+        title: project.title,
+        description: project.description,
+        hourly_rate_min: project.hourly_rate_min ?? undefined,
+        hourly_rate_max: project.hourly_rate_max ?? undefined,
+        hours_per_week: project.hours_per_week,
+        remote_ok: project.remote_ok,
+        // フォーム上はカンマ区切りの1テキスト（schemas/create.ts の transform と対）
+        required_skills: project.required_skills.join(', '),
+      }
+    : {
+        title: '',
+        description: '',
+        remote_ok: false,
+        required_skills: '',
+      }
 
   const {
     register,
@@ -32,17 +57,20 @@ export function ProjectForm() {
     formState: { errors, isSubmitting },
   } = useForm<ProjectFormInput, unknown, ProjectFormOutput>({
     resolver: standardSchemaResolver(projectFormSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      remote_ok: false,
-      required_skills: '',
-    },
+    defaultValues,
   })
 
   // handleSubmit が渡してくるのは parse 後の値（ProjectFormOutput）＝ API に送る形
   const onSubmit = async (data: ProjectFormOutput) => {
     setMessage(null)
+    if (project) {
+      // 成功時は action 内の redirect で一覧へ遷移するため、戻り値があるのは失敗時だけ
+      const result = await updateProjectAction(project.id, data)
+      if (result?.error) {
+        setMessage(result.error)
+      }
+      return
+    }
     const result = await createProjectAction(data)
     setMessage(
       result.ok
@@ -147,10 +175,20 @@ export function ProjectForm() {
       </div>
 
       <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? '作成中…' : '案件を作成'}
+        {project
+          ? isSubmitting
+            ? '保存中…'
+            : '保存する'
+          : isSubmitting
+            ? '作成中…'
+            : '案件を作成'}
       </Button>
 
-      {message && <p className="font-medium">{message}</p>}
+      {message && (
+        <p role="alert" className="font-medium">
+          {message}
+        </p>
+      )}
     </form>
   )
 }

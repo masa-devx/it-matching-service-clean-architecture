@@ -2,6 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query'
 import type { TsunaguWorksProject } from '@repo/api-client/company/generated/models'
+import Link from 'next/link'
+
+import { Button } from '@/components/ui/button'
 
 import { ProjectStatusBadge } from '../ProjectStatusBadge'
 import { companyProjectsQuery } from '../../queries/companyProjects'
@@ -42,7 +45,12 @@ export function ProjectList() {
         <li key={p.id} className="rounded-lg border p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="font-medium">{p.title}</span>
-            <ProjectStatusBadge status={p.status} />
+            <div className="flex items-center gap-2">
+              <ProjectStatusBadge status={p.status} />
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/company/projects/${p.id}/edit`}>編集</Link>
+              </Button>
+            </div>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {rateText(p)} ・ 週{p.hours_per_week}時間 ・{' '}
