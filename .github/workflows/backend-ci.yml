@@ -71,12 +71,23 @@ jobs:
           cache: true
           cache-dependency-path: api-server/go.sum
 
-      # go install はソースからのビルドで数分かかるため、公式スクリプトでバイナリを取得する
+      # go install はソースからのビルドで数分かかるため、公式スクリプトでバイナリを取得する。
+      # 版は明示的に固定する（@latest だとある日突然 CI だけ新ルールで落ちる）。
+      # 公式 action（golangci-lint-action）は lint を action 自身が実行する形になり
+      # turbo 経由（ローカルと同一コマンド）の原則が壊れるため使わない
       - name: Install golangci-lint
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
-            | sh -s -- -b "$(go env GOPATH)/bin"
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.12.2
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      # golangci-lint の解析キャッシュ（未変更パッケージの再解析をスキップして lint 自体が速くなる）
+      - name: Cache golangci-lint analysis
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ github.sha }}
+          restore-keys: golangci-lint-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
