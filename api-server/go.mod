@@ -14,6 +14,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/oapi-codegen/runtime v1.7.0
+	github.com/rubenv/sql-migrate v1.8.1
 	golang.org/x/crypto v0.55.0
 )
 
@@ -75,7 +76,6 @@ require (
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20260418072757-ce92298d1124 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
-	github.com/rubenv/sql-migrate v1.8.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.3 // indirect
