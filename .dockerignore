@@ -1,0 +1,10 @@
+# ビルドコンテキストはホワイトリスト方式（必要な物だけ送る）。
+# コンテキストが小さいほど build が速く、.env 等の秘密がレイヤーに焼かれる事故も構造的に防げる
+*
+!api-server
+!migrations/ddl
+
+# ホワイトリスト内から秘密・開発ゴミを除外（.dockerignore は後勝ち）
+api-server/.env
+api-server/tmp
+api-server/node_modules
