@@ -1,0 +1,54 @@
+# CD の起動役（#84・it-support-service の型）: main への push で WIF 認証 → Cloud Build を発注する。
+# デプロイ手順そのものは cloudbuild.yaml（一次情報）に置き、GHA は認証と起動だけの薄い層に保つ
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    # デプロイ成果物に影響するパスのみ（docs だけのマージで本番を作り直さない）。
+    # CI（backend-ci / frontend-ci）の paths の和集合 + CD 自身
+    paths:
+      - "api-server/**"
+      - "web/**"
+      - "packages/**"
+      - "migrations/**"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - "cloudbuild.yaml"
+      - ".github/workflows/deploy.yml"
+  # 手動再デプロイの口（paths 外の理由で作り直したい時・障害復旧）
+  workflow_dispatch:
+
+# WIF の要: id-token: write が GitHub の OIDC トークン発行を許可する（これが無いと auth が失敗する）
+permissions:
+  contents: read
+  id-token: write
+
+# デプロイは並走も途中中断もさせない（migrate 実行中のキャンセルを防ぐ）
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # キーレス認証: GitHub の OIDC トークンを GCP が検証し、github-deployer として振る舞う
+      # （受け入れ条件は WIF プロバイダ側の attribute-condition = このリポジトリのみ）
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/985660768358/locations/global/workloadIdentityPools/github/providers/github-provider
+          service_account: github-deployer@tsunagu-works-829174.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: tsunagu-works-829174
+
+      # タグ＝コミット SHA（どのコミットが本番にいるかをタグだけで特定できる）
+      - name: Submit Cloud Build
+        run: gcloud builds submit --config cloudbuild.yaml --substitutions=_SHA=${{ github.sha }}
