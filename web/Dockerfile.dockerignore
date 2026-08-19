@@ -1,0 +1,19 @@
+# web/Dockerfile 専用の ignore（BuildKit は <Dockerfile>.dockerignore を優先する）。
+# ホワイトリスト方式: ビルドに要るのは web + packages + ルートのマニフェスト類だけ
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!turbo.json
+!api-server/package.json
+!web
+!packages
+
+# ホワイトリスト内から秘密・生成キャッシュを除外（後勝ち）
+web/.env*
+web/node_modules
+web/.next
+web/storybook-static
+packages/api-client/node_modules
+packages/spec/node_modules
+packages/typescript-config/node_modules
