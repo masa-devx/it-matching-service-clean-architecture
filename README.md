@@ -58,16 +58,16 @@ packages/spec/shared/models.tsp（1箇所で定義）
 
 ## 進め方（Phase 0 〜 7）
 
-**まず Phase 0 で「案件の作成」1エンドポイントだけを貫通させ、コード生成の品質を確かめてから全体を確定する。**
+**まず Phase 0 で「案件の作成」1エンドポイントだけを貫通させ、コード生成の品質を確かめてから全体を確定した。**
 
 | Phase | 内容                                                                        | ここで示すこと                           | 状態      |
 | ----- | --------------------------------------------------------------------------- | ---------------------------------------- | --------- |
-| **0** | 1エンドポイント貫通（TypeSpec → oapi-codegen / sqlc / orval → フォーム1つ） | 生成の質・Turborepo に Go を載せる現実性 | 🚧 進行中 |
-| 1     | 土台（層構成・DI・実DBテスト基盤・CI・依存方向の強制）                      | 設計を仕組みで守る                       | —         |
-| 2     | 認証 ＋ プロフィール（company / talent の2系統）                            | 認可がパスで一律になる                   | —         |
-| 3     | 案件（seek ページネーション・検索）                                         | 層分けした CRUD                          | —         |
-| 4     | 応募（状態機械）                                                            | domain 層の見せ場                        | —         |
-| 5     | デプロイ（Cloud Run・Cloud Run Job・CI/CD）                                 | 動くものを公開する                       | —         |
+| **0** | 1エンドポイント貫通（TypeSpec → oapi-codegen / sqlc / orval → フォーム1つ） | 生成の質・Turborepo に Go を載せる現実性 | ✅ 完了   |
+| 1     | 土台（層構成・DI・実DBテスト基盤・CI・依存方向の強制）                      | 設計を仕組みで守る                       | ✅ 完了   |
+| 2     | 認証 ＋ プロフィール（company / talent の2系統）                            | 認可がパスで一律になる                   | ✅ 完了   |
+| 3     | 案件（seek ページネーション・検索）                                         | 層分けした CRUD                          | ✅ 完了   |
+| 4     | 応募（状態機械）                                                            | domain 層の見せ場                        | ✅ 完了   |
+| 5     | デプロイ（Cloud Run・Cloud Run Job・CI/CD）                                 | 動くものを公開する                       | 🚧 進行中 |
 | 6     | E2E・トレーシング                                                           | 通しで壊れないことを示す                 | —         |
 | 7     | eKYC（multipart・Cloud Storage・署名付きURL）                               | 既存の土台に新種の機能を足す             | —         |
 
@@ -88,6 +88,21 @@ packages/spec/shared/models.tsp（1箇所で定義）
 これらは tsunagu-works で実装済み。ドメインの詳細は [docs/サービス概要.md](docs/サービス概要.md) と [docs/データ設計.md](docs/データ設計.md) へ。
 
 **出発点の規模**（tsunagu-works MVP・2026-08-07 時点）: テーブル9・APIエンドポイント28・画面23・Go実装3,948行（テスト1,309行）・状態遷移表5本。
+
+## 公開環境（本番）
+
+**web**: https://tsunagu-web-985660768358.asia-northeast1.run.app ／ **api**: https://tsunagu-api-985660768358.asia-northeast1.run.app/health
+
+```
+main マージ ─→ GitHub Actions（WIF・キーレス認証）─→ Cloud Build（cloudbuild.yaml が一次情報）
+                 build & push（タグ=コミットSHA）→ migrate Job --wait → Cloud Run 切り替え
+                          │
+             Artifact Registry ── Cloud Run（api / web）── Neon PostgreSQL
+```
+
+- **本番にシードデータは入れない**（動作確認は画面の signup から。下記テストアカウントはローカル専用）
+- コールドスタート採用（min-instances 0）のため、初回アクセスは数秒かかることがある
+- 手順・判断の詳細は [docs/デプロイ.md](docs/デプロイ.md)・[ADR-0011](docs/adr/0011-web-on-cloud-run.md)
 
 ## 動かす
 
