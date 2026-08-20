@@ -1,0 +1,96 @@
+# CD の一次情報（#84）: main マージ → deploy.yml（GHA・起動役）→ このファイルを Cloud Build が実行する。
+# ローカルからも同一手順を発火できる（緊急時・検証用）:
+#   gcloud builds submit --config cloudbuild.yaml --substitutions=_SHA=$(git rev-parse --short HEAD)
+# 順序が本体: build → push 完了 → migrate 成功 → api/web 切り替え（migrate 失敗ならデプロイに進まない）
+
+steps:
+  # Cloud Build は amd64 ネイティブのため --platform 指定は不要（ローカルの Apple Silicon の罠が消える）
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - api-server/Dockerfile
+      - -t
+      - asia-northeast1-docker.pkg.dev/$PROJECT_ID/tsunagu/api:$_SHA
+      - .
+
+  - id: build-web
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - web/Dockerfile
+      - -t
+      - asia-northeast1-docker.pkg.dev/$PROJECT_ID/tsunagu/web:$_SHA
+      - .
+
+  - id: push-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - asia-northeast1-docker.pkg.dev/$PROJECT_ID/tsunagu/api:$_SHA
+
+  - id: push-web
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - asia-northeast1-docker.pkg.dev/$PROJECT_ID/tsunagu/web:$_SHA
+
+  # スキーマを先に前進させる（API 起動時に流さない理由: api-server/cmd/migrate/main.go 冒頭）
+  - id: migrate-update
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - update
+      - migrate
+      - --image=asia-northeast1-docker.pkg.dev/$PROJECT_ID/tsunagu/api:$_SHA
+      - --region=asia-northeast1
+
+  # --wait で完了まで待つ。ここが失敗するとビルド全体が失敗し、旧イメージのまま止まる＝半端な状態を作らない
+  - id: migrate-execute
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - execute
+      - migrate
+      - --region=asia-northeast1
+      - --wait
+
+  # services update は「イメージだけ差し替え」。ポート・シークレット・インスタンス数など既存設定は維持される
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - tsunagu-api
+      - --image=asia-northeast1-docker.pkg.dev/$PROJECT_ID/tsunagu/api:$_SHA
+      - --region=asia-northeast1
+
+  - id: deploy-web
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - tsunagu-web
+      - --image=asia-northeast1-docker.pkg.dev/$PROJECT_ID/tsunagu/web:$_SHA
+      - --region=asia-northeast1
+
+substitutions:
+  # イメージタグ＝デプロイ単位の識別子。deploy.yml がコミット SHA を注入する（手動実行時の既定値は manual）
+  _SHA: manual
+
+options:
+  # ビルドSA（compute 既定SA）を使う場合の要件。ログは Cloud Logging のみに出す
+  logging: CLOUD_LOGGING_ONLY
+
+# web（Next.js）のビルドが既定の 10 分を超えうるため延長
+timeout: 1800s

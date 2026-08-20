@@ -1,0 +1,24 @@
+# Ruleset の required checks 対策（GitHub 公式ドキュメントの型）:
+# 本体（frontend-ci.yml）は paths で絞っているため、対象外の PR（docs のみ等）ではチェックが起動せず
+# 「Expected」のまま永遠にマージできなくなる。同じ workflow 名・ジョブ名で「常に成功する」ツインを
+# paths-ignore（本体の paths と鏡写し）で用意し、どちらか一方が必ず required check を満たすようにする。
+# ⚠️ 本体の paths を変えたら、このリストも必ず同じに保つこと
+name: frontend-ci
+
+on:
+  pull_request:
+    paths-ignore:
+      - "web/**"
+      - "packages/**"
+      - "turbo.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".github/workflows/frontend-ci.yml"
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "frontend に影響する変更がないためスキップ（required check を満たすためのツイン）"

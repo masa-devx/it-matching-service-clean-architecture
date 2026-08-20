@@ -1,0 +1,8 @@
+# gcloud builds submit がアップロードするソースから除外するもの。
+# #!include はルートの .gitignore だけを取り込む（web/.gitignore は対象外）ため、
+# サブディレクトリ固有の大物は下に明示する（.env* / node_modules / .next はルート側の継承で除外済み）
+.gcloudignore
+.git
+#!include:.gitignore
+web/storybook-static
+web/coverage
