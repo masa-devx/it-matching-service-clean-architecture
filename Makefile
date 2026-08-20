@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -38,3 +38,22 @@ db-test-setup: ## テストDB（tsunagu_test）を作成しスキーマを適用
 		docker compose exec -T db psql -U tsunagu -d tsunagu -c "CREATE DATABASE tsunagu_test"
 	$(MAKE) -C migrations test-up
 
+
+## --- e2e fixture（API 統合テストの基準世界） ---
+
+# DB コンテナ内でコマンドを実行する方法。ローカルは compose、CI はサービスコンテナの docker exec に
+# 差し替える（backend-ci が DB_EXEC を上書き）＝ dump 生成手順の一次情報をこの1か所に保つ
+DB_EXEC ?= docker compose exec -T db
+
+# dump.sql は生成物（手編集禁止）。世界を変えるときは seed.go を変えてこのターゲットで再生成する。
+# テーブルを明示列挙するのは、pg_dump のテーブル順（カタログ順）が FK の依存順と一致する保証がないため
+e2e-dump: ## e2e fixture の dump.sql を再生成（一次情報は api-server/test/e2efixture/seed.go・要 make db-up）
+	$(DB_EXEC) dropdb -U tsunagu --if-exists tsunagu_e2e
+	$(DB_EXEC) createdb -U tsunagu tsunagu_e2e
+	$(MAKE) -C migrations e2e-up
+	cd api-server && go run ./cmd/e2eseed
+	@for t in users companies talents projects applications; do \
+		$(DB_EXEC) pg_dump -U tsunagu --data-only --column-inserts -t public.$$t tsunagu_e2e | grep -E '^INSERT INTO'; \
+	done > api-server/test/e2efixture/dump.sql
+	@test -s api-server/test/e2efixture/dump.sql || { echo "dump.sql が空です（pg_dump 失敗の可能性）"; exit 1; }
+	@echo "生成完了: api-server/test/e2efixture/dump.sql（$$(wc -l < api-server/test/e2efixture/dump.sql | tr -d ' ') 行）"

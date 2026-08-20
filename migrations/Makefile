@@ -11,7 +11,7 @@
 SQL_MIGRATE := go -C ../api-server tool sql-migrate
 CONFIG := -config=$(CURDIR)/dbconfig.yml
 
-.PHONY: up down reset status new test-up
+.PHONY: up down reset status new test-up e2e-up
 
 up:
 	$(SQL_MIGRATE) up $(CONFIG)
@@ -19,6 +19,10 @@ up:
 # テストDB（tsunagu_test）へスキーマを適用
 test-up:
 	$(SQL_MIGRATE) up -env=test $(CONFIG)
+
+# e2e fixture 構築用 DB（tsunagu_e2e）へスキーマを適用（make e2e-dump が使う）
+e2e-up:
+	$(SQL_MIGRATE) up -env=e2e $(CONFIG)
 
 # down は直前の1件だけ巻き戻す（開発時の手直し用。本番では原則使わない）
 down:

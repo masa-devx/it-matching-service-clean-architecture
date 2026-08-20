@@ -31,7 +31,7 @@
 | DB | PostgreSQL（Docker）＋ **sqlc**（repository層は作らない。`Queries` が repository 相当） |
 | サーバー状態 | TanStack Query（prefetch / Hydration）。書き込みは Server Actions |
 | 認証・認可 | 自前JWT（bcrypt・httpOnly Cookie）。**ロール認可はパスプレフィックス（/company/*, /talent/*）×ミドルウェアで一律** |
-| テスト | 実DBテスト（pgx.Tx分離・ADR-0008）+ factories・モックしない/ Vitest / Playwright |
+| テスト | 実DBテスト（pgx.Tx分離・ADR-0008）+ factories・モックしない / API統合テスト（実MW・ADR-0012）/ Vitest |
 | デプロイ | Cloud Run + Cloud Run Job（migrate）+ Neon |
 
 ### ポート（他プロジェクトと衝突しない値に固定）

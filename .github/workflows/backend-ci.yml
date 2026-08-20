@@ -118,3 +118,13 @@ jobs:
             echo '::error::生成物が仕様と同期していません。ローカルで pnpm turbo build を実行し、生成物をコミットしてください'
             exit 1
           }
+
+      # e2e fixture の同期チェック（検知③・#95）: seed.go（一次情報）から dump.sql を再生成して差分を見る。
+      # DB_EXEC の差し替えで Makefile の手順（一次情報）をそのまま使う（compose → サービスコンテナ）
+      - name: Check e2e fixture dump is up to date
+        run: |
+          make e2e-dump DB_EXEC="docker exec ${{ job.services.postgres.id }}"
+          git diff --exit-code -- api-server/test/e2efixture/dump.sql || {
+            echo '::error::dump.sql が seed.go と同期していません。ローカルで make e2e-dump を実行し、dump.sql をコミットしてください'
+            exit 1
+          }

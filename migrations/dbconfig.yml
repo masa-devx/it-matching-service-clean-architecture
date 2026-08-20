@@ -14,3 +14,10 @@ test:
   datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu_test sslmode=disable
   dir: ../migrations/ddl
   table: gorp_migrations
+
+# e2e fixture（基準世界）構築専用（make e2e-dump が使う。テスト実行時は使わない）
+e2e:
+  dialect: postgres
+  datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu_e2e sslmode=disable
+  dir: ../migrations/ddl
+  table: gorp_migrations
