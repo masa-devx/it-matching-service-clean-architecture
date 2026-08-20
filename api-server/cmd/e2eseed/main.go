@@ -17,8 +17,9 @@ import (
 func main() {
 	url := os.Getenv("E2E_DATABASE_URL")
 	if url == "" {
-		// ローカル既定値（開発 DB と同居する専用データベース。パスワードはローカル学習用）
-		url = "postgres://tsunagu:tsunagu@localhost:5435/tsunagu_e2e?sslmode=disable"
+		// ローカル既定値。docker-compose.yml にコミット済みの資格情報と同一で、
+		// 秘匿情報ではないため gosec の G101 を除外する（helpers/db.go と同じ判断）
+		url = "postgres://tsunagu:tsunagu@localhost:5435/tsunagu_e2e?sslmode=disable" //nolint:gosec
 	}
 
 	ctx := context.Background()

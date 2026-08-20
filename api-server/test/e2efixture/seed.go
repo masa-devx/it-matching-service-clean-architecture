@@ -14,7 +14,8 @@ import (
 // passwordHash は Password の bcrypt ハッシュ。
 // 毎回 bcrypt.GenerateFromPassword すると乱数ソルトで dump.sql が毎回変わり、
 // 「同じ seed からは同じ dump」という再現性（CI 差分チェックの前提）が壊れるため固定値にする
-const passwordHash = "$2a$10$OW9eXMdehG7ljy2gSTWfleDRMTG57B0QRv6im2FtyPaBp5Ad1UifS"
+// テスト専用の公開値（Password 定数のハッシュ）であり秘匿情報ではないため G101 を除外する
+const passwordHash = "$2a$10$OW9eXMdehG7ljy2gSTWfleDRMTG57B0QRv6im2FtyPaBp5Ad1UifS" //nolint:gosec
 
 // Seed は基準世界を構築する。クリーンな（マイグレーション適用済み・データ空の）DB を前提とする。
 //
