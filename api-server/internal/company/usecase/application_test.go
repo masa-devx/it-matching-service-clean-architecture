@@ -125,7 +125,7 @@ func TestApplicationOfferReject(t *testing.T) {
 		userID, projectID := setupPublishedProject(t, queries)
 		appID := applyAsNewTalent(t, queries, projectID, "")
 
-		row, err := uc.Offer(ctx, userID, appID)
+		row, err := uc.Offer(ctx, userID, appID, "")
 		if err != nil {
 			t.Fatalf("オファーに失敗: %v", err)
 		}
@@ -161,10 +161,10 @@ func TestApplicationOfferReject(t *testing.T) {
 		userID, projectID := setupPublishedProject(t, queries)
 		appID := applyAsNewTalent(t, queries, projectID, "")
 
-		if _, err := uc.Offer(ctx, userID, appID); err != nil {
+		if _, err := uc.Offer(ctx, userID, appID, ""); err != nil {
 			t.Fatalf("1回目のオファーに失敗: %v", err)
 		}
-		_, err := uc.Offer(ctx, userID, appID)
+		_, err := uc.Offer(ctx, userID, appID, "")
 		if !errors.Is(err, usecase.ErrCannotChangeApplication) {
 			t.Fatalf("ErrCannotChangeApplication を期待したが: %v", err)
 		}
@@ -180,11 +180,11 @@ func TestApplicationOfferReject(t *testing.T) {
 		otherUserID, _ := setupCompany(t, queries)
 		appID := applyAsNewTalent(t, queries, projectID, "")
 
-		if _, err := uc.Offer(ctx, otherUserID, appID); !errors.Is(err, usecase.ErrApplicationNotFound) {
+		if _, err := uc.Offer(ctx, otherUserID, appID, ""); !errors.Is(err, usecase.ErrApplicationNotFound) {
 			t.Errorf("他社: ErrApplicationNotFound を期待したが: %v", err)
 		}
 		ownUserID, _ := setupPublishedProject(t, queries)
-		if _, err := uc.Offer(ctx, ownUserID, 99999999); !errors.Is(err, usecase.ErrApplicationNotFound) {
+		if _, err := uc.Offer(ctx, ownUserID, 99999999, ""); !errors.Is(err, usecase.ErrApplicationNotFound) {
 			t.Errorf("不存在: ErrApplicationNotFound を期待したが: %v", err)
 		}
 	})

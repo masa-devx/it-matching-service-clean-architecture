@@ -17,6 +17,11 @@ export interface TsunaguWorksApplicationForCompany {
   status: TsunaguWorksApplicationStatus;
   /** 志望動機 */
   message: string;
+  /**
+     * 企業からのオファーメッセージ（オファー時のみ設定。無ければ null）
+     * @nullable
+     */
+  offer_message: string | null;
   /** 応募者の表示名 */
   talent_display_name: string;
   /** 応募者のスキル */

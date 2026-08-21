@@ -162,7 +162,7 @@ func seedApplications(ctx context.Context, queries *db.Queries) error {
 	if err != nil {
 		return err
 	}
-	if _, err := companyApp.Offer(ctx, CompanyA.UserID, id); err != nil {
+	if _, err := companyApp.Offer(ctx, CompanyA.UserID, id, ""); err != nil {
 		return fmt.Errorf("e2efixture: offered の遷移に失敗: %w", err)
 	}
 
@@ -171,7 +171,7 @@ func seedApplications(ctx context.Context, queries *db.Queries) error {
 	if err != nil {
 		return err
 	}
-	if _, err := companyApp.Offer(ctx, CompanyA.UserID, id); err != nil {
+	if _, err := companyApp.Offer(ctx, CompanyA.UserID, id, ""); err != nil {
 		return fmt.Errorf("e2efixture: accepted のオファーに失敗: %w", err)
 	}
 	if _, err := talentApp.Accept(ctx, TalentA.UserID, id); err != nil {
@@ -201,7 +201,7 @@ func seedApplications(ctx context.Context, queries *db.Queries) error {
 	if err != nil {
 		return err
 	}
-	if _, err := companyApp.Offer(ctx, CompanyB.UserID, id); err != nil {
+	if _, err := companyApp.Offer(ctx, CompanyB.UserID, id, ""); err != nil {
 		return fmt.Errorf("e2efixture: declined のオファーに失敗: %w", err)
 	}
 	if _, err := talentApp.Decline(ctx, TalentB.UserID, id); err != nil {

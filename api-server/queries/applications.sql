@@ -27,6 +27,7 @@ SELECT
     p.title AS project_title,
     a.status,
     a.message,
+    a.offer_message,
     a.created_at
 FROM applications a
 JOIN projects p ON p.id = a.project_id
@@ -41,6 +42,7 @@ SELECT
     p.title AS project_title,
     a.status,
     a.message,
+    a.offer_message,
     a.created_at
 FROM applications a
 JOIN projects p ON p.id = a.project_id
@@ -56,6 +58,7 @@ SELECT
     a.project_id,
     a.status,
     a.message,
+    a.offer_message,
     t.display_name AS talent_display_name,
     t.skills AS talent_skills,
     a.created_at
@@ -72,6 +75,7 @@ SELECT
     a.project_id,
     a.status,
     a.message,
+    a.offer_message,
     t.display_name AS talent_display_name,
     t.skills AS talent_skills,
     a.created_at
@@ -87,6 +91,7 @@ WHERE a.id = $1 AND p.company_id = $2;
 UPDATE applications a
 SET
     status = @to_status,
+    offer_message = @offer_message,
     company_acted_at = now()
 FROM projects p, talents t
 WHERE a.id = @id
@@ -99,6 +104,7 @@ RETURNING
     a.project_id,
     a.status,
     a.message,
+    a.offer_message,
     t.display_name AS talent_display_name,
     t.skills AS talent_skills,
     a.company_acted_at,
@@ -125,5 +131,6 @@ RETURNING
     p.title AS project_title,
     a.status,
     a.message,
+    a.offer_message,
     a.talent_acted_at,
     a.created_at;

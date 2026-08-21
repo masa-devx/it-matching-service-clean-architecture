@@ -22,6 +22,7 @@ const applications: TsunaguWorksApplication[] = [
     project_title: 'Go バックエンドの API 開発',
     status: 'offered',
     message: 'バックエンドの経験を活かせると思い応募しました。',
+    offer_message: 'ぜひ一度お話ししたいです。来週お時間いかがですか？',
     created_at: '2026-08-16T09:00:00Z',
   },
   {
@@ -30,6 +31,7 @@ const applications: TsunaguWorksApplication[] = [
     project_title: '管理画面のフロントエンド改修',
     status: 'applied',
     message: '',
+    offer_message: null,
     created_at: '2026-08-15T09:00:00Z',
   },
   {
@@ -38,6 +40,7 @@ const applications: TsunaguWorksApplication[] = [
     project_title: 'インフラの IaC 化',
     status: 'accepted',
     message: 'Terraform の実務経験があります。',
+    offer_message: null,
     created_at: '2026-08-10T09:00:00Z',
   },
   {
@@ -46,6 +49,7 @@ const applications: TsunaguWorksApplication[] = [
     project_title: 'モバイルアプリの API 連携',
     status: 'rejected',
     message: '',
+    offer_message: null,
     created_at: '2026-08-05T09:00:00Z',
   },
   {
@@ -54,6 +58,7 @@ const applications: TsunaguWorksApplication[] = [
     project_title: 'データ基盤の構築',
     status: 'withdrawn',
     message: '',
+    offer_message: null,
     created_at: '2026-08-03T09:00:00Z',
   },
   {
@@ -62,6 +67,7 @@ const applications: TsunaguWorksApplication[] = [
     project_title: '社内ツールの保守',
     status: 'declined',
     message: '',
+    offer_message: null,
     created_at: '2026-08-01T09:00:00Z',
   },
 ]

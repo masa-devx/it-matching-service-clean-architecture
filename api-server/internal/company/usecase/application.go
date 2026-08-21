@@ -54,14 +54,18 @@ func (u *Application) ListForProject(ctx context.Context, userID, projectID int6
 	return rows, nil
 }
 
-// Offer はオファーする（applied → offered）
-func (u *Application) Offer(ctx context.Context, userID, applicationID int64) (db.UpdateApplicationStatusForCompanyRow, error) {
-	return u.changeStatus(ctx, userID, applicationID, domain.ApplicationOffered)
+// Offer はオファーする（applied → offered）。message は応募者への一言（空なら「無し」= NULL で保存）
+func (u *Application) Offer(ctx context.Context, userID, applicationID int64, message string) (db.UpdateApplicationStatusForCompanyRow, error) {
+	var offerMessage *string
+	if message != "" {
+		offerMessage = &message
+	}
+	return u.changeStatus(ctx, userID, applicationID, domain.ApplicationOffered, offerMessage)
 }
 
-// Reject は不採用にする（applied → rejected）
+// Reject は不採用にする（applied → rejected）。offer_message は設定しない（NULL のまま）
 func (u *Application) Reject(ctx context.Context, userID, applicationID int64) (db.UpdateApplicationStatusForCompanyRow, error) {
-	return u.changeStatus(ctx, userID, applicationID, domain.ApplicationRejected)
+	return u.changeStatus(ctx, userID, applicationID, domain.ApplicationRejected, nil)
 }
 
 // changeableFrom は「company が to へ遷移させられる元状態」を遷移表から導出する
@@ -78,7 +82,7 @@ func changeableFrom(to domain.ApplicationStatus) []string {
 
 // changeStatus は選考の遷移を実行する。所有（JOIN 越しの company_id）と遷移可否は
 // 条件付き UPDATE が原子的に検査し、0行なら再取得して 404 と 409 を区別する
-func (u *Application) changeStatus(ctx context.Context, userID, applicationID int64, to domain.ApplicationStatus) (db.UpdateApplicationStatusForCompanyRow, error) {
+func (u *Application) changeStatus(ctx context.Context, userID, applicationID int64, to domain.ApplicationStatus, offerMessage *string) (db.UpdateApplicationStatusForCompanyRow, error) {
 	companyID, err := resolveCompanyID(ctx, u.queries, userID)
 	if err != nil {
 		return db.UpdateApplicationStatusForCompanyRow{}, err
@@ -89,6 +93,7 @@ func (u *Application) changeStatus(ctx context.Context, userID, applicationID in
 		CompanyID:    companyID,
 		ToStatus:     string(to),
 		FromStatuses: changeableFrom(to),
+		OfferMessage: offerMessage,
 	})
 	if err == nil {
 		return row, nil

@@ -19,6 +19,7 @@ type Application struct {
 	CompanyActedAt pgtype.Timestamptz
 	TalentActedAt  pgtype.Timestamptz
 	CreatedAt      time.Time
+	OfferMessage   *string
 }
 
 type Company struct {

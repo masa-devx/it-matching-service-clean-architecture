@@ -15,6 +15,7 @@ export * from './tsunaguWorksAuthToken';
 export * from './tsunaguWorksCompanyMe';
 export * from './tsunaguWorksCompanySignupInput';
 export * from './tsunaguWorksLoginInput';
+export * from './tsunaguWorksOfferInput';
 export * from './tsunaguWorksProject';
 export * from './tsunaguWorksProjectCreateInput';
 export * from './tsunaguWorksProjectList';
