@@ -137,6 +137,7 @@ pnpm dev
 | talent1@example.com / talent2@example.com   | 人材   |
 
 - ビルド・検証は turbo に集約: `pnpm turbo build` ／ CI と同一の全チェックは `pnpm turbo lint format:check test build`
+- Go テストの見やすい実行: `make test-api`（gotestsum・テスト名と PASS/FAIL を色付き表示）
 - `make` は DB 専用の道具箱（`make help` で一覧）。マイグレーションは sql-migrate で管理（psql で DDL を直接流さない）
 
 ## ドキュメント
