@@ -13,6 +13,8 @@ type Config struct {
 	Port        int
 	DatabaseURL string
 	JWTSecret   []byte
+	// OTLPEndpoint はトレースの送信先（例 http://localhost:4318）。空なら送信しない（no-op）
+	OTLPEndpoint string
 }
 
 // Load は環境変数から設定を組み立てる。
@@ -43,8 +45,9 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		Port:        port,
-		DatabaseURL: dbURL,
-		JWTSecret:   []byte(jwtSecret),
+		Port:         port,
+		DatabaseURL:  dbURL,
+		JWTSecret:    []byte(jwtSecret),
+		OTLPEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	}, nil
 }

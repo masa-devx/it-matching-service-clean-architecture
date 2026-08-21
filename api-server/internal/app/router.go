@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
 	talentapi "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/talent"
@@ -79,7 +80,15 @@ func NewRouter(txdb TxBeginner, queries *db.Queries, jwtSecret []byte) (http.Han
 		BaseRouter: mux,
 	})
 
-	// ミドルウェアチェーン（外→内）: RequestID → Recovery → AccessLog → ルーター。
-	// RequestID が最外なのは、panic ログにも request_id を付けるため
-	return middleware.RequestID(middleware.Recovery(middleware.AccessLog(mux))), nil
+	// ミドルウェアチェーン（外→内）: otelhttp → RequestID → Recovery → AccessLog → ルーター。
+	// otelhttp が最外なのは、traceparent の抽出と span の開始を最初に行い、
+	// 内側の全処理（request_id 付与・ログ・panic 記録）が span の中に入るようにするため。
+	// TracerProvider 未設定（テスト・OTLP 無効時）では no-op として振る舞う
+	handler := middleware.RequestID(middleware.Recovery(middleware.AccessLog(mux)))
+	return otelhttp.NewHandler(handler, "http.server",
+		// span 名は「METHOD /path」（既定の固定名だと Jaeger で全リクエストが同名になり探せない）
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return r.Method + " " + r.URL.Path
+		}),
+	), nil
 }

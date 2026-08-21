@@ -3,10 +3,10 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api trace-up trace-down dev dev-api dev-web
 
 help: ## コマンド一覧を表示
-	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 ## --- DB ---
 
@@ -62,3 +62,22 @@ e2e-dump: ## e2e fixture の dump.sql を再生成（一次情報は api-server/
 
 test-api: ## api の全テストを Jest 風の見やすい表示で実行（gotestsum・要 make db-up + db-test-setup）
 	cd api-server && go tool gotestsum --format testname --format-hide-empty-pkg -- -count=1 ./...
+
+## --- トレース（ローカル可視化・任意） ---
+
+trace-up: ## Jaeger を起動（UI: http://localhost:16686・OTLP: :4318）
+	docker compose --profile trace up -d jaeger
+
+trace-down: ## Jaeger を停止
+	docker compose --profile trace down jaeger 2>/dev/null || docker compose stop jaeger
+
+## --- アプリ起動（フォアグラウンド実行・Ctrl+C で停止・要 make db-up） ---
+
+dev: ## バックエンド + フロントエンドを並列起動（= pnpm dev）
+	pnpm dev
+
+dev-api: ## バックエンドのみ起動（Go API :8082）
+	pnpm turbo dev --filter=api-server
+
+dev-web: ## フロントエンドのみ起動（Next.js :3001・API は別途 dev-api か本番向き先が必要）
+	pnpm turbo dev --filter=web

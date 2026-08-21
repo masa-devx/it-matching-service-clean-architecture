@@ -7,15 +7,25 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"regexp"
 )
 
 type requestIDKey struct{}
 
-// RequestID はリクエストごとに ID を採番して context とレスポンスヘッダに載せる。
+// validRequestID は受け入れる ID の形式。外部入力をそのままログに書くと
+// ログインジェクション（改行や制御文字の混入）の入口になるため、英数とハイフンに限定する
+var validRequestID = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
+
+// RequestID はリクエストごとに ID を context とレスポンスヘッダに載せる。
+// 呼び出し元（Next.js やロードバランサー）が X-Request-ID を付けてきた場合は**尊重**し、
+// フロントとバックのログを同じ ID で突き合わせられるようにする（無い・不正なら採番）。
 // 本番のエラー追跡の生命線: ユーザーからの問い合わせ（ヘッダの値）とサーバーログを突き合わせられる
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := newRequestID()
+		id := r.Header.Get("X-Request-ID")
+		if !validRequestID.MatchString(id) {
+			id = newRequestID()
+		}
 		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
 		w.Header().Set("X-Request-ID", id)
 		next.ServeHTTP(w, r.WithContext(ctx))

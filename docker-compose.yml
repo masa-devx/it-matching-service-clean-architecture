@@ -1,6 +1,7 @@
-# ローカル開発環境: PostgreSQL のみ
+# ローカル開発環境: PostgreSQL + Jaeger（トレース可視化・任意）
 # アプリ（Go / Next.js）の起動は `pnpm dev`（Turborepo）に一本化している
 # 起動:   docker compose up -d db  （または make db-up）
+# トレース: make trace-up で Jaeger を起動（UI: http://localhost:16686）
 # DBに入る: docker compose exec db psql -U tsunagu -d tsunagu
 # ★DBのホストポートは 5435（5432=ローカルPostgres・5433=todo-app・5434=tsunagu-works と衝突回避）
 # ★コンテナ名・ボリューム名は tsunagu-arch- 接頭辞（tsunagu-works 側と同時起動できるように分離）
@@ -23,6 +24,16 @@ services:
       interval: 3s
       timeout: 3s
       retries: 10
+
+  # トレース可視化（ローカル専用・使うときだけ make trace-up で起動）。
+  # all-in-one = 受信（OTLP）・保存（メモリ）・UI が1コンテナ。データは揮発でよい（開発の使い捨て）
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    container_name: tsunagu-arch-jaeger
+    profiles: ['trace'] # 既定の docker compose up では起動しない（DB だけの普段使いを守る）
+    ports:
+      - '16686:16686' # UI
+      - '4318:4318' # OTLP HTTP（Go / Next.js からの送信口）
 
 volumes:
   tsunagu-arch-db-data:

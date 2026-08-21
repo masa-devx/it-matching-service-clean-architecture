@@ -138,6 +138,7 @@ pnpm dev
 
 - ビルド・検証は turbo に集約: `pnpm turbo build` ／ CI と同一の全チェックは `pnpm turbo lint format:check test build`
 - Go テストの見やすい実行: `make test-api`（gotestsum・テスト名と PASS/FAIL を色付き表示）
+- トレース（任意）: `make trace-up` で Jaeger 起動 → `api-server/.env` に `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` → http://localhost:16686 で Go → SQL の trace を見る
 - `make` は DB 専用の道具箱（`make help` で一覧）。マイグレーションは sql-migrate で管理（psql で DDL を直接流さない）
 
 ## ドキュメント

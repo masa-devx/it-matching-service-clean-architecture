@@ -37,6 +37,21 @@ func run() error {
 	}
 
 	ctx := context.Background()
+
+	// トレース基盤（OTEL_EXPORTER_OTLP_ENDPOINT 未設定なら no-op）。
+	// 終了時に flush する: Batcher が溜めている送信前の span を失わないため
+	shutdownTracing, err := infra.SetupTracing(ctx, cfg.OTLPEndpoint)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTracing(flushCtx); err != nil {
+			slog.Warn("トレースの flush に失敗", "err", err)
+		}
+	}()
+
 	pool, err := infra.NewDB(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
