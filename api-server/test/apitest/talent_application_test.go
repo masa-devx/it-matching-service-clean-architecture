@@ -160,6 +160,7 @@ func TestTalentTransitions(t *testing.T) {
 			token := Login(t, srv, "/talent", tt.loginEmail)
 
 			resp := Do(t, srv, http.MethodPost, fmt.Sprintf("/talent/applications/%d/%s", tt.applicationID, tt.action), token, "")
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("status 200 を期待したが %d", resp.StatusCode)
 			}
