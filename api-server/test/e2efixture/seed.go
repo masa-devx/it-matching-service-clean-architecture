@@ -157,12 +157,12 @@ func seedApplications(ctx context.Context, queries *db.Queries) error {
 		return err
 	}
 
-	// 2. offered: TalentB → 公開案件1 → A社がオファー
+	// 2. offered: TalentB → 公開案件1 → A社がオファー（メッセージあり＝talent 側表示の見せ場）
 	id, err := apply(TalentB.UserID, Projects.APublished, "オファー済みの基準応募です", Applications.Offered)
 	if err != nil {
 		return err
 	}
-	if _, err := companyApp.Offer(ctx, CompanyA.UserID, id, ""); err != nil {
+	if _, err := companyApp.Offer(ctx, CompanyA.UserID, id, OfferedMessage); err != nil {
 		return fmt.Errorf("e2efixture: offered の遷移に失敗: %w", err)
 	}
 
@@ -171,6 +171,7 @@ func seedApplications(ctx context.Context, queries *db.Queries) error {
 	if err != nil {
 		return err
 	}
+	// accepted のオファーはメッセージ無しのまま（offer_message の NULL と値の両方を世界に揃える）
 	if _, err := companyApp.Offer(ctx, CompanyA.UserID, id, ""); err != nil {
 		return fmt.Errorf("e2efixture: accepted のオファーに失敗: %w", err)
 	}
@@ -201,7 +202,7 @@ func seedApplications(ctx context.Context, queries *db.Queries) error {
 	if err != nil {
 		return err
 	}
-	if _, err := companyApp.Offer(ctx, CompanyB.UserID, id, ""); err != nil {
+	if _, err := companyApp.Offer(ctx, CompanyB.UserID, id, DeclinedMessage); err != nil {
 		return fmt.Errorf("e2efixture: declined のオファーに失敗: %w", err)
 	}
 	if _, err := talentApp.Decline(ctx, TalentB.UserID, id); err != nil {

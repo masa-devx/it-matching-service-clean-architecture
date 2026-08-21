@@ -58,3 +58,10 @@ var Applications = struct {
 	Withdrawn int64 // TalentA → BPublished（人材が取り下げ）
 	Declined  int64 // TalentB → BPublished（オファー→辞退）
 }{Applied: 1, Offered: 2, Accepted: 3, Rejected: 4, Withdrawn: 5, Declined: 6}
+
+// OfferedMessage / DeclinedMessage は基準世界のオファーメッセージ（テストが文言を突合するため定数化。
+// 改行を入れないこと＝1行1INSERT の規約）
+const (
+	OfferedMessage  = "ぜひ一度お話ししましょう。ご応募ありがとうございます！"
+	DeclinedMessage = "B社です。スキルが要件に合うと感じてオファーしました。"
+)
