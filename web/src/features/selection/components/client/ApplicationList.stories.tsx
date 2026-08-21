@@ -24,6 +24,7 @@ const applications: TsunaguWorksApplicationForCompany[] = [
       'バックエンドの経験を活かせると思い応募しました。\nよろしくお願いします。',
     talent_display_name: '山田太郎',
     talent_skills: ['Go', 'PostgreSQL', 'TypeScript'],
+    offer_message: null,
     created_at: '2026-08-16T09:00:00Z',
   },
   {
@@ -31,6 +32,7 @@ const applications: TsunaguWorksApplicationForCompany[] = [
     project_id: 1,
     status: 'offered',
     message: 'フロントエンドが得意です。',
+    offer_message: 'ぜひ一度お話ししたいです。',
     talent_display_name: '鈴木花子',
     talent_skills: ['React', 'Next.js'],
     created_at: '2026-08-14T09:00:00Z',
@@ -42,6 +44,7 @@ const applications: TsunaguWorksApplicationForCompany[] = [
     message: '',
     talent_display_name: '佐藤次郎',
     talent_skills: ['AWS'],
+    offer_message: null,
     created_at: '2026-08-10T09:00:00Z',
   },
 ]

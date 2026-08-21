@@ -55,7 +55,7 @@ func (h *Handler) ApplicationsCreate(ctx context.Context, req talent.Application
 	}
 
 	return talent.ApplicationsCreate201JSONResponse(toAPIApplication(
-		row.ID, row.ProjectID, row.ProjectTitle, row.Status, row.Message, row.CreatedAt,
+		row.ID, row.ProjectID, row.ProjectTitle, row.Status, row.Message, row.OfferMessage, row.CreatedAt,
 	)), nil
 }
 
@@ -85,7 +85,7 @@ func (h *Handler) ApplicationsList(ctx context.Context, req talent.ApplicationsL
 
 	items := make([]talent.TsunaguWorksApplication, len(rows))
 	for i, r := range rows {
-		items[i] = toAPIApplication(r.ID, r.ProjectID, r.ProjectTitle, r.Status, r.Message, r.CreatedAt)
+		items[i] = toAPIApplication(r.ID, r.ProjectID, r.ProjectTitle, r.Status, r.Message, r.OfferMessage, r.CreatedAt)
 	}
 	return talent.ApplicationsList200JSONResponse{Applications: items}, nil
 }
@@ -162,18 +162,19 @@ func (h *Handler) changeApplicationStatus(
 		}
 	}
 
-	return toAPIApplication(row.ID, row.ProjectID, row.ProjectTitle, row.Status, row.Message, row.CreatedAt), nil
+	return toAPIApplication(row.ID, row.ProjectID, row.ProjectTitle, row.Status, row.Message, row.OfferMessage, row.CreatedAt), nil
 }
 
 // toAPIApplication は DB の行（JOIN 済み Row 各種）を API の型へ詰め替える。
 // sqlc がクエリごとに別の Row 型を生成するため、共通のフィールドを引数で受ける
-func toAPIApplication(id, projectID int64, title, status, message string, createdAt time.Time) talent.TsunaguWorksApplication {
+func toAPIApplication(id, projectID int64, title, status, message string, offerMessage *string, createdAt time.Time) talent.TsunaguWorksApplication {
 	return talent.TsunaguWorksApplication{
 		Id:           id,
 		ProjectId:    projectID,
 		ProjectTitle: title,
 		Status:       talent.TsunaguWorksApplicationStatus(status),
 		Message:      message,
+		OfferMessage: offerMessage,
 		CreatedAt:    createdAt,
 	}
 }

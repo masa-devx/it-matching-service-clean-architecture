@@ -195,7 +195,16 @@ model Application {
   /** 志望動機 */
   message: string;
 
+  /** 企業からのオファーメッセージ（オファー時のみ設定。無ければ null） */
+  offer_message: string | null;
+
   created_at: utcDateTime;
+}
+
+/** オファーの入力（メッセージは任意・上限500文字はサーバー側 validator が検証） */
+model OfferInput {
+  /** 応募者への一言（任意） */
+  message?: string;
 }
 
 /** 応募の作成入力（talent_id はトークンから・status は applied 固定のため含めない） */
@@ -220,6 +229,9 @@ model ApplicationForCompany {
 
   /** 志望動機 */
   message: string;
+
+  /** 企業からのオファーメッセージ（オファー時のみ設定。無ければ null） */
+  offer_message: string | null;
 
   /** 応募者の表示名 */
   talent_display_name: string;

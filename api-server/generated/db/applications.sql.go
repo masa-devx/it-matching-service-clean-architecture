@@ -35,13 +35,24 @@ type CreateApplicationParams struct {
 	ProjectID int64
 }
 
+type CreateApplicationRow struct {
+	ID             int64
+	ProjectID      int64
+	TalentID       int64
+	Status         string
+	Message        string
+	CompanyActedAt pgtype.Timestamptz
+	TalentActedAt  pgtype.Timestamptz
+	CreatedAt      time.Time
+}
+
 // 応募のクエリ。status は列挙しない（DB の DEFAULT 'applied' に任せる＝応募は必ず applied から始まる）
 // 「公開中の案件にのみ応募できる」を INSERT...SELECT で原子的に埋め込む。
 // SELECT で公開確認してから INSERT すると、その間に非公開化される窓が空く（条件付きUPDATEと同型の問題）。
 // 0行 = 未公開または不存在（区別せず404）。二重応募は UNIQUE(project_id, talent_id) 違反（23505 → 409）
-func (q *Queries) CreateApplication(ctx context.Context, arg CreateApplicationParams) (Application, error) {
+func (q *Queries) CreateApplication(ctx context.Context, arg CreateApplicationParams) (CreateApplicationRow, error) {
 	row := q.db.QueryRow(ctx, createApplication, arg.TalentID, arg.Message, arg.ProjectID)
-	var i Application
+	var i CreateApplicationRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
@@ -61,6 +72,7 @@ SELECT
     a.project_id,
     a.status,
     a.message,
+    a.offer_message,
     t.display_name AS talent_display_name,
     t.skills AS talent_skills,
     a.created_at
@@ -80,6 +92,7 @@ type GetApplicationForCompanyRow struct {
 	ProjectID         int64
 	Status            string
 	Message           string
+	OfferMessage      *string
 	TalentDisplayName string
 	TalentSkills      []string
 	CreatedAt         time.Time
@@ -95,6 +108,7 @@ func (q *Queries) GetApplicationForCompany(ctx context.Context, arg GetApplicati
 		&i.ProjectID,
 		&i.Status,
 		&i.Message,
+		&i.OfferMessage,
 		&i.TalentDisplayName,
 		&i.TalentSkills,
 		&i.CreatedAt,
@@ -109,6 +123,7 @@ SELECT
     p.title AS project_title,
     a.status,
     a.message,
+    a.offer_message,
     a.created_at
 FROM applications a
 JOIN projects p ON p.id = a.project_id
@@ -126,6 +141,7 @@ type GetApplicationForTalentRow struct {
 	ProjectTitle string
 	Status       string
 	Message      string
+	OfferMessage *string
 	CreatedAt    time.Time
 }
 
@@ -139,6 +155,7 @@ func (q *Queries) GetApplicationForTalent(ctx context.Context, arg GetApplicatio
 		&i.ProjectTitle,
 		&i.Status,
 		&i.Message,
+		&i.OfferMessage,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -150,6 +167,7 @@ SELECT
     a.project_id,
     a.status,
     a.message,
+    a.offer_message,
     t.display_name AS talent_display_name,
     t.skills AS talent_skills,
     a.created_at
@@ -164,6 +182,7 @@ type ListApplicationsForProjectRow struct {
 	ProjectID         int64
 	Status            string
 	Message           string
+	OfferMessage      *string
 	TalentDisplayName string
 	TalentSkills      []string
 	CreatedAt         time.Time
@@ -187,6 +206,7 @@ func (q *Queries) ListApplicationsForProject(ctx context.Context, projectID int6
 			&i.ProjectID,
 			&i.Status,
 			&i.Message,
+			&i.OfferMessage,
 			&i.TalentDisplayName,
 			&i.TalentSkills,
 			&i.CreatedAt,
@@ -208,6 +228,7 @@ SELECT
     p.title AS project_title,
     a.status,
     a.message,
+    a.offer_message,
     a.created_at
 FROM applications a
 JOIN projects p ON p.id = a.project_id
@@ -221,6 +242,7 @@ type ListApplicationsForTalentRow struct {
 	ProjectTitle string
 	Status       string
 	Message      string
+	OfferMessage *string
 	CreatedAt    time.Time
 }
 
@@ -241,6 +263,7 @@ func (q *Queries) ListApplicationsForTalent(ctx context.Context, talentID int64)
 			&i.ProjectTitle,
 			&i.Status,
 			&i.Message,
+			&i.OfferMessage,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -257,18 +280,20 @@ const updateApplicationStatusForCompany = `-- name: UpdateApplicationStatusForCo
 UPDATE applications a
 SET
     status = $1,
+    offer_message = $2,
     company_acted_at = now()
 FROM projects p, talents t
-WHERE a.id = $2
+WHERE a.id = $3
     AND p.id = a.project_id
-    AND p.company_id = $3
+    AND p.company_id = $4
     AND t.id = a.talent_id
-    AND a.status = ANY ($4::text [])
+    AND a.status = ANY ($5::text [])
 RETURNING
     a.id,
     a.project_id,
     a.status,
     a.message,
+    a.offer_message,
     t.display_name AS talent_display_name,
     t.skills AS talent_skills,
     a.company_acted_at,
@@ -277,6 +302,7 @@ RETURNING
 
 type UpdateApplicationStatusForCompanyParams struct {
 	ToStatus     string
+	OfferMessage *string
 	ID           int64
 	CompanyID    int64
 	FromStatuses []string
@@ -287,6 +313,7 @@ type UpdateApplicationStatusForCompanyRow struct {
 	ProjectID         int64
 	Status            string
 	Message           string
+	OfferMessage      *string
 	TalentDisplayName string
 	TalentSkills      []string
 	CompanyActedAt    pgtype.Timestamptz
@@ -299,6 +326,7 @@ type UpdateApplicationStatusForCompanyRow struct {
 func (q *Queries) UpdateApplicationStatusForCompany(ctx context.Context, arg UpdateApplicationStatusForCompanyParams) (UpdateApplicationStatusForCompanyRow, error) {
 	row := q.db.QueryRow(ctx, updateApplicationStatusForCompany,
 		arg.ToStatus,
+		arg.OfferMessage,
 		arg.ID,
 		arg.CompanyID,
 		arg.FromStatuses,
@@ -309,6 +337,7 @@ func (q *Queries) UpdateApplicationStatusForCompany(ctx context.Context, arg Upd
 		&i.ProjectID,
 		&i.Status,
 		&i.Message,
+		&i.OfferMessage,
 		&i.TalentDisplayName,
 		&i.TalentSkills,
 		&i.CompanyActedAt,
@@ -333,6 +362,7 @@ RETURNING
     p.title AS project_title,
     a.status,
     a.message,
+    a.offer_message,
     a.talent_acted_at,
     a.created_at
 `
@@ -350,6 +380,7 @@ type UpdateApplicationStatusForTalentRow struct {
 	ProjectTitle  string
 	Status        string
 	Message       string
+	OfferMessage  *string
 	TalentActedAt pgtype.Timestamptz
 	CreatedAt     time.Time
 }
@@ -373,6 +404,7 @@ func (q *Queries) UpdateApplicationStatusForTalent(ctx context.Context, arg Upda
 		&i.ProjectTitle,
 		&i.Status,
 		&i.Message,
+		&i.OfferMessage,
 		&i.TalentActedAt,
 		&i.CreatedAt,
 	)

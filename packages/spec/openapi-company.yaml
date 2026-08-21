@@ -10,7 +10,7 @@ paths:
   /applications/{id}/offer:
     post:
       operationId: Applications_offer
-      description: オファーする（applied → offered。それ以外の状態は409）
+      description: オファーする（applied → offered。それ以外の状態は409）。メッセージは任意
       parameters:
         - name: id
           in: path
@@ -31,6 +31,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TsunaguWorks.ApiError'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TsunaguWorks.OfferInput'
       security:
         - BearerAuth: []
   /applications/{id}/reject:
@@ -352,6 +358,7 @@ components:
         - project_id
         - status
         - message
+        - offer_message
         - talent_display_name
         - talent_skills
         - created_at
@@ -367,6 +374,10 @@ components:
         message:
           type: string
           description: 志望動機
+        offer_message:
+          type: string
+          nullable: true
+          description: 企業からのオファーメッセージ（オファー時のみ設定。無ければ null）
         talent_display_name:
           type: string
           description: 応募者の表示名
@@ -469,6 +480,13 @@ components:
           type: string
           format: password
       description: ログイン入力
+    TsunaguWorks.OfferInput:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 応募者への一言（任意）
+      description: オファーの入力（メッセージは任意・上限500文字はサーバー側 validator が検証）
     TsunaguWorks.Project:
       type: object
       required:

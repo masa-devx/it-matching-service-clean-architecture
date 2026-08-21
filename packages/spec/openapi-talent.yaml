@@ -303,6 +303,7 @@ components:
         - project_title
         - status
         - message
+        - offer_message
         - created_at
       properties:
         id:
@@ -319,6 +320,10 @@ components:
         message:
           type: string
           description: 志望動機
+        offer_message:
+          type: string
+          nullable: true
+          description: 企業からのオファーメッセージ（オファー時のみ設定。無ければ null）
         created_at:
           type: string
           format: date-time

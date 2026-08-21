@@ -14,11 +14,12 @@ import (
 
 // applicationBody は応募レスポンスの検証用の最小形
 type applicationBody struct {
-	ID           int64  `json:"id"`
-	ProjectID    int64  `json:"project_id"`
-	ProjectTitle string `json:"project_title"`
-	Status       string `json:"status"`
-	Message      string `json:"message"`
+	ID           int64   `json:"id"`
+	ProjectID    int64   `json:"project_id"`
+	ProjectTitle string  `json:"project_title"`
+	Status       string  `json:"status"`
+	Message      string  `json:"message"`
+	OfferMessage *string `json:"offer_message"`
 }
 
 // createPublishedProject は company API 経由で公開済みの案件を作る（検証用バリエーション）。

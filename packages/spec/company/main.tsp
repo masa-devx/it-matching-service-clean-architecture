@@ -114,11 +114,11 @@ interface Projects {
 
 @route("/applications")
 interface Applications {
-  /** オファーする（applied → offered。それ以外の状態は409） */
+  /** オファーする（applied → offered。それ以外の状態は409）。メッセージは任意 */
   @useAuth(BearerAuth)
   @route("/{id}/offer")
   @post
-  offer(@path id: int64): {
+  offer(@path id: int64, @body input?: OfferInput): {
     @statusCode statusCode: 200;
     @body application: ApplicationForCompany;
   } | ApiError;

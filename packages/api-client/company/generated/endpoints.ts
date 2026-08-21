@@ -14,6 +14,7 @@ import type {
   TsunaguWorksCompanyMe,
   TsunaguWorksCompanySignupInput,
   TsunaguWorksLoginInput,
+  TsunaguWorksOfferInput,
   TsunaguWorksProject,
   TsunaguWorksProjectCreateInput,
   TsunaguWorksProjectList,
@@ -57,16 +58,17 @@ export const getApplicationsOfferUrl = (id: number,) => {
 }
 
 /**
- * オファーする（applied → offered。それ以外の状態は409）
+ * オファーする（applied → offered。それ以外の状態は409）。メッセージは任意
  */
-export const applicationsOffer = async (id: number, options?: RequestInit): Promise<applicationsOfferResponse> => {
+export const applicationsOffer = async (id: number,
+    tsunaguWorksOfferInput?: TsunaguWorksOfferInput, options?: RequestInit): Promise<applicationsOfferResponse> => {
 
   return customFetch<applicationsOfferResponse>(getApplicationsOfferUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(tsunaguWorksOfferInput)
   }
 );}
 

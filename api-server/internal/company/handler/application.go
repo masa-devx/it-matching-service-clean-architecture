@@ -10,6 +10,7 @@ import (
 	company "github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/api/company"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/generated/db"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/usecase"
+	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/company/validator"
 	"github.com/masahiro96848/it-matching-service-clean-architecture/api-server/internal/shared/auth"
 )
 
@@ -45,13 +46,27 @@ func (h *Handler) ProjectsListApplications(ctx context.Context, req company.Proj
 
 	items := make([]company.TsunaguWorksApplicationForCompany, len(rows))
 	for i, r := range rows {
-		items[i] = toAPIApplicationForCompany(r.ID, r.ProjectID, r.Status, r.Message, r.TalentDisplayName, r.TalentSkills, r.CreatedAt)
+		items[i] = toAPIApplicationForCompany(r.ID, r.ProjectID, r.Status, r.Message, r.OfferMessage, r.TalentDisplayName, r.TalentSkills, r.CreatedAt)
 	}
 	return company.ProjectsListApplications200JSONResponse{Applications: items}, nil
 }
 
 func (h *Handler) ApplicationsOffer(ctx context.Context, req company.ApplicationsOfferRequestObject) (company.ApplicationsOfferResponseObject, error) {
-	row, failure := h.changeApplicationStatus(ctx, req.Id, h.application.Offer)
+	// メッセージは任意ボディ（ボディ自体も省略可）。無しは空文字に正規化して usecase が NULL 化する
+	var message string
+	if req.Body != nil && req.Body.Message != nil {
+		message = *req.Body.Message
+	}
+	if err := validator.OfferMessage(message); err != nil {
+		return company.ApplicationsOfferdefaultJSONResponse{
+			Body:       company.TsunaguWorksApiError{Error: err.Error()},
+			StatusCode: http.StatusBadRequest,
+		}, nil
+	}
+
+	row, failure := h.changeApplicationStatus(ctx, req.Id, func(ctx context.Context, userID, applicationID int64) (dbApplicationRow, error) {
+		return h.application.Offer(ctx, userID, applicationID, message)
+	})
 	if failure != nil {
 		return company.ApplicationsOfferdefaultJSONResponse(*failure), nil
 	}
@@ -106,7 +121,7 @@ func (h *Handler) changeApplicationStatus(
 		}
 	}
 
-	return toAPIApplicationForCompany(row.ID, row.ProjectID, row.Status, row.Message, row.TalentDisplayName, row.TalentSkills, row.CreatedAt), nil
+	return toAPIApplicationForCompany(row.ID, row.ProjectID, row.Status, row.Message, row.OfferMessage, row.TalentDisplayName, row.TalentSkills, row.CreatedAt), nil
 }
 
 // offer / reject の default レスポンスは同じ形なので、共通処理では素の構造体で持ち、
@@ -119,12 +134,13 @@ type failureResponse = struct {
 // dbApplicationRow は選考遷移クエリの戻り行（usecase の Offer / Reject が返す型）
 type dbApplicationRow = db.UpdateApplicationStatusForCompanyRow
 
-func toAPIApplicationForCompany(id, projectID int64, status, message, displayName string, skills []string, createdAt time.Time) company.TsunaguWorksApplicationForCompany {
+func toAPIApplicationForCompany(id, projectID int64, status, message string, offerMessage *string, displayName string, skills []string, createdAt time.Time) company.TsunaguWorksApplicationForCompany {
 	return company.TsunaguWorksApplicationForCompany{
 		Id:                id,
 		ProjectId:         projectID,
 		Status:            company.TsunaguWorksApplicationStatus(status),
 		Message:           message,
+		OfferMessage:      offerMessage,
 		TalentDisplayName: displayName,
 		TalentSkills:      skills,
 		CreatedAt:         createdAt,

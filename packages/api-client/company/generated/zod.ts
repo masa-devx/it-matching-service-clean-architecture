@@ -9,17 +9,22 @@
 import * as zod from 'zod';
 
 /**
- * オファーする（applied → offered。それ以外の状態は409）
+ * オファーする（applied → offered。それ以外の状態は409）。メッセージは任意
  */
 export const ApplicationsOfferParams = zod.object({
   "id": zod.int()
 })
+
+export const ApplicationsOfferBody = zod.object({
+  "message": zod.string().optional().describe('応募者への一言（任意）')
+}).describe('オファーの入力（メッセージは任意・上限500文字はサーバー側 validator が検証）')
 
 export const ApplicationsOfferResponse = zod.object({
   "id": zod.int(),
   "project_id": zod.int(),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "talent_display_name": zod.string().describe('応募者の表示名'),
   "talent_skills": zod.array(zod.string()).describe('応募者のスキル'),
   "created_at": zod.iso.datetime({"offset":true})
@@ -38,6 +43,7 @@ export const ApplicationsRejectResponse = zod.object({
   "project_id": zod.int(),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "talent_display_name": zod.string().describe('応募者の表示名'),
   "talent_skills": zod.array(zod.string()).describe('応募者のスキル'),
   "created_at": zod.iso.datetime({"offset":true})
@@ -279,6 +285,7 @@ export const ProjectsListApplicationsResponse = zod.object({
   "project_id": zod.int(),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "talent_display_name": zod.string().describe('応募者の表示名'),
   "talent_skills": zod.array(zod.string()).describe('応募者のスキル'),
   "created_at": zod.iso.datetime({"offset":true})

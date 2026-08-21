@@ -19,5 +19,10 @@ export interface TsunaguWorksApplication {
   status: TsunaguWorksApplicationStatus;
   /** 志望動機 */
   message: string;
+  /**
+     * 企業からのオファーメッセージ（オファー時のみ設定。無ければ null）
+     * @nullable
+     */
+  offer_message: string | null;
   created_at: string;
 }

@@ -26,6 +26,7 @@ export const ApplicationsCreateResponse = zod.object({
   "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "created_at": zod.iso.datetime({"offset":true})
 }).describe('応募（talent 視点。project_title は projects との JOIN で供給する）')
 
@@ -40,6 +41,7 @@ export const ApplicationsListResponse = zod.object({
   "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "created_at": zod.iso.datetime({"offset":true})
 }).describe('応募（talent 視点。project_title は projects との JOIN で供給する）'))
 }).describe('応募一覧のレスポンス')
@@ -58,6 +60,7 @@ export const ApplicationsAcceptResponse = zod.object({
   "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "created_at": zod.iso.datetime({"offset":true})
 }).describe('応募（talent 視点。project_title は projects との JOIN で供給する）')
 
@@ -75,6 +78,7 @@ export const ApplicationsDeclineResponse = zod.object({
   "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "created_at": zod.iso.datetime({"offset":true})
 }).describe('応募（talent 視点。project_title は projects との JOIN で供給する）')
 
@@ -92,6 +96,7 @@ export const ApplicationsWithdrawResponse = zod.object({
   "project_title": zod.string().describe('応募先案件のタイトル（一覧表示用）'),
   "status": zod.enum(['applied', 'offered', 'accepted', 'rejected', 'withdrawn', 'declined']).describe('応募の選考状態（遷移の許可は shared\/domain の遷移表が一次情報）'),
   "message": zod.string().describe('志望動機'),
+  "offer_message": zod.string().nullable().describe('企業からのオファーメッセージ（オファー時のみ設定。無ければ null）'),
   "created_at": zod.iso.datetime({"offset":true})
 }).describe('応募（talent 視点。project_title は projects との JOIN で供給する）')
 
