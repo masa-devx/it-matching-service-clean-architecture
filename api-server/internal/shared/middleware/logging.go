@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // NewLogger は JSON 構造化ログの logger を作る（Cloud Run のログビューアが1行1JSONを構造化して表示する）。
@@ -23,6 +25,11 @@ type contextHandler struct {
 func (h contextHandler) Handle(ctx context.Context, record slog.Record) error {
 	if id, ok := RequestIDFrom(ctx); ok {
 		record.AddAttrs(slog.String("request_id", id))
+	}
+	// トレースが有効なリクエストならログにも trace_id を載せる
+	// （Jaeger 上の trace と grep したログを同じ ID で突き合わせるための「合流点」）
+	if span := trace.SpanContextFromContext(ctx); span.HasTraceID() {
+		record.AddAttrs(slog.String("trace_id", span.TraceID().String()))
 	}
 	return h.Handler.Handle(ctx, record)
 }
