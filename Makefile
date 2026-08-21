@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -57,3 +57,8 @@ e2e-dump: ## e2e fixture の dump.sql を再生成（一次情報は api-server/
 	done > api-server/test/e2efixture/dump.sql
 	@test -s api-server/test/e2efixture/dump.sql || { echo "dump.sql が空です（pg_dump 失敗の可能性）"; exit 1; }
 	@echo "生成完了: api-server/test/e2efixture/dump.sql（$$(wc -l < api-server/test/e2efixture/dump.sql | tr -d ' ') 行）"
+
+## --- テスト実行（人間の目のためのローカル用。CI は素の go test を turbo 経由で使う） ---
+
+test-api: ## api の全テストを Jest 風の見やすい表示で実行（gotestsum・要 make db-up + db-test-setup）
+	cd api-server && go tool gotestsum --format testname --format-hide-empty-pkg -- -count=1 ./...
