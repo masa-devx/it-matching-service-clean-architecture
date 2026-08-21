@@ -22,12 +22,13 @@ func TestCompanyProjectList(t *testing.T) {
 	token := LoginCompanyA(t, srv)
 
 	resp := Do(t, srv, http.MethodGet, "/company/projects", token, "")
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status 200 を期待したが %d", resp.StatusCode)
 	}
 	var body struct {
 		Projects []struct {
-			Id     int64  `json:"id"`
+			ID     int64  `json:"id"`
 			Title  string `json:"title"`
 			Status string `json:"status"`
 		} `json:"projects"`
@@ -40,11 +41,11 @@ func TestCompanyProjectList(t *testing.T) {
 	// id 降順（4,3,2,1）= B社の案件(5)が先頭に混ざればここで検出される
 	wantIDs := []int64{e2efixture.Projects.AClosed, e2efixture.Projects.APublished2, e2efixture.Projects.APublished, e2efixture.Projects.ADraft}
 	for i, p := range body.Projects {
-		if p.Id != wantIDs[i] {
-			t.Errorf("projects[%d].id: %d を期待したが %d", i, wantIDs[i], p.Id)
+		if p.ID != wantIDs[i] {
+			t.Errorf("projects[%d].id: %d を期待したが %d", i, wantIDs[i], p.ID)
 		}
-		if p.Id == e2efixture.Projects.BPublished {
-			t.Errorf("他社（B社）の案件 %d が一覧に混ざっている", p.Id)
+		if p.ID == e2efixture.Projects.BPublished {
+			t.Errorf("他社（B社）の案件 %d が一覧に混ざっている", p.ID)
 		}
 	}
 }
@@ -98,17 +99,17 @@ func TestCompanyProjectCreateUpdate(t *testing.T) {
 		t.Fatalf("作成: status 201 を期待したが %d", resp.StatusCode)
 	}
 	var created struct {
-		Id     int64  `json:"id"`
+		ID     int64  `json:"id"`
 		Status string `json:"status"`
 	}
 	DecodeBody(t, resp, &created)
 	if created.Status != "draft" {
 		t.Errorf("作成直後は draft を期待したが %s", created.Status)
 	}
-	if created.Id <= e2efixture.Projects.BPublished {
-		t.Errorf("新規 ID %d が基準世界の範囲（〜%d）と重なっている", created.Id, e2efixture.Projects.BPublished)
+	if created.ID <= e2efixture.Projects.BPublished {
+		t.Errorf("新規 ID %d が基準世界の範囲（〜%d）と重なっている", created.ID, e2efixture.Projects.BPublished)
 	}
-	row, err := queries.GetProjectForCompany(ctx, db.GetProjectForCompanyParams{ID: created.Id, CompanyID: e2efixture.CompanyA.CompanyID})
+	row, err := queries.GetProjectForCompany(ctx, db.GetProjectForCompanyParams{ID: created.ID, CompanyID: e2efixture.CompanyA.CompanyID})
 	if err != nil {
 		t.Fatalf("作成した案件が DB から引けない: %v", err)
 	}
@@ -118,12 +119,12 @@ func TestCompanyProjectCreateUpdate(t *testing.T) {
 
 	// 更新（仕様は PATCH）: 200 + DB 反映
 	updateBody := `{"title":"更新後のタイトル","description":"更新済み","hours_per_week":20,"remote_ok":false,"required_skills":["Go","SQL"]}`
-	resp = Do(t, srv, http.MethodPatch, fmt.Sprintf("/company/projects/%d", created.Id), token, updateBody)
+	resp = Do(t, srv, http.MethodPatch, fmt.Sprintf("/company/projects/%d", created.ID), token, updateBody)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("更新: status 200 を期待したが %d", resp.StatusCode)
 	}
 	_ = resp.Body.Close()
-	row, err = queries.GetProjectForCompany(ctx, db.GetProjectForCompanyParams{ID: created.Id, CompanyID: e2efixture.CompanyA.CompanyID})
+	row, err = queries.GetProjectForCompany(ctx, db.GetProjectForCompanyParams{ID: created.ID, CompanyID: e2efixture.CompanyA.CompanyID})
 	if err != nil {
 		t.Fatalf("更新後の案件が DB から引けない: %v", err)
 	}
@@ -217,7 +218,7 @@ func TestCompanyProjectApplications(t *testing.T) {
 	}
 	var body struct {
 		Applications []struct {
-			Id                int64    `json:"id"`
+			ID                int64    `json:"id"`
 			Status            string   `json:"status"`
 			TalentDisplayName string   `json:"talent_display_name"`
 			TalentSkills      []string `json:"talent_skills"`
@@ -229,8 +230,8 @@ func TestCompanyProjectApplications(t *testing.T) {
 		t.Fatalf("2件を期待したが %d 件", len(body.Applications))
 	}
 	// id 降順: offered(2) → applied(1)
-	if body.Applications[0].Id != e2efixture.Applications.Offered || body.Applications[1].Id != e2efixture.Applications.Applied {
-		t.Errorf("新しい順を期待したが: %d, %d", body.Applications[0].Id, body.Applications[1].Id)
+	if body.Applications[0].ID != e2efixture.Applications.Offered || body.Applications[1].ID != e2efixture.Applications.Applied {
+		t.Errorf("新しい順を期待したが: %d, %d", body.Applications[0].ID, body.Applications[1].ID)
 	}
 	if body.Applications[0].TalentDisplayName == "" || len(body.Applications[0].TalentSkills) == 0 {
 		t.Errorf("応募者プロフィールが載っていない: %+v", body.Applications[0])
