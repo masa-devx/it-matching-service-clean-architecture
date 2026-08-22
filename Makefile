@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api trace-up trace-down dev dev-api dev-web seed-perf seed-perf-clean
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api trace-up trace-down dev dev-api dev-web seed-perf seed-perf-clean perf-measure
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -94,3 +94,6 @@ seed-perf-clean: ## デモデータだけ削除（id >= 100万・既存の開発
 		-c "DELETE FROM talents WHERE id >= 1000000;" \
 		-c "DELETE FROM companies WHERE id >= 1000000;" \
 		-c "DELETE FROM users WHERE id >= 1000000;"
+
+perf-measure: ## HTTP 層の p50/p99 を計測（要 make dev-api 起動 + make seed-perf 投入済み）
+	bash scripts/perf/measure.sh
