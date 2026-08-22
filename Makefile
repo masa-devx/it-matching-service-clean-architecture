@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api trace-up trace-down dev dev-api dev-web
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api trace-up trace-down dev dev-api dev-web seed-perf seed-perf-clean
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -81,3 +81,16 @@ dev-api: ## バックエンドのみ起動（Go API :8082）
 
 dev-web: ## フロントエンドのみ起動（Next.js :3001・API は別途 dev-api か本番向き先が必要）
 	pnpm turbo dev --filter=web
+
+## --- パフォーマンス計測（デモデータ・dev DB 専用） ---
+
+seed-perf: ## 計測用デモデータを投入（10万案件級・id 100万番台・確認プロンプトあり）
+	cd api-server && go run ./cmd/perfseed
+
+seed-perf-clean: ## デモデータだけ削除（id >= 100万・既存の開発データは残る）
+	docker compose exec -T db psql -U tsunagu -d tsunagu -v ON_ERROR_STOP=1 \
+		-c "DELETE FROM applications WHERE id >= 1000000 OR project_id >= 1000000 OR talent_id >= 1000000;" \
+		-c "DELETE FROM projects WHERE id >= 1000000;" \
+		-c "DELETE FROM talents WHERE id >= 1000000;" \
+		-c "DELETE FROM companies WHERE id >= 1000000;" \
+		-c "DELETE FROM users WHERE id >= 1000000;"
