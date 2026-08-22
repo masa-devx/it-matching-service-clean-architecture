@@ -54,16 +54,17 @@ func main() {
 	companies := flag.Int("companies", 1000, "生成する企業数")
 	talents := flag.Int("talents", 10000, "生成する人材数")
 	projects := flag.Int("projects", 100000, "生成する案件数")
+	applications := flag.Int("applications", 300000, "生成する応募数")
 	seed := flag.Int64("seed", 1, "乱数シード（同じ値なら同じデータ）")
 	yes := flag.Bool("yes", false, "確認プロンプトをスキップ")
 	flag.Parse()
 
-	if err := run(*companies, *talents, *projects, *seed, *yes); err != nil {
+	if err := run(*companies, *talents, *projects, *applications, *seed, *yes); err != nil {
 		log.Fatalf("perfseed: %v", err)
 	}
 }
 
-func run(companies, talents, projects int, seed int64, yes bool) error {
+func run(companies, talents, projects, applications int, seed int64, yes bool) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -74,8 +75,8 @@ func run(companies, talents, projects int, seed int64, yes bool) error {
 		return fmt.Errorf("テスト系 DB（_test / _e2e）には投入できません: %s", cfg.DatabaseURL)
 	}
 
-	fmt.Printf("投入先: %s\n企業 %d・人材 %d・案件 %d（id は %d 番台・seed=%d）\n",
-		cfg.DatabaseURL, companies, talents, projects, idBase, seed)
+	fmt.Printf("投入先: %s\n企業 %d・人材 %d・案件 %d・応募 %d（id は %d 番台・seed=%d）\n",
+		cfg.DatabaseURL, companies, talents, projects, applications, idBase, seed)
 	if !yes {
 		fmt.Print("よろしいですか？ [y/N]: ")
 		var answer string
@@ -93,6 +94,16 @@ func run(companies, talents, projects int, seed int64, yes bool) error {
 	}
 	defer func() { _ = conn.Close(ctx) }()
 
+	// 二重投入ガード: id は明示採番のため、残留データがあると主キー衝突で途中失敗する。
+	// 分かりにくい 23505 エラーになる前に検出し、対処コマンドを案内する
+	var existing int64
+	if err := conn.QueryRow(ctx, `SELECT count(*) FROM users WHERE id >= $1`, idBase).Scan(&existing); err != nil {
+		return fmt.Errorf("既存デモデータの確認に失敗: %w", err)
+	}
+	if existing > 0 {
+		return fmt.Errorf("デモデータが既に存在します（users %d 件）。先に make seed-perf-clean を実行してください", existing)
+	}
+
 	// 計測の再現性の要: 固定シードの疑似乱数（暗号用途ではないので math/rand でよい）
 	rng := rand.New(rand.NewSource(seed)) //nolint:gosec
 
@@ -100,14 +111,18 @@ func run(companies, talents, projects int, seed int64, yes bool) error {
 	if err := seedUsersAndProfiles(ctx, conn, rng, companies, talents); err != nil {
 		return err
 	}
-	if err := seedProjects(ctx, conn, rng, companies, projects); err != nil {
+	publishedIDs, err := seedProjects(ctx, conn, rng, companies, projects)
+	if err != nil {
+		return err
+	}
+	if err := seedApplications(ctx, conn, rng, talents, applications, publishedIDs); err != nil {
 		return err
 	}
 	if err := bumpSequences(ctx, conn); err != nil {
 		return err
 	}
 
-	fmt.Printf("完了: %s（応募の生成は P-1 Step 2）\n", time.Since(start).Round(time.Millisecond))
+	fmt.Printf("完了: %s\n", time.Since(start).Round(time.Millisecond))
 	return nil
 }
 
@@ -229,7 +244,9 @@ func seedUsersAndProfiles(ctx context.Context, conn *pgx.Conn, rng *rand.Rand, c
 	return nil
 }
 
-func seedProjects(ctx context.Context, conn *pgx.Conn, rng *rand.Rand, companies, projects int) error {
+// seedProjects は案件を投入し、応募の対象になる公開案件の id 一覧を返す
+func seedProjects(ctx context.Context, conn *pgx.Conn, rng *rand.Rand, companies, projects int) ([]int64, error) {
+	var publishedIDs []int64
 	for off := 0; off < projects; off += batchSize {
 		n := min(batchSize, projects-off)
 		ids := make([]int64, n)
@@ -251,6 +268,7 @@ func seedProjects(ctx context.Context, conn *pgx.Conn, rng *rand.Rand, companies
 			switch r := rng.Intn(10); {
 			case r < 7:
 				statuses[i] = "published"
+				publishedIDs = append(publishedIDs, ids[i])
 			case r < 9:
 				statuses[i] = "draft"
 			default:
@@ -277,11 +295,11 @@ func seedProjects(ctx context.Context, conn *pgx.Conn, rng *rand.Rand, companies
 			     AS p(id, company_id, title, status, hours, remote, skills, rate_min, rate_max, created_at)`,
 			ids, companyIDs, titles, statuses, hours, remotes, skills, rateMins, rateMaxs, createdAts)
 		if err != nil {
-			return fmt.Errorf("projects の投入に失敗（offset %d）: %w", off, err)
+			return nil, fmt.Errorf("projects の投入に失敗（offset %d）: %w", off, err)
 		}
 	}
-	fmt.Printf("projects %d 投入\n", projects)
-	return nil
+	fmt.Printf("projects %d 投入（うち公開 %d）\n", projects, len(publishedIDs))
+	return publishedIDs, nil
 }
 
 // bumpSequences は明示採番した id をシーケンスが追い越すように前方調整する
@@ -296,5 +314,94 @@ func bumpSequences(ctx context.Context, conn *pgx.Conn) error {
 			return fmt.Errorf("%s のシーケンス調整に失敗: %w", table, err)
 		}
 	}
+	return nil
+}
+
+// applicationStatuses は応募の状態分布（applied 50%・offered 15%・accepted 10%・
+// rejected 15%・withdrawn 5%・declined 5%。遷移表で到達可能な状態のみを使う）。
+// 基準世界と違い usecase を通さず直接 INSERT する: 目的が読み取り計測であり、
+// 30万件を遷移表経由で作るのは実用にならないため（線引きは docs/DB.md 参照）
+var applicationStatuses = []struct {
+	name         string
+	weight       int
+	companyActed bool // company_acted_at を持つ状態か
+	talentActed  bool // talent_acted_at を持つ状態か
+}{
+	{"applied", 50, false, false},
+	{"offered", 15, true, false},
+	{"accepted", 10, true, true},
+	{"rejected", 15, true, false},
+	{"withdrawn", 5, false, true},
+	{"declined", 5, true, true},
+}
+
+// seedApplications は応募を投入する。
+// (talent_id, project_id) は UNIQUE のため、人材ごとに「開始位置 + 等間隔ストライド」で
+// 公開案件を選ぶ（step*件数 < 公開数 なら重複が起きない決定的な組み合わせ生成）
+func seedApplications(ctx context.Context, conn *pgx.Conn, rng *rand.Rand, talents, applications int, publishedIDs []int64) error {
+	if len(publishedIDs) == 0 {
+		return fmt.Errorf("公開案件が無いため応募を生成できません")
+	}
+	perTalent := applications / talents
+	if perTalent >= len(publishedIDs) {
+		return fmt.Errorf("人材あたり応募数 %d が公開案件数 %d を超えています", perTalent, len(publishedIDs))
+	}
+	// 等間隔ストライド: j*step (j < perTalent) が公開数を超えない = 1人の中で必ず別案件
+	step := (len(publishedIDs) - 1) / perTalent
+
+	total := talents * perTalent
+	statusTotal := 0
+	for _, st := range applicationStatuses {
+		statusTotal += st.weight
+	}
+
+	for off := 0; off < total; off += batchSize {
+		n := min(batchSize, total-off)
+		ids := make([]int64, n)
+		talentIDs := make([]int64, n)
+		projectIDs := make([]int64, n)
+		statuses := make([]string, n)
+		messages := make([]string, n)
+		companyActs := make([]string, n) // '' = NULL（timestamptz の NULL は空文字センチネル + NULLIF）
+		talentActs := make([]string, n)
+		createdAts := make([]time.Time, n)
+		for i := range n {
+			idx := off + i
+			t := idx / perTalent // 何番目の人材か
+			j := idx % perTalent // その人材の何件目の応募か
+			ids[i] = int64(idBase + 1 + idx)
+			talentIDs[i] = int64(idBase + 1 + t)
+			projectIDs[i] = publishedIDs[(t+j*step)%len(publishedIDs)]
+
+			r := rng.Intn(statusTotal)
+			for _, st := range applicationStatuses {
+				if r -= st.weight; r < 0 {
+					statuses[i] = st.name
+					created := spreadTime(rng)
+					createdAts[i] = created
+					if st.companyActed {
+						companyActs[i] = created.Add(30 * time.Minute).Format(time.RFC3339)
+					}
+					if st.talentActed {
+						talentActs[i] = created.Add(60 * time.Minute).Format(time.RFC3339)
+					}
+					break
+				}
+			}
+			messages[i] = fmt.Sprintf("計測用の応募です（%d件目）", idx+1)
+		}
+		_, err := conn.Exec(ctx, `
+			INSERT INTO applications (id, talent_id, project_id, status, message, company_acted_at, talent_acted_at, created_at)
+			OVERRIDING SYSTEM VALUE
+			SELECT a.id, a.talent_id, a.project_id, a.status, a.message,
+			       NULLIF(a.company_acted, '')::timestamptz, NULLIF(a.talent_acted, '')::timestamptz, a.created_at
+			FROM unnest($1::bigint[], $2::bigint[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::text[], $8::timestamptz[])
+			     AS a(id, talent_id, project_id, status, message, company_acted, talent_acted, created_at)`,
+			ids, talentIDs, projectIDs, statuses, messages, companyActs, talentActs, createdAts)
+		if err != nil {
+			return fmt.Errorf("applications の投入に失敗（offset %d）: %w", off, err)
+		}
+	}
+	fmt.Printf("applications %d 投入（人材あたり %d 件・ストライド %d）\n", total, perTalent, step)
 	return nil
 }
