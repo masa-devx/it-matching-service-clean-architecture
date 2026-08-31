@@ -88,13 +88,13 @@ web/src/
 
 移行の対応表（すべて移行済み）:
 
-| 出発点のコード                                | 移行先（現在）                                     |
-| --------------------------------------------- | -------------------------------------------------- |
-| `lib/api.ts`（Go API 呼び出し・server-only）  | `external/client/`                                 |
-| `lib/authClient.ts`（クライアント→BFF）       | `features/{domain}/actions/`（Server Actions）     |
-| `app/api/auth/*`（Route Handler の BFF）      | Server Actions ＋ `external/handler/`              |
-| `hooks/`（mutation・ローディング/エラー集約） | `features/{domain}/queries/`（TanStack Query）     |
-| `lib/types.ts`（手書きの共有型）              | `packages/api-client`（orval 生成）                |
+| 出発点のコード                                | 移行先（現在）                                      |
+| --------------------------------------------- | --------------------------------------------------- |
+| `lib/api.ts`（Go API 呼び出し・server-only）  | `external/client/`                                  |
+| `lib/authClient.ts`（クライアント→BFF）       | `features/{domain}/actions/`（Server Actions）      |
+| `app/api/auth/*`（Route Handler の BFF）      | Server Actions ＋ `external/handler/`               |
+| `hooks/`（mutation・ローディング/エラー集約） | `features/{domain}/queries/`（TanStack Query）      |
+| `lib/types.ts`（手書きの共有型）              | `packages/api-client`（orval 生成）                 |
 | ルートグループによるロール分岐                | **維持**（(guest)/(company)/(talent) ＝認可の境界） |
 
 - 参考ゴール構成: [next-app-router-architecture](https://github.com/YukiOnishi1129/next-app-router-architecture)
