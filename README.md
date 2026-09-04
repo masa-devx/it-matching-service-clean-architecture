@@ -49,9 +49,9 @@ MVP 版は機能を出し切ることを優先し、**あえて層を分けず�
 | 論点         | 採用                             | 見送り                         | 決め手                                                                                                                                                                 |
 | ------------ | -------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DB アクセス  | sqlc                             | ORM ／ 手書き database/sql     | SQL と実行計画を隠さず、型は生成で守る（手書きは MVP 版で経験済み・Before として比較対象に）                                                                           |
-| E2E テスト   | API 統合テスト（実ミドルウェア） | ブラウザ E2E                   | 実際のミドルウェアを通した API テストで「通し」を保証し、壊れやすく遅いブラウザ操作を持たない（[判断の記録](docs/adr/0012-api-integration-tests-over-browser-e2e.md)） |
-| フロント構成 | web 1アプリ                      | company / talent の2アプリ分割 | この規模ではロールの境界はルートグループで足りる（[判断の記録](docs/adr/0006-single-frontend-after-only.md)）                                                          |
-| 視覚回帰     | 導入見送り（発動条件を明文化）   | Chromatic 等                   | UI の変更頻度がまだ投資に見合わない。導入する条件ごと記録（[判断の記録](docs/adr/0009-defer-visual-regression.md)）                                                    |
+| E2E テスト   | API 統合テスト（実ミドルウェア） | ブラウザ E2E                   | 実際のミドルウェアを通した API テストで「通し」を保証し、壊れやすく遅いブラウザ操作を持たない（[docs/adr/0012-api-integration-tests-over-browser-e2e.md](docs/adr/0012-api-integration-tests-over-browser-e2e.md)） |
+| フロント構成 | web 1アプリ                      | company / talent の2アプリ分割 | この規模ではロールの境界はルートグループで足りる（[docs/adr/0006-single-frontend-after-only.md](docs/adr/0006-single-frontend-after-only.md)）                                                          |
+| 視覚回帰     | 導入見送り（発動条件を明文化）   | Chromatic 等                   | UI の変更頻度がまだ投資に見合わない。導入する条件ごと記録（[docs/adr/0009-defer-visual-regression.md](docs/adr/0009-defer-visual-regression.md)）                                                    |
 
 ## アーキテクチャ設計
 
@@ -105,7 +105,7 @@ flowchart LR
 - **キーレス認証（WIF: Workload Identity Federation）**: サービスアカウントの鍵ファイルを GitHub に置かない。GitHub が発行するトークンを GCP 側が検証し、受け入れ条件はこのリポジトリのみに絞る
 - **イメージタグ＝コミット SHA**: どのコミットが本番にいるかをタグだけで特定できる
 - DB は Neon（PostgreSQL）。マイグレーションは API 起動時ではなく **Cloud Run Job で1回だけ**実行する
-- 手順・判断・踏んだ罠の記録: [docs/デプロイ.md](docs/デプロイ.md) ／ [web を Cloud Run に載せた判断の記録](docs/adr/0011-web-on-cloud-run.md)
+- 手順・判断・踏んだ罠の記録: [docs/デプロイ.md](docs/デプロイ.md) ／ [docs/adr/0011-web-on-cloud-run.md](docs/adr/0011-web-on-cloud-run.md)
 
 ### 参考記事
 
