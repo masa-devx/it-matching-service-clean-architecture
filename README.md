@@ -1,152 +1,132 @@
-# Tsunagu Works — アーキテクチャ設計版
+# 企業 × IT人材マッチングサービス — アーキテクチャ設計版
 
-**企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチング「Tsunagu Works」を、別の設計で再実装するリポジトリ。**
+**企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチングサービスを、別の設計で再実装するリポジトリ。**
 
-[tsunagu-works](https://github.com/masahiro96848/tsunagu-works)（フラット構成で MVP 完成済み）と**同じドメインを、スキーマ駆動・層分割・モノレポ構成で作り直す**。
+[MVP版リポジトリ](https://github.com/masahiro96848/it-matching-service)（フラット構成で完成済み）と**同じドメインを、スキーマ駆動・層分割・モノレポ構成で作り直す**。
 2つのリポジトリを並べて「**どの規模で、どちらの設計を選ぶか**」という判断そのものを示すことがゴール。
 
 > 設計の全体像: [docs/後継リポジトリ設計プラン.md](docs/後継リポジトリ設計プラン.md) ／ 個々の決定: [docs/adr/](docs/adr/README.md)
-> `web/` は tsunagu-works MVP を土台に段階的に作り替えていく（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)）。Before の姿は tsunagu-works リポジトリを参照。
+> `web/` は MVP 版を土台に段階的に作り替えていく（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)）。Before の姿は MVP 版リポジトリを参照。
 
-## なぜ作り直すか
+## 作成した背景
 
-tsunagu-works は機能を出し切ることを優先し、**あえて層を分けずに MVP を完成させた**（その判断の記録は [docs/アーキテクチャ.md](docs/アーキテクチャ.md)）。
+MVP 版は機能を出し切ることを優先し、**あえて層を分けずに完成させた**（その判断の記録は [docs/アーキテクチャ.md](docs/アーキテクチャ.md)）。
 同じリポジトリでリファクタすると Before の姿が git 履歴の中にしか残らないため、**別リポジトリで再実装し、2つを並べて見せる**方針を採った。
 
-ここでは、tsunagu-works で意図的にやらなかった設計に取り組む。
+| 要素             | MVP版（Before）              | このリポジトリ（After）               |
+| ---------------- | ---------------------------- | ------------------------------------- |
+| ルーティング     | `mux.HandleFunc` を手書き    | **生成コードが張る**（oapi-codegen）  |
+| ハンドラの型     | `http.ResponseWriter` 直書き | **StrictHandler**（型付き req/res）   |
+| 依存の持ち方     | パッケージ変数の `db`        | **main.go で DI**                     |
+| DBアクセス       | `database/sql`（手書きSQL）  | **sqlc**（repository 層は作らない）   |
+| 認可のロール判定 | 各ハンドラで `if user.Role`  | **パスプレフィックス × ミドルウェア** |
+| 一覧の取得       | 全件取得                     | **seek 法ページネーション**           |
+| テスト           | 純粋関数のみ（実装の25%）    | **実DBテスト（Tx分離）＋ factories**  |
+| API仕様          | 手書きの型（Go / TS で別々） | **TypeSpec → OpenAPI → Go/TS 生成**   |
+| 公開             | ローカルのみ                 | **Cloud Run ＋ Cloud Run Job**        |
 
-| 要素             | tsunagu-works（Before）      | このリポジトリ（After）               | 判断の理由                                                                       |
-| ---------------- | ---------------------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
-| ルーティング     | `mux.HandleFunc` を手書き    | **生成コードが張る**（oapi-codegen）  | URL の一次情報を仕様に一本化                                                     |
-| ハンドラの型     | `http.ResponseWriter` 直書き | **StrictHandler**（型付き req/res）   | 仕様とのズレがコンパイルエラーになる                                             |
-| 依存の持ち方     | パッケージ変数の `db`        | **main.go で DI**                     | テストで接続を差し替えられる                                                     |
-| DBアクセス       | `database/sql`（手書きSQL）  | **sqlc**                              | SQL を資産として残したまま型安全にする                                           |
-| repository 層    | 無し                         | **無し（意図的）**                    | sqlc の `Queries` が repository 相当。薄皮を重ねない                             |
-| 認可のロール判定 | 各ハンドラで `if user.Role`  | **パスプレフィックス × ミドルウェア** | 書き忘れが構造的に起きない                                                       |
-| 一覧の取得       | 全件取得                     | **seek 法ページネーション**           | OFFSET は深いページで遅く、挿入でズレる                                          |
-| テスト           | 純粋関数のみ（実装の25%）    | **実DBテスト（Tx分離）＋ factories**  | モックが多いと「テストは通るが動かない」が起きる                                 |
-| フロントの分割   | 単体リポジトリ・手書き型     | **モノレポ（Turborepo）＋ 生成型**    | 1アプリ維持は規模判断（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)） |
-| API仕様          | 手書きの型（Go / TS で別々） | **TypeSpec → OpenAPI → Go/TS 生成**   | 1つの仕様から両方に同じ型が届く                                                  |
-| 公開             | ローカルのみ                 | **Cloud Run ＋ Cloud Run Job**        | マイグレーションは1回だけ実行される必要がある                                    |
+各判断の「なぜ」（何の事故を構造で防ぐか）と全対比は [設計プラン §15](docs/後継リポジトリ設計プラン.md) へ。
 
-各判断の詳細と全対比は [設計プラン §15](docs/後継リポジトリ設計プラン.md) へ。
+**実装スコープは4ドメインのみ**（認証＋プロフィール / 案件 / 応募 / eKYC）。
+契約・稼働報告・メッセージ・レビューは移植しない——同じパターンの繰り返しで、新しく示せることが少ないため。
+機能の量は MVP 版が担い、このリポジトリは**設計を示す**ことに集中する。
 
-## 目標アーキテクチャ
+## 技術選定
+
+| 領域             | 採用技術                              | 選定理由                                                                     |
+| ---------------- | ------------------------------------- | ---------------------------------------------------------------------------- |
+| モノレポ         | **Turborepo + pnpm workspace**        | Go もタスクグラフに載せ、仕様変更 → 生成 → ビルドを連鎖できる                |
+| API 仕様         | **TypeSpec → OpenAPI**                | 契約の一次情報を1箇所に。生成物はコミットし CI で差分チェック                |
+| バックエンド     | **Go + oapi-codegen（StrictHandler）**| 仕様とのズレがコンパイルエラーになる。ルーティングは生成コードが張る         |
+| DB アクセス      | **sqlc**（repository 層なし）         | SQL を資産として残したまま型安全。`Queries` が repository 相当               |
+| マイグレーション | **sql-migrate**                       | Up / Down の履歴管理。本番では Cloud Run Job から同じものを実行              |
+| フロントエンド   | **Next.js（App Router）+ orval**      | 型・Fetch Client・Zod を仕様から生成し、手書きの型二重管理を排除             |
+| サーバー状態     | **TanStack Query + Server Actions**   | 読み取りは prefetch / Hydration、書き込みはサーバー経由で Go へ              |
+| 認証・認可       | **自前 JWT（bcrypt・httpOnly Cookie）**| トークンをブラウザ JS に触れさせない。認可はパス × ミドルウェアで一律       |
+| テスト           | **実DBテスト（pgx.Tx 分離）+ API 統合テスト** | モックしない＝「テストは通るが動かない」を防ぐ                        |
+| インフラ         | **Cloud Run + Cloud Run Job + Neon**  | ゼロスケールで安い。migrate はデプロイ列の中で1回だけ実行                    |
+
+### 採用と見送りの判断（抜粋）
+
+比較して見送った選択肢と経緯は [ADR](docs/adr/README.md) に記録している。
+
+| 論点         | 採用                        | 見送り                          | 決め手                                                                                                       |
+| ------------ | --------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| DB アクセス  | sqlc                        | ORM ／ 手書き database/sql      | SQL と実行計画を隠さず、型は生成で守る（手書きは MVP 版で経験済み・Before として比較対象に）                 |
+| E2E テスト   | API 統合テスト（実ミドルウェア） | ブラウザ E2E                | 実 MW 込みの API テストで「通し」を保証し、壊れやすく遅いブラウザ操作を持たない（[ADR-0012](docs/adr/0012-api-integration-tests-over-browser-e2e.md)） |
+| フロント構成 | web 1アプリ                 | company / talent の2アプリ分割  | この規模ではロール境界はルートグループで足りる（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)）    |
+| 視覚回帰     | 導入見送り（発動条件を明文化） | Chromatic 等                  | UI の変更頻度がまだ投資に見合わない。導入する条件ごと記録（[ADR-0009](docs/adr/0009-defer-visual-regression.md)） |
+
+## アーキテクチャ設計
 
 ```
 <repo>/                        ★ Turborepo モノレポ
 ├─ api-server/                 # Go — internal/{company,talent,shared} の視点→層分割
-│  ├─ generated/               #   oapi-codegen の生成物（編集禁止・コミットする）
-│  └─ internal/company/handler #   StrictServerInterface の実装
+│  └─ generated/               #   oapi-codegen の生成物（編集禁止・コミットする）
 ├─ web/                        # Next.js 1アプリ（ロール分岐はルートグループ）
-│                              #   Stage 1 構成 → features / external 構成へ段階移行
-├─ packages/
-│  ├─ spec/                    # TypeSpec（API契約の一次情報・apps のどちらの持ち物でもない）
-│  └─ typescript-config/       # tsconfig の共有ベース
+├─ packages/spec/              # TypeSpec（API契約の一次情報）
 └─ migrations/ddl/             # sql-migrate
 ```
 
-```
-packages/spec/shared/models.tsp（1箇所で定義）
-   ├──→ openapi-company.yaml ──→ Go: generated/api/company ＋ TS（orval・#8 で導入）
-   └──→ openapi-talent.yaml  ──→ Go: generated/api/talent（Phase 2 で追加）
-```
-
+- **API 契約は TypeSpec の1箇所で定義**し、OpenAPI 経由で Go（oapi-codegen）と TS（orval）へ同じ型を生成する
 - **仕様変更 → 生成 → ビルドを Turborepo のタスクグラフで連鎖**させ、「生成し忘れ」を構造的に無くす
-- 認可はパスで一律に決める: `/company/*` は企業ロール、`/talent/*` は人材ロールをミドルウェアが強制
-- 依存方向は仕組みで守る（golangci-lint の depguard / ESLint の import 制約）
 
-## 進め方（Phase 0 〜 7）
-
-**まず Phase 0 で「案件の作成」1エンドポイントだけを貫通させ、コード生成の品質を確かめてから全体を確定した。**
-
-| Phase | 内容                                                                        | ここで示すこと                           | 状態      |
-| ----- | --------------------------------------------------------------------------- | ---------------------------------------- | --------- |
-| **0** | 1エンドポイント貫通（TypeSpec → oapi-codegen / sqlc / orval → フォーム1つ） | 生成の質・Turborepo に Go を載せる現実性 | ✅ 完了   |
-| 1     | 土台（層構成・DI・実DBテスト基盤・CI・依存方向の強制）                      | 設計を仕組みで守る                       | ✅ 完了   |
-| 2     | 認証 ＋ プロフィール（company / talent の2系統）                            | 認可がパスで一律になる                   | ✅ 完了   |
-| 3     | 案件（seek ページネーション・検索）                                         | 層分けした CRUD                          | ✅ 完了   |
-| 4     | 応募（状態機械）                                                            | domain 層の見せ場                        | ✅ 完了   |
-| 5     | デプロイ（Cloud Run・Cloud Run Job・CI/CD）                                 | 動くものを公開する                       | ✅ 完了   |
-| 6     | API 統合テスト・トレーシング（ADR-0012）                                    | 通しで壊れないことを示す                 | ✅ 完了   |
-| 7     | eKYC（multipart・Cloud Storage・署名付きURL）                               | 既存の土台に新種の機能を足す             | 🚧 進行中 |
-
-**実装スコープは4ドメインのみ**（認証＋プロフィール / 案件 / 応募 / eKYC）。
-契約・稼働報告・メッセージ・レビュー・エスクローは移植しない——**同じパターンの繰り返しで、新しく示せることが少ない**ため。機能の量は tsunagu-works が担い、このリポジトリは**設計を示す**ことに集中する。
-
-## ドメイン: 何のサービスか
-
-マッチングの本質は「出会わせること」ではなく、**知らない者同士が安心して取引できる仕組み**をつくること。Tsunagu Works はその「信頼の設計」に独自機能を集中させている。
-
-| 不安                                     | 機能                                                   |
-| ---------------------------------------- | ------------------------------------------------------ |
-| 「プラットフォーム外で取引されてしまう」 | **連絡先マスキング**（メール・電話・URLを伏せる）      |
-| 「悪い評価をつけたら報復されそう」       | **レビュー同時公開**（両者提出まで非公開）             |
-| 「働きぶりが見えない / 証拠を残したい」  | **週次の稼働報告**（提出→承認/差し戻し）               |
-| 「報酬が支払われないかもしれない」       | **エスクロー決済**（構想。両リポジトリともスコープ外） |
-
-これらは tsunagu-works で実装済み。ドメインの詳細は [docs/サービス概要.md](docs/サービス概要.md) と [docs/データ設計.md](docs/データ設計.md) へ。
-
-**出発点の規模**（tsunagu-works MVP・2026-08-07 時点）: テーブル9・APIエンドポイント28・画面23・Go実装3,948行（テスト1,309行）・状態遷移表5本。
-
-## 公開環境（本番）
-
-**web**: https://tsunagu-web-985660768358.asia-northeast1.run.app ／ **api**: https://tsunagu-api-985660768358.asia-northeast1.run.app/health
+### バックエンド（api-server/）
 
 ```
-main マージ ─→ GitHub Actions（WIF・キーレス認証）─→ Cloud Build（cloudbuild.yaml が一次情報）
-                 build & push（タグ=コミットSHA）→ migrate Job --wait → Cloud Run 切り替え
-                          │
-             Artifact Registry ── Cloud Run（api / web）── Neon PostgreSQL
+generated/api（生成ルーター） → handler → usecase → sqlc の Queries → PostgreSQL
+                                        ↘ shared/domain（遷移表・不変条件）
 ```
 
-- **本番にシードデータは入れない**（動作確認は画面の signup から。下記テストアカウントはローカル専用）
-- コールドスタート採用（min-instances 0）のため、初回アクセスは数秒かかることがある
-- 手順・判断の詳細は [docs/デプロイ.md](docs/デプロイ.md)・[ADR-0011](docs/adr/0011-web-on-cloud-run.md)
+- **「視点 → 層」の2段で分割**する。まず `internal/{company,talent,shared}` と「**誰から見た機能か**」で縦に割り、その中を handler / usecase / validator の層に分ける
+- 責務は薄く固定する。**handler は生成インターフェースの実装と詰め替えだけ**、**usecase が業務ロジックとトランザクション境界**、**shared/domain が遷移表・不変条件**（DB にも HTTP にも依存しない純粋な Go）
+- **repository 層は作らない**。SQL は `queries/*.sql` に書き、sqlc が生成する `Queries` を usecase からそのまま使う（薄皮の抽象を重ねない）
+- 認可はパスで一律に決める。`/company/*` は企業ロール、`/talent/*` は人材ロールをミドルウェアが強制し、**ハンドラにロール判定を書かない**
+- `company` ⇔ `talent` の相互 import 禁止・`shared/domain` から infra / generated への import 禁止を **golangci-lint（depguard）で機械的に強制**する
 
-## 動かす
+### フロントエンド（web/）
 
-```
-ブラウザ ── Next.js web (:3001) ── Go api-server (:8082) ── PostgreSQL (:5435)
-```
+- `app/` は**ルーティングとアクセス制御だけ**。ルートグループ＝認可の境界（company / talent・ログイン要否）として維持し、page.tsx は組み立てに徹する
+- 機能の本体は `features/{domain}/` に縦割りし、外部との接点は `external/`（handler → client・server-only）の**1枚の壁**に集約する
+- **読み取りは TanStack Query**（RSC で prefetch → Hydration）、**書き込みは Server Actions** の薄いラッパー。トークンは httpOnly Cookie でブラウザ JS に触れさせない
+- 型・Fetch Client・Zod スキーマは **orval の生成物から供給**し、手書きの型を二重管理しない
+- `features/` → `external/client` の直接 import・`features` 同士の直接依存は **ESLint の import 制約で禁止**する（境界をレビュー頼みにしない）
 
-```bash
-# 0. 前提ツール（初回のみ）: Node 24（.nvmrc）・pnpm（corepack）・Go 1.26
-# ※ sql-migrate は go.mod の tool ディレクティブで管理（go install 不要・make 経由で自動解決）
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest  # linter（~/go/bin にPATHを通す）
+## デプロイのワークフロー
 
-# 1. 環境変数（初回のみ）
-cp web/.env.example web/.env.local   # NEXT_PUBLIC_API_URL
+main へのマージが唯一のデプロイ経路。GitHub Actions は**認証と起動だけの薄い層**に保ち、手順の一次情報は `cloudbuild.yaml` に置く。
 
-# 2. 依存の取得と DB 起動・スキーマ適用
-pnpm install
-make db-up && make migrate-up
-
-# 3. 開発用シードデータ（任意・冪等）
-make seed
-
-# 4. 開発サーバー（Go と Next.js が並列起動・Ctrl+C で両方停止）
-pnpm dev
+```mermaid
+flowchart LR
+    A[main へマージ] --> B[GitHub Actions<br/>WIF キーレス認証]
+    B --> C[Cloud Build<br/>cloudbuild.yaml]
+    C --> D[build & push<br/>タグ = コミットSHA]
+    D --> E[migrate Job<br/>--wait で完了待ち]
+    E -->|成功時のみ| F[Cloud Run 切り替え<br/>api / web]
 ```
 
-シード投入後のテストアカウント（パスワードは全員 `password123`・開発専用）:
+- **順序が本体**: build → push → migrate 成功 → サービス切り替え。**migrate が失敗したら旧イメージのまま止まる**＝半端な状態を作らない
+- **キーレス認証（WIF）**: サービスアカウントキーを GitHub に置かない。OIDC トークンを GCP 側が検証し、受け入れ条件はこのリポジトリのみに絞る
+- **イメージタグ＝コミット SHA**: どのコミットが本番にいるかをタグだけで特定できる
+- DB は Neon（PostgreSQL）。マイグレーションは API 起動時ではなく **Cloud Run Job で1回だけ**実行する
+- 手順・判断・踏んだ罠の記録: [docs/デプロイ.md](docs/デプロイ.md) ／ [ADR-0011](docs/adr/0011-web-on-cloud-run.md)
 
-| email                                       | ロール |
-| ------------------------------------------- | ------ |
-| company1@example.com / company2@example.com | 企業   |
-| talent1@example.com / talent2@example.com   | 人材   |
+### 参考記事
 
-- ビルド・検証は turbo に集約: `pnpm turbo build` ／ CI と同一の全チェックは `pnpm turbo lint format:check test build`
-- Go テストの見やすい実行: `make test-api`（gotestsum・テスト名と PASS/FAIL を色付き表示）
-- トレース（任意）: `make trace-up` で Jaeger 起動 → `api-server/.env` に `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` → http://localhost:16686 で Go → SQL の trace を見る
-- `make` は DB 専用の道具箱（`make help` で一覧）。マイグレーションは sql-migrate で管理（psql で DDL を直接流さない）
+構築時に参考にした一次情報:
+
+- [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) — キーレス認証の仕組み（公式）
+- [Enabling keyless authentication from GitHub Actions](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions) — GitHub Actions × WIF の設定手順（Google Cloud 公式ブログ）
+- [google-github-actions/auth](https://github.com/google-github-actions/auth) — WIF 認証アクションの公式 README
+- [Cloud Build 構成ファイル スキーマ](https://cloud.google.com/build/docs/build-config-file-schema) — `cloudbuild.yaml` の書き方（公式）
+- [Cloud Run ジョブの作成と実行](https://cloud.google.com/run/docs/create-jobs) — migrate を Job で流す構成（公式）
+- [Neon Docs](https://neon.com/docs/introduction) — サーバーレス PostgreSQL（公式）
 
 ## ドキュメント
 
 - **[後継リポジトリ設計プラン](docs/後継リポジトリ設計プラン.md)** — 設計の全体像（技術選定・認可設計・テスト戦略・Phase 計画）
 - **[ADR](docs/adr/README.md)** — 個々の設計判断の記録（経緯・却下した代替案）
-- [アーキテクチャ設計書](docs/アーキテクチャ.md) / [web/README.md](web/README.md) — 出発点（tsunagu-works MVP）の設計記録
+- [デプロイ](docs/デプロイ.md) — Cloud Run + Neon の構成・手順・CD の設計
+- [アーキテクチャ設計書](docs/アーキテクチャ.md) / [web/README.md](web/README.md) — 出発点（MVP 版）の設計記録
 - [サービス概要](docs/サービス概要.md) — 何を作っているか（課題・信頼の設計・機能一覧）
 - [データ設計（ER図・リレーション）](docs/データ設計.md)
-- [学習ログ](docs/学習ログ.md) — バックエンド / DB / フロントエンド / 開発環境
-- 仕様デッキ: `仕様ドラフト.html`
