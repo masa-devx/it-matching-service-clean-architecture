@@ -1,17 +1,13 @@
 # 企業 × IT人材マッチングサービス — アーキテクチャ設計版
 
-**企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチングサービスを、別の設計で再実装するリポジトリ。**
-
-[MVP版リポジトリ](https://github.com/masahiro96848/it-matching-service)（フラット構成で完成済み）と**同じドメインを、スキーマ駆動・層分割・モノレポ構成で作り直す**。
-2つのリポジトリを並べて「**どの規模で、どちらの設計を選ぶか**」という判断そのものを示すことがゴール。
-
-> 設計の全体像: [docs/後継リポジトリ設計プラン.md](docs/後継リポジトリ設計プラン.md) ／ 個々の決定: [docs/adr/](docs/adr/README.md)
-> `web/` は MVP 版を土台に段階的に作り替えていく（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)）。Before の姿は MVP 版リポジトリを参照。
+**企業 × IT人材（副業・フリーランスエンジニア）のビジネスマッチングサービスを、 別の設計で再実装するリポジトリ。**
 
 ## 作成した背景
 
+リポジトリ [it-matching-service](https://github.com/masa-devx/it-matching-service) を**リファクタ・再設計したらどうなるかを検証する**ために作ったリポジトリ。
+
 MVP 版は機能を出し切ることを優先し、**あえて層を分けずに完成させた**（その判断の記録は [docs/アーキテクチャ.md](docs/アーキテクチャ.md)）。
-同じリポジトリでリファクタすると Before の姿が git 履歴の中にしか残らないため、**別リポジトリで再実装し、2つを並べて見せる**方針を採った。
+同じリポジトリでリファクタすると Before の姿が git 履歴の中にしか残らないため、**別リポジトリで再実装し、検証。**
 
 | 要素             | MVP版（Before）              | このリポジトリ（After）               |
 | ---------------- | ---------------------------- | ------------------------------------- |
@@ -25,7 +21,7 @@ MVP 版は機能を出し切ることを優先し、**あえて層を分けず�
 | API仕様          | 手書きの型（Go / TS で別々） | **TypeSpec → OpenAPI → Go/TS 生成**   |
 | 公開             | ローカルのみ                 | **Cloud Run ＋ Cloud Run Job**        |
 
-各判断の「なぜ」（何の事故を構造で防ぐか）と全対比は [設計プラン §15](docs/後継リポジトリ設計プラン.md) へ。
+各判断の詳しい理由（何の事故を構造で防ぐか）と全項目の対比は [設計プラン](docs/後継リポジトリ設計プラン.md) にまとめている。
 
 **実装スコープは4ドメインのみ**（認証＋プロフィール / 案件 / 応募 / eKYC）。
 契約・稼働報告・メッセージ・レビューは移植しない——同じパターンの繰り返しで、新しく示せることが少ないため。
@@ -33,29 +29,29 @@ MVP 版は機能を出し切ることを優先し、**あえて層を分けず�
 
 ## 技術選定
 
-| 領域             | 採用技術                              | 選定理由                                                                     |
-| ---------------- | ------------------------------------- | ---------------------------------------------------------------------------- |
-| モノレポ         | **Turborepo + pnpm workspace**        | Go もタスクグラフに載せ、仕様変更 → 生成 → ビルドを連鎖できる                |
-| API 仕様         | **TypeSpec → OpenAPI**                | 契約の一次情報を1箇所に。生成物はコミットし CI で差分チェック                |
-| バックエンド     | **Go + oapi-codegen（StrictHandler）**| 仕様とのズレがコンパイルエラーになる。ルーティングは生成コードが張る         |
-| DB アクセス      | **sqlc**（repository 層なし）         | SQL を資産として残したまま型安全。`Queries` が repository 相当               |
-| マイグレーション | **sql-migrate**                       | Up / Down の履歴管理。本番では Cloud Run Job から同じものを実行              |
-| フロントエンド   | **Next.js（App Router）+ orval**      | 型・Fetch Client・Zod を仕様から生成し、手書きの型二重管理を排除             |
-| サーバー状態     | **TanStack Query + Server Actions**   | 読み取りは prefetch / Hydration、書き込みはサーバー経由で Go へ              |
-| 認証・認可       | **自前 JWT（bcrypt・httpOnly Cookie）**| トークンをブラウザ JS に触れさせない。認可はパス × ミドルウェアで一律       |
+| 領域             | 採用技術                                      | 選定理由                                                              |
+| ---------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| モノレポ         | **Turborepo + pnpm workspace**                | Go もタスクグラフに載せ、仕様変更 → 生成 → ビルドを連鎖できる         |
+| API 仕様         | **TypeSpec → OpenAPI**                        | 契約の一次情報を1箇所に。生成物はコミットし CI で差分チェック         |
+| バックエンド     | **Go + oapi-codegen（StrictHandler）**        | 仕様とのズレがコンパイルエラーになる。ルーティングは生成コードが張る  |
+| DB アクセス      | **sqlc**（repository 層なし）                 | SQL を資産として残したまま型安全。`Queries` が repository 相当        |
+| マイグレーション | **sql-migrate**                               | Up / Down の履歴管理。本番では Cloud Run Job から同じものを実行       |
+| フロントエンド   | **Next.js（App Router）+ orval**              | 型・Fetch Client・Zod を仕様から生成し、手書きの型二重管理を排除      |
+| サーバー状態     | **TanStack Query + Server Actions**           | 読み取りは prefetch / Hydration、書き込みはサーバー経由で Go へ       |
+| 認証・認可       | **自前 JWT（bcrypt・httpOnly Cookie）**       | トークンをブラウザ JS に触れさせない。認可はパス × ミドルウェアで一律 |
 | テスト           | **実DBテスト（pgx.Tx 分離）+ API 統合テスト** | モックしない＝「テストは通るが動かない」を防ぐ                        |
-| インフラ         | **Cloud Run + Cloud Run Job + Neon**  | ゼロスケールで安い。migrate はデプロイ列の中で1回だけ実行                    |
+| インフラ         | **Cloud Run + Cloud Run Job + Neon**          | ゼロスケールで安い。migrate はデプロイ列の中で1回だけ実行             |
 
 ### 採用と見送りの判断（抜粋）
 
-比較して見送った選択肢と経緯は [ADR](docs/adr/README.md) に記録している。
+比較して見送った選択肢と経緯は、**設計判断の記録（ADR: Architecture Decision Record）**として [docs/adr/](docs/adr/README.md) に残している。
 
-| 論点         | 採用                        | 見送り                          | 決め手                                                                                                       |
-| ------------ | --------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| DB アクセス  | sqlc                        | ORM ／ 手書き database/sql      | SQL と実行計画を隠さず、型は生成で守る（手書きは MVP 版で経験済み・Before として比較対象に）                 |
-| E2E テスト   | API 統合テスト（実ミドルウェア） | ブラウザ E2E                | 実 MW 込みの API テストで「通し」を保証し、壊れやすく遅いブラウザ操作を持たない（[ADR-0012](docs/adr/0012-api-integration-tests-over-browser-e2e.md)） |
-| フロント構成 | web 1アプリ                 | company / talent の2アプリ分割  | この規模ではロール境界はルートグループで足りる（[ADR-0006](docs/adr/0006-single-frontend-after-only.md)）    |
-| 視覚回帰     | 導入見送り（発動条件を明文化） | Chromatic 等                  | UI の変更頻度がまだ投資に見合わない。導入する条件ごと記録（[ADR-0009](docs/adr/0009-defer-visual-regression.md)） |
+| 論点         | 採用                             | 見送り                         | 決め手                                                                                                                                                                 |
+| ------------ | -------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB アクセス  | sqlc                             | ORM ／ 手書き database/sql     | SQL と実行計画を隠さず、型は生成で守る（手書きは MVP 版で経験済み・Before として比較対象に）                                                                           |
+| E2E テスト   | API 統合テスト（実ミドルウェア） | ブラウザ E2E                   | 実際のミドルウェアを通した API テストで「通し」を保証し、壊れやすく遅いブラウザ操作を持たない（[判断の記録](docs/adr/0012-api-integration-tests-over-browser-e2e.md)） |
+| フロント構成 | web 1アプリ                      | company / talent の2アプリ分割 | この規模ではロールの境界はルートグループで足りる（[判断の記録](docs/adr/0006-single-frontend-after-only.md)）                                                          |
+| 視覚回帰     | 導入見送り（発動条件を明文化）   | Chromatic 等                   | UI の変更頻度がまだ投資に見合わない。導入する条件ごと記録（[判断の記録](docs/adr/0009-defer-visual-regression.md)）                                                    |
 
 ## アーキテクチャ設計
 
@@ -98,7 +94,7 @@ main へのマージが唯一のデプロイ経路。GitHub Actions は**認証�
 
 ```mermaid
 flowchart LR
-    A[main へマージ] --> B[GitHub Actions<br/>WIF キーレス認証]
+    A[main へマージ] --> B[GitHub Actions<br/>キーレス認証]
     B --> C[Cloud Build<br/>cloudbuild.yaml]
     C --> D[build & push<br/>タグ = コミットSHA]
     D --> E[migrate Job<br/>--wait で完了待ち]
@@ -106,14 +102,12 @@ flowchart LR
 ```
 
 - **順序が本体**: build → push → migrate 成功 → サービス切り替え。**migrate が失敗したら旧イメージのまま止まる**＝半端な状態を作らない
-- **キーレス認証（WIF）**: サービスアカウントキーを GitHub に置かない。OIDC トークンを GCP 側が検証し、受け入れ条件はこのリポジトリのみに絞る
+- **キーレス認証（WIF: Workload Identity Federation）**: サービスアカウントの鍵ファイルを GitHub に置かない。GitHub が発行するトークンを GCP 側が検証し、受け入れ条件はこのリポジトリのみに絞る
 - **イメージタグ＝コミット SHA**: どのコミットが本番にいるかをタグだけで特定できる
 - DB は Neon（PostgreSQL）。マイグレーションは API 起動時ではなく **Cloud Run Job で1回だけ**実行する
-- 手順・判断・踏んだ罠の記録: [docs/デプロイ.md](docs/デプロイ.md) ／ [ADR-0011](docs/adr/0011-web-on-cloud-run.md)
+- 手順・判断・踏んだ罠の記録: [docs/デプロイ.md](docs/デプロイ.md) ／ [web を Cloud Run に載せた判断の記録](docs/adr/0011-web-on-cloud-run.md)
 
 ### 参考記事
-
-構築時に参考にした一次情報:
 
 - [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) — キーレス認証の仕組み（公式）
 - [Enabling keyless authentication from GitHub Actions](https://cloud.google.com/blog/products/identity-security/enabling-keyless-authentication-from-github-actions) — GitHub Actions × WIF の設定手順（Google Cloud 公式ブログ）
@@ -125,7 +119,7 @@ flowchart LR
 ## ドキュメント
 
 - **[後継リポジトリ設計プラン](docs/後継リポジトリ設計プラン.md)** — 設計の全体像（技術選定・認可設計・テスト戦略・Phase 計画）
-- **[ADR](docs/adr/README.md)** — 個々の設計判断の記録（経緯・却下した代替案）
+- **[設計判断の記録（ADR）](docs/adr/README.md)** — 個々の判断の経緯と、却下した代替案
 - [デプロイ](docs/デプロイ.md) — Cloud Run + Neon の構成・手順・CD の設計
 - [アーキテクチャ設計書](docs/アーキテクチャ.md) / [web/README.md](web/README.md) — 出発点（MVP 版）の設計記録
 - [サービス概要](docs/サービス概要.md) — 何を作っているか（課題・信頼の設計・機能一覧）
