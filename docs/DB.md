@@ -919,3 +919,33 @@ P-2 が特定した `hourly_rate_min` の索引欠落に、部分索引 `(hourly
 - **generic plan の罠は実在した（出なかったが）**: `PREPARE` + `plan_cache_mode=force_generic_plan` で同じ SQL を流すと、`$4 IS NULL OR ...` を畳めず新索引を使えない（155ms・Seq Scan より遅い）。auto モードでは generic の見積もり（7,810）が custom（8.44）より高いため切り替わらず、300 リクエストの HTTP 計測がその証拠。**narg の OR パターンは「プランナのコスト比較に守られている」設計**だと知っておく（打ち手: `plan_cache_mode=force_custom_plan` / SQL 分岐）
 - **`migrate-down` は末尾1件を戻す**: 二重実行で1つ前まで巻き戻した。down の前に `migrate-status`
 - 理解度チェック: [ ] generic plan で索引が使えない理由を「OR と NULL」から言える／[ ] 書き込み税を払ってよい判断基準を言える
+
+## Phase 6 #125: ブラウザ E2E 基盤（Step 2: E2E 専用 DB とリセット）
+
+### 何をした
+
+ブラウザ E2E 専用 DB `tsunagu_e2e_web` を追加し（`dbconfig.yml` の `e2e_web` 環境・`make e2e-web-db-setup`）、`cmd/e2ereset` で「TRUNCATE → 基準世界の読み込み → シーケンス調整」を1トランザクションで行う `make e2e-web-reset` を作った。基準世界の読み込みは `e2efixture.Load` から本体を `LoadInto(ctx, dbtx) error` に切り出し、API 統合テストとリセットで共用する。
+
+### 概念
+
+- **後始末の方式はテストの種類で変わる**: API 統合テストはサーバーもテストも同じ Tx の中なので ROLLBACK で消せる（ADR-0008）。ブラウザ E2E は**別プロセスの実サーバーが COMMIT する**ので、テストから Tx で包めない。そこで「後で片付ける」ではなく「**実行前に毎回まっさらにする**」に切り替える。前回が途中で落ちて後始末が走らなくても、次の実行には影響しない
+- **DB を用途ごとに分ける**: 開発 `tsunagu`（手で触る）／`tsunagu_test`（Tx で分離・スキーマのみ）／`tsunagu_e2e`（dump 生成用・毎回作り直す）／`tsunagu_e2e_web`（ブラウザ E2E が COMMIT する）。`tsunagu_e2e` を共用すると、`make e2e-dump` が DB を作り直した瞬間に E2E 実行中のサーバーの足元が消える
+- **`TRUNCATE … RESTART IDENTITY CASCADE`**: DELETE と違い行を1件ずつ消さず、テーブルを空にする（速い）。`RESTART IDENTITY` で採番も1に戻るので、実行のたびに同じ ID の世界になる。PostgreSQL の TRUNCATE はトランザクションの中で実行でき、失敗すれば全消しも取り消される
+- **読み込みの本体を1か所に保つ**: `LoadInto` は「1行1 INSERT の検証」と「シーケンスを前方にだけ進める setval」を含む。E2E 側で psql に dump.sql を流す別手順を作ると、この2つの守りが片方にしか効かなくなる。`t.Fatal` を持つ `Load` は薄いラッパーにして、テスト以外（コマンド）からも呼べる `error` を返す形にした
+
+### ✅ベストプラクティス
+
+- 全消しするコマンドには、**接続先の名前で実行対象を限定するガード**を入れる（`_e2e_web` で終わる DB 以外は接続前に拒否）。環境変数の設定ミス1つで開発 DB や本番を消す事故を、人の注意ではなく仕組みで防ぐ
+- リセットはセットアップ（DB 作成・マイグレーション）に依存させる（`e2e-web-reset: e2e-web-db-setup`）。マイグレーションを追加した後に古いスキーマのままリセットして失敗する、という「環境のせいの赤」を消す
+
+### ⚠️アンチパターン
+
+- テストの最後に後始末（DELETE）を書く — テストが途中で落ちると後始末が走らず、次の実行がその残りで落ちる（原因が別のテストに見える、最悪の不安定さ）
+- E2E で開発 DB をそのまま使う — 手で入れたデータ次第で結果が変わる
+
+### 理解度チェック
+
+- [ ] ブラウザ E2E で ROLLBACK による後始末が使えない理由を言える
+- [ ] 「実行前にリセット」が「実行後に後始末」より壊れにくい理由を言える
+- [ ] `tsunagu_e2e` と `tsunagu_e2e_web` を分けた理由を言える
+- [ ] `e2ereset` の DB 名ガードが防いでいる事故を言える
