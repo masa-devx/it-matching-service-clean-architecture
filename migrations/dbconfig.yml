@@ -21,3 +21,11 @@ e2e:
   datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu_e2e sslmode=disable
   dir: ../migrations/ddl
   table: gorp_migrations
+
+# ブラウザ E2E（Playwright）専用（ADR-0014）。実サーバーが COMMIT するため、dump 生成用の
+# tsunagu_e2e とは分ける（make e2e-dump が DB を作り直しても E2E の実行と干渉しない）
+e2e_web:
+  dialect: postgres
+  datasource: host=localhost port=5435 user=tsunagu password=tsunagu dbname=tsunagu_e2e_web sslmode=disable
+  dir: ../migrations/ddl
+  table: gorp_migrations

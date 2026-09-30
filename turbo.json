@@ -13,6 +13,11 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "test:e2e": {
+      "dependsOn": ["web#build"],
+      "cache": false,
+      "passThroughEnv": ["CI", "E2E_WEB_DATABASE_URL", "PLAYWRIGHT_*"]
+    },
     "build-storybook": {
       "dependsOn": ["^build"],
       "outputs": ["storybook-static/**"]

@@ -1,0 +1,3 @@
+# Playwright の実行結果（生成物）は整形しない
+test-results/
+playwright-report/

@@ -10,6 +10,7 @@ on:
     paths-ignore:
       - "web/**"
       - "packages/**"
+      - "e2e/**"
       - "turbo.json"
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"

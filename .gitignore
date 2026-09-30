@@ -16,6 +16,10 @@ api-server/bin/
 # Turborepo
 .turbo/
 
+# Playwright（実行結果・レポートは生成物）
+test-results/
+playwright-report/
+
 # Claude ローカル設定
 .claude/settings.local.json
 

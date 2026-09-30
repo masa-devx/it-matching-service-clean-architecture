@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump test-api trace-up trace-down dev dev-api dev-web seed-perf seed-perf-clean perf-measure
+.PHONY: help db-up db-down migrate-up migrate-down migrate-status migrate-new db-test-setup seed e2e-dump e2e-web-db-setup e2e-web-reset test-api trace-up trace-down dev dev-api dev-web seed-perf seed-perf-clean perf-measure
 
 help: ## コマンド一覧を表示
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -57,6 +57,17 @@ e2e-dump: ## e2e fixture の dump.sql を再生成（一次情報は api-server/
 	done > api-server/test/e2efixture/dump.sql
 	@test -s api-server/test/e2efixture/dump.sql || { echo "dump.sql が空です（pg_dump 失敗の可能性）"; exit 1; }
 	@echo "生成完了: api-server/test/e2efixture/dump.sql（$$(wc -l < api-server/test/e2efixture/dump.sql | tr -d ' ') 行）"
+
+## --- ブラウザ E2E（Playwright・ADR-0014） ---
+
+e2e-web-db-setup: ## ブラウザ E2E 専用 DB（tsunagu_e2e_web）を作成しスキーマを適用（冪等・要 make db-up）
+	$(DB_EXEC) psql -U tsunagu -d tsunagu -tc "SELECT 1 FROM pg_database WHERE datname = 'tsunagu_e2e_web'" | grep -q 1 || \
+		$(DB_EXEC) createdb -U tsunagu tsunagu_e2e_web
+	$(MAKE) -C migrations e2e-web-up
+
+# setup を前提にすることで、マイグレーション追加後の古いスキーマのままリセットして失敗する事故を防ぐ
+e2e-web-reset: e2e-web-db-setup ## ブラウザ E2E 専用 DB を基準世界に戻す（Playwright の globalSetup が呼ぶ）
+	cd api-server && go run ./cmd/e2ereset
 
 ## --- テスト実行（人間の目のためのローカル用。CI は素の go test を turbo 経由で使う） ---
 

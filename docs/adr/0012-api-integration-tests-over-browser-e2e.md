@@ -1,6 +1,6 @@
 # ADR-0012: ブラウザ E2E（Playwright）を見送り、API 統合テストに投資する
 
-- ステータス: Accepted（承認済み）
+- ステータス: Superseded by [ADR-0014](0014-browser-e2e-for-seams.md)（ブラウザ E2E を継ぎ目に限って導入。API 統合テストを主力とする判断は継続）
 - 日付: 2026-08-20
 
 ## 背景
