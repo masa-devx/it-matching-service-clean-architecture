@@ -1,6 +1,7 @@
 # フロントエンド CI: Node のみ（DB もコンテナも Go も不要）。
 # バックエンドは backend-ci.yml が担当（言語の境界で分割・#62）。
 # packages/** を含むのは、仕様（spec）変更が api-client の生成物に影響するため
+# e2e/** を含むのは、ブラウザ E2E の型チェック・整形（実行はしない・ADR-0014）をここで担うため
 name: frontend-ci
 
 on:
@@ -8,6 +9,7 @@ on:
     paths:
       - "web/**"
       - "packages/**"
+      - "e2e/**"
       - "turbo.json"
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
@@ -19,6 +21,7 @@ on:
     paths:
       - "web/**"
       - "packages/**"
+      - "e2e/**"
       - "turbo.json"
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
@@ -53,7 +56,7 @@ jobs:
           key: turbo-frontend-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-frontend-${{ runner.os }}-
 
-      # --filter=!api-server: Go を除く全パッケージ（web / api-client / spec / typescript-config）
+      # --filter=!api-server: Go を除く全パッケージ（web / e2e / api-client / spec / typescript-config）
       # build-storybook も含める: 壊れた story（import 切れ・型エラー）が CI で落ちる
       - name: Lint & Test & Build (TS)
         run: pnpm turbo lint format:check test build build-storybook --filter=!api-server
